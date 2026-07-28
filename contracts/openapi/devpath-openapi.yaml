@@ -1,0 +1,237 @@
+openapi: 3.0.3
+info:
+  title: DevPath Identity Slice API
+  version: 0.2.0
+  description: >
+    Implemented contract for the first authenticated Identity and Persistence vertical slice.
+    Provider access tokens and unimplemented product APIs are intentionally excluded.
+servers:
+  - url: http://localhost:8080
+    description: Local backend
+paths:
+  /internal/health:
+    get:
+      summary: Backend health check
+      operationId: getInternalHealth
+      tags: [Internal]
+      security: []
+      responses:
+        "200":
+          description: Non-sensitive backend health.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /oauth2/authorization/github:
+    get:
+      summary: Start GitHub OAuth login
+      description: Spring Security owns this authorization entry point and redirects to GitHub.
+      operationId: initiateGitHubLogin
+      tags: [Authentication]
+      security: []
+      responses:
+        "302":
+          description: Redirect to the configured GitHub authorization endpoint.
+  /login/oauth2/code/github:
+    get:
+      summary: Complete GitHub OAuth login
+      description: >
+        Spring Security owns this callback. A successful callback provisions or resolves the internal
+        user, rotates the session identifier, stores the security context in the server-side JDBC
+        session, and redirects to the configured frontend origin.
+      operationId: completeGitHubLogin
+      tags: [Authentication]
+      security: []
+      parameters:
+        - name: code
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: error
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "302":
+          description: Redirect to the configured frontend success or failure location.
+  /api/v1/csrf:
+    get:
+      summary: Issue a CSRF token
+      operationId: getCsrfToken
+      tags: [Authentication]
+      security: []
+      responses:
+        "200":
+          description: CSRF token for a subsequent state-changing browser request.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CsrfTokenEnvelope"
+  /api/v1/users/me:
+    get:
+      x-api-id: API-ID-001
+      summary: Retrieve the current authenticated user
+      operationId: getCurrentUser
+      tags: [Identity]
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Current internal DevPath user.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUserEnvelope"
+        "401":
+          description: No valid DevPath session or unavailable account.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+  /api/v1/session/logout:
+    post:
+      summary: End the current DevPath session
+      operationId: logoutCurrentSession
+      tags: [Authentication]
+      security:
+        - sessionCookie: []
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "204":
+          description: Session invalidated and cookie cleared.
+        "401":
+          description: No valid DevPath session.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+        "403":
+          description: Missing or invalid CSRF token.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorEnvelope"
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: DEVPATH_SESSION
+      description: Opaque HttpOnly server-session identifier. It is never read by browser JavaScript.
+  parameters:
+    CsrfHeader:
+      name: X-CSRF-TOKEN
+      in: header
+      required: true
+      description: Server-issued CSRF token. This is not an authentication credential.
+      schema:
+        type: string
+  schemas:
+    ApiMetadata:
+      type: object
+      additionalProperties: false
+      required: [requestId, apiVersion, timestamp]
+      properties:
+        requestId:
+          type: string
+        apiVersion:
+          type: string
+          example: v1
+        timestamp:
+          type: string
+          format: date-time
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required: [status, application, timestamp]
+      properties:
+        status:
+          type: string
+          example: ok
+        application:
+          type: string
+          example: devpath-backend
+        timestamp:
+          type: string
+          format: date-time
+    CurrentUser:
+      type: object
+      additionalProperties: false
+      required: [userId, displayName, status, authenticationProvider, createdAt]
+      properties:
+        userId:
+          type: string
+          format: uuid
+        displayName:
+          type: string
+          maxLength: 120
+        avatarUrl:
+          type: string
+          format: uri
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE]
+        authenticationProvider:
+          type: string
+          enum: [GITHUB]
+        createdAt:
+          type: string
+          format: date-time
+    CurrentUserEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data:
+          $ref: "#/components/schemas/CurrentUser"
+        metadata:
+          $ref: "#/components/schemas/ApiMetadata"
+    CsrfToken:
+      type: object
+      additionalProperties: false
+      required: [headerName, parameterName, token]
+      properties:
+        headerName:
+          type: string
+          example: X-CSRF-TOKEN
+        parameterName:
+          type: string
+          example: _csrf
+        token:
+          type: string
+    CsrfTokenEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data:
+          $ref: "#/components/schemas/CsrfToken"
+        metadata:
+          $ref: "#/components/schemas/ApiMetadata"
+    ApiError:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [error, metadata]
+      properties:
+        error:
+          $ref: "#/components/schemas/ApiError"
+        metadata:
+          $ref: "#/components/schemas/ApiMetadata"

@@ -1,0 +1,16 @@
+{
+  "name": "devpath",
+  "version": "0.1.0",
+  "private": true,
+  "description": "DevPath monorepo command coordinator.",
+  "scripts": {
+    "backend:build": "node scripts/run-gradle.mjs build",
+    "backend:test": "node scripts/run-gradle.mjs test",
+    "frontend:install": "node scripts/run-frontend.mjs ci",
+    "frontend:build": "node scripts/run-frontend.mjs run build",
+    "frontend:test": "node scripts/run-frontend.mjs run test",
+    "test": "node scripts/run-gradle.mjs test && node scripts/run-frontend.mjs run test",
+    "verify": "node scripts/run-gradle.mjs clean build && node scripts/run-frontend.mjs ci && node scripts/run-frontend.mjs run test && node scripts/run-frontend.mjs run build"
+  }
+}
+

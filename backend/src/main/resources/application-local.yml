@@ -1,0 +1,22 @@
+spring:
+  datasource:
+    url: ${DEVPATH_DB_URL:jdbc:postgresql://localhost:5432/devpath}
+    username: ${DEVPATH_DB_USERNAME:devpath}
+    password: ${DEVPATH_DB_PASSWORD:devpath-local-only}
+  security:
+    oauth2:
+      client:
+        registration:
+          github:
+            client-id: ${GITHUB_CLIENT_ID:local-github-client-id}
+            client-secret: ${GITHUB_CLIENT_SECRET:local-github-client-secret}
+
+server:
+  servlet:
+    session:
+      cookie:
+        secure: false
+
+devpath:
+  security:
+    frontend-origin: ${DEVPATH_FRONTEND_ORIGIN:http://localhost:5173}

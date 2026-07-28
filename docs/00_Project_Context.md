@@ -256,6 +256,7 @@ Modules:
 - TypeScript
 - TailwindCSS
 - React Query
+- Accepted baseline: React with TypeScript SPA, governed by ADR-021.
 
 ### 13.2 Backend
 
@@ -263,6 +264,10 @@ Modules:
 - Spring Security
 - PostgreSQL
 - Redis
+- Accepted baseline: Java 21 LTS with Spring Boot modular monolith, governed by ADR-020.
+- Persistence baseline: Spring Data JPA with Hibernate is confined to persistence adapters; domain models remain persistence-independent, governed by ADR-024.
+- Migration baseline: Flyway owns immutable versioned SQL schema migrations, governed by ADR-025.
+- Authentication baseline: GitHub OAuth2 Login uses a server-managed opaque session in a secure HttpOnly cookie; provider tokens remain server-side, governed by ADR-026.
 
 ### 13.3 AI
 
@@ -278,6 +283,7 @@ Modules:
 - GitHub Actions
 - Nginx
 - Oracle Cloud Free
+- Repository and build baseline: monorepo with stack-native builds, governed by ADR-022 and ADR-023.
 
 ## 14. Important Rules
 
