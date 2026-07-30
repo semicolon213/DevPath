@@ -54,8 +54,8 @@ The initial scaffold contains only foundation tests. These tests prove wiring, r
 
 | Test Area | Evidence Path or Command | Status |
 |---|---|---|
-| Backend health controller | `backend/src/test/java/com/devpath/platform/health/InternalHealthControllerTest.java` | Created; not executed locally because Java 21 is unavailable |
-| Backend boundary tests | `backend/src/test/java/com/devpath/architecture/` | Created; not executed locally because Java 21 is unavailable |
+| Backend health controller | `backend/src/test/java/com/devpath/platform/health/InternalHealthControllerTest.java` | Passed under Java 21 |
+| Backend boundary tests | `backend/src/test/java/com/devpath/architecture/` | Passed under Java 21 |
 | Frontend shell and routing tests | `frontend/src/app/App.test.tsx` | Passed |
 | Frontend test helper | `frontend/src/test/renderWithProviders.tsx` | Created |
 | Frontend verification command | `node scripts/run-frontend.mjs run test -- --run` | Passed with sandbox escalation |
@@ -972,12 +972,12 @@ DevPath testing prioritizes deterministic correctness, security, privacy, tracea
 
 | Test Group | Actual Path | Execution Status |
 |---|---|---|
-| Domain | `backend/src/test/java/com/devpath/identity/domain` | Created; not run without Java 21 |
-| Application | `backend/src/test/java/com/devpath/identity/application` | Created; not run without Java 21 |
-| PostgreSQL/Flyway/JPA | `IdentityPersistenceIntegrationTest` | Testcontainers test created; not run without Java 21 |
-| Security | `IdentitySecurityIntegrationTest` | Mock OAuth boundary, current user, CSRF, logout, and CORS tests created; not run without Java 21 |
-| Architecture | `ArchitectureBoundaryTest` | Expanded; not run without Java 21 |
-| Frontend | `frontend/src/app/App.test.tsx`, `frontend/src/features/session/api/sessionApi.test.ts` | 6 tests passed |
+| Domain | `backend/src/test/java/com/devpath/identity/domain` | Passed under Java 21 |
+| Application | `backend/src/test/java/com/devpath/identity/application` | Passed under Java 21 |
+| PostgreSQL/Flyway/JPA | `IdentityPersistenceIntegrationTest` | 3 Testcontainers tests skipped because Docker/PostgreSQL is unavailable |
+| Security | `IdentitySecurityIntegrationTest` | Mock OAuth boundary, current user, CSRF, logout, and CORS tests passed |
+| Architecture | `ArchitectureBoundaryTest` | Expanded and passed under Java 21 |
+| Frontend | `frontend/src/app/App.test.tsx`, `frontend/src/features/session` | 9 tests passed |
 | OpenAPI | `contracts/openapi/devpath-openapi.yaml` | Redocly validation passed with advisory warnings |
 
-No backend, migration, schema, or security test is marked passed until it executes under Java 21.
+Java 21 backend tests report 21 total tests, 0 failures, and 3 PostgreSQL Testcontainers skips. Migration execution and JPA schema validation remain pending until Docker or a supported PostgreSQL test environment is available.

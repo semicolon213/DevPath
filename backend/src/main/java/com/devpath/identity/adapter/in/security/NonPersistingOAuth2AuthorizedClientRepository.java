@@ -5,9 +5,11 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizedClientRepository;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Component;
 
 @Component
+@Primary
 public class NonPersistingOAuth2AuthorizedClientRepository implements OAuth2AuthorizedClientRepository {
     @Override
     public <T extends OAuth2AuthorizedClient> T loadAuthorizedClient(

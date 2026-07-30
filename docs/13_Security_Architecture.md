@@ -1018,7 +1018,7 @@ DevPath security is based on server-side authority, user ownership, deterministi
 
 | Control | Actual Evidence | Status |
 |---|---|---|
-| Opaque session | Spring Session JDBC with `DEVPATH_SESSION` | Implemented; runtime not verified |
+| Opaque session | Spring Session JDBC with `DEVPATH_SESSION` | Security tests passed; PostgreSQL-backed session runtime remains pending |
 | Cookie policy | HttpOnly, Secure by default, SameSite=Lax, explicit path | Configured; local profile disables Secure for HTTP only |
 | CSRF | Cookie token repository and explicit `X-CSRF-TOKEN` header | Enabled; logout protected |
 | CORS | Configured frontend origin only, credentialed requests, minimal methods/headers | Implemented |

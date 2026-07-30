@@ -36,7 +36,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import({
     SecurityConfiguration.class,
     IdentityFoundationConfiguration.class,
-    AbsoluteSessionTimeoutFilter.class
+    AbsoluteSessionTimeoutFilter.class,
+    NonPersistingOAuth2AuthorizedClientRepository.class
 })
 @TestPropertySource(properties = {
     "devpath.security.frontend-origin=http://localhost:5173",
@@ -56,9 +57,6 @@ class IdentitySecurityIntegrationTest {
 
     @MockBean
     private GitHubOAuth2UserService oAuth2UserService;
-
-    @MockBean
-    private NonPersistingOAuth2AuthorizedClientRepository authorizedClientRepository;
 
     @Test
     void rejectsAnonymousCurrentUserRequests() throws Exception {

@@ -1238,15 +1238,15 @@ Progress tracks milestone status, exit criteria, blocking defects, open ADRs, re
 
 | Roadmap Item | Status | Evidence or Blocker |
 |---|---|---|
-| PostgreSQL/Flyway foundation | Partial | Migration created; empty-database execution not run |
-| Internal user and external GitHub identity | Partial | Domain, application, and JPA adapters created; Java 21 tests not run |
-| Opaque JDBC session | Partial | Security and session configuration created; runtime not verified |
-| Current-user and logout APIs | Partial | Implemented and documented; backend tests not run |
+| PostgreSQL/Flyway foundation | Partial | Migration created; empty-database Testcontainers execution skipped because Docker/PostgreSQL is unavailable |
+| Internal user and external GitHub identity | Partial | Domain, application, JPA adapters, Java 21 compile, and non-container tests passed |
+| Opaque JDBC session | Partial | Security tests passed; PostgreSQL-backed session startup remains pending |
+| Current-user and logout APIs | Partial | Implemented and documented; MockMvc security tests passed, full PostgreSQL-backed startup remains pending |
 | Frontend session bootstrap | Complete | Tests and production build passed |
 | OpenAPI subset | Complete | Redocly validation passed |
 | Durable security audit store | Deferred | Explicit port and operational adapter only |
 | Account-status session revocation | Deferred | Requires future suspension/deletion use case |
-| Identity module completion | Blocked | Java 21 backend, migration, JPA, security, and startup verification required |
+| Identity module completion | Blocked | PostgreSQL migration, JPA integration, and full application startup verification required |
 
-The next repository vertical slice must not begin until the Java 21 verification blocker is removed. This foundation does not complete the broader Identity module.
+The Java 21 compile/test/build blocker is resolved. The next repository vertical slice must not begin until PostgreSQL migration, JPA integration, and full application startup verification are complete. This foundation does not complete the broader Identity module.
 

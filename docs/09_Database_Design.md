@@ -787,11 +787,11 @@ No storage component grants the LLM authority to calculate scores, execute busin
 
 | Item | Implemented Evidence | Verification Status |
 |---|---|---|
-| Migration | `backend/src/main/resources/db/migration/V1__create_identity_and_session_schema.sql` | Created; execution not run because Java 21 is unavailable |
+| Migration | `backend/src/main/resources/db/migration/V1__create_identity_and_session_schema.sql` | Created; Testcontainers execution skipped because Docker/PostgreSQL is unavailable |
 | Identity tables | `users`, `external_identities` | Defined by Flyway migration |
 | Session tables | `spring_session`, `spring_session_attributes` | Defined by Flyway migration; startup auto-creation disabled |
 | Identity uniqueness | `UNIQUE (provider, provider_subject)` | Enforced in migration and represented in JPA metadata |
 | Persistence model | `identity/adapter/out/persistence` | Separate JPA entities and explicit domain mappings |
-| Schema ownership | Flyway migration with `ddl-auto=validate` and OSIV disabled | Configuration created; runtime validation not run |
+| Schema ownership | Flyway migration with `ddl-auto=validate` and OSIV disabled | Configuration compiled; PostgreSQL runtime validation remains pending |
 
 Provider credentials are not part of this migration. Initial authentication does not require durable provider-token storage, and the OAuth authorized-client repository is intentionally non-persisting.

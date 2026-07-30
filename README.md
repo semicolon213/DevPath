@@ -86,9 +86,9 @@ flowchart LR
 
 Frontend 테스트 9개와 production build, OpenAPI 검증은 통과했습니다.
 
-Backend는 Java 21을 기준으로 작성했지만 현재 작업 환경에는 Java 11과 17만 설치되어 있어 아직 실제 build와 PostgreSQL 통합 테스트를 실행하지 못했습니다. Java 버전을 낮추는 대신 Java 21 환경에서 검증할 예정입니다.
+Java 21 환경에서 backend compile, 테스트, production build도 통과했습니다. 전체 backend 테스트 21개 중 일반 테스트 18개가 통과했고, PostgreSQL Testcontainers 테스트 3개는 현재 작업 환경에 Docker가 없어 건너뛴 상태입니다.
 
-다음 작업은 backend 검증을 마친 뒤 GitHub 저장소 연결과 동기화 기능을 구현하는 것입니다.
+다음 작업은 PostgreSQL migration과 JPA 통합 테스트를 실제로 확인한 뒤 GitHub 저장소 연결과 동기화 기능을 구현하는 것입니다.
 
 ## 기술 스택
 
@@ -228,7 +228,7 @@ Backend 통합 테스트는 PostgreSQL Testcontainers를 사용하도록 작성�
 
 ## 앞으로 할 일
 
-- Java 21 환경에서 backend와 migration 검증
+- PostgreSQL 환경에서 migration과 JPA 통합 검증
 - GitHub 저장소 연결 및 동기화
 - 저장소 snapshot과 분석 데이터 수집
 - Rule Engine 구현

@@ -1183,6 +1183,6 @@ Future extensions are not current committed scope.
 | Inbound adapters | `backend/src/main/java/com/devpath/identity/adapter/in` | OAuth security and HTTP adapters created |
 | Outbound persistence | `backend/src/main/java/com/devpath/identity/adapter/out/persistence` | Spring Data repositories remain adapter-local |
 | Transaction boundary | `OAuthLoginApplicationService` | Atomic first-login provisioning with database uniqueness as concurrency guard |
-| Runtime verification | Gradle Java 21 commands | Not run; workstation provides Java 11 and 17 only |
+| Runtime verification | Gradle Java 21 commands | `clean test` and `build` passed; PostgreSQL-dependent tests skipped because Docker is unavailable |
 
 No repository, analysis, Rule, Career, Knowledge, Prompt, AI, or artifact backend use case is implemented by this slice.

@@ -1,42 +1,124 @@
-# Operating system and editor state
+# -----------------------------------------------------------------------------
+# Operating system
+# -----------------------------------------------------------------------------
 .DS_Store
+.AppleDouble
+.LSOverride
 Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# -----------------------------------------------------------------------------
+# IDE and editor
+# -----------------------------------------------------------------------------
 .idea/
+*.iml
+*.ipr
+*.iws
+
 .vscode/
+
+.classpath
+.project
+.settings/
+.factorypath
+
 *.swp
 *.swo
+*.swn
+*~
 
-# Environment and secrets
+# -----------------------------------------------------------------------------
+# Environment variables, credentials, and local certificates
+# -----------------------------------------------------------------------------
 .env
 .env.*
 !.env.example
+
 *.pem
 *.key
 *.p12
+*.pfx
 *.jks
+*.keystore
 
-# Logs and temporary files
+# Local OAuth and service credentials
+credentials/
+secrets/
+
+# -----------------------------------------------------------------------------
+# Logs, process files, and temporary output
+# -----------------------------------------------------------------------------
 *.log
+*.log.*
+*.pid
+*.pid.lock
+hs_err_pid*
+replay_pid*
+
 logs/
 tmp/
 temp/
 .tmp/
 
-# Backend build output
+# Local database exports and backups
+*.dump
+*.backup
+*.bak
+
+# -----------------------------------------------------------------------------
+# Java / Spring Boot / Gradle
+# -----------------------------------------------------------------------------
 backend/.gradle/
 backend/build/
 backend/out/
+backend/bin/
 
-# Frontend dependencies and build output
+*.class
+
+# Keep the Gradle Wrapper committed:
+# backend/gradle/wrapper/gradle-wrapper.jar
+# backend/gradlew
+# backend/gradlew.bat
+
+# -----------------------------------------------------------------------------
+# Node.js / React / Vite
+# -----------------------------------------------------------------------------
 frontend/node_modules/
 frontend/dist/
-frontend/coverage/
 frontend/.vite/
+frontend/.cache/
+frontend/.eslintcache
+frontend/*.tsbuildinfo
+
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.npm/
+
+# Keep the npm lockfile committed:
+# frontend/package-lock.json
+
+# -----------------------------------------------------------------------------
+# Test and coverage output
+# -----------------------------------------------------------------------------
+backend/test-results/
+backend/coverage/
+
+frontend/coverage/
 frontend/test-results/
 frontend/playwright-report/
+frontend/blob-report/
 
-# Root verification outputs
 coverage/
 test-results/
 playwright-report/
+blob-report/
 
+# -----------------------------------------------------------------------------
+# Generated API and documentation artifacts
+# -----------------------------------------------------------------------------
+.openapi-generator/
+openapi-generator-cli.jar
