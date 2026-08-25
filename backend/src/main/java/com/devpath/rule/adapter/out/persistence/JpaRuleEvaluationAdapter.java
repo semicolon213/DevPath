@@ -102,6 +102,15 @@ class JpaRuleEvaluationAdapter implements RuleEvaluationPersistencePort {
         }).toList();
     }
 
+    @Override
+    public List<RuleEvaluationEvidence> findEvidenceByIdsAndOwner(List<UUID> evidenceIds, UUID userId) {
+        if (evidenceIds.isEmpty()) return List.of();
+        return evidence.findAllByIdInAndUserIdOrderByIdAsc(evidenceIds, userId).stream()
+            .map(value -> new RuleEvaluationEvidence(value.id(), value.userId(), value.snapshotId(),
+                value.evidenceType(), value.sourceReference(), value.observedFactSummary(), value.confidence()))
+            .toList();
+    }
+
     private RuleEvidenceJpaEntity findOrCreateEvidence(
         CompletedRuleEvaluation evaluation, String reference
     ) {

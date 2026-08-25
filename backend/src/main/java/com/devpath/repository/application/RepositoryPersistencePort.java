@@ -11,4 +11,5 @@ public interface RepositoryPersistencePort {
     Repository save(Repository repository);
     List<Repository> findPageByOwner(UUID userId, int page, int limit, boolean includeArchived);
     long countByOwner(UUID userId, boolean includeArchived);
+    long countByOwnerAndSyncStatus(UUID userId, String syncStatus, boolean includeArchived);
 }

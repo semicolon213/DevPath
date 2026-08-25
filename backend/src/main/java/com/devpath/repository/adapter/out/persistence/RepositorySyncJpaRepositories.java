@@ -15,6 +15,7 @@ interface RepositorySyncJobJpaRepository extends JpaRepository<RepositorySyncJob
     Optional<RepositorySyncJobJpaEntity> findByUserIdAndIdempotencyKey(UUID userId, String idempotencyKey);
     Optional<RepositorySyncJobJpaEntity> findFirstByRepositoryIdAndStatusIn(UUID repositoryId, List<String> statuses);
     Optional<RepositorySyncJobJpaEntity> findByIdAndUserId(UUID id, UUID userId);
+    List<RepositorySyncJobJpaEntity> findAllByUserIdOrderBySubmittedAtDescIdDesc(UUID userId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select job from RepositorySyncJobJpaEntity job where job.status = 'QUEUED' and job.nextAttemptAt <= :now order by job.submittedAt")
@@ -44,6 +45,18 @@ interface RepositoryDependencyJpaRepository extends JpaRepository<RepositoryDepe
 
 interface RepositoryFileJpaRepository extends JpaRepository<RepositoryFileJpaEntity, UUID> {
     List<RepositoryFileJpaEntity> findAllBySnapshotIdOrderByPathAsc(UUID snapshotId);
+}
+
+interface RepositoryPullRequestJpaRepository extends JpaRepository<RepositoryPullRequestJpaEntity, UUID> {
+    List<RepositoryPullRequestJpaEntity> findAllBySnapshotIdOrderByOpenedAtDesc(UUID snapshotId);
+}
+
+interface RepositoryIssueJpaRepository extends JpaRepository<RepositoryIssueJpaEntity, UUID> {
+    List<RepositoryIssueJpaEntity> findAllBySnapshotIdOrderByOpenedAtDesc(UUID snapshotId);
+}
+
+interface RepositoryDocumentJpaRepository extends JpaRepository<RepositoryDocumentJpaEntity, UUID> {
+    List<RepositoryDocumentJpaEntity> findAllBySnapshotIdOrderByDocumentTypeAscPathAsc(UUID snapshotId);
 }
 
 interface OutboxEventJpaRepository extends JpaRepository<OutboxEventJpaEntity, UUID> {}

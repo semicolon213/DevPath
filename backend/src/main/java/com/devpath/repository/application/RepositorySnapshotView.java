@@ -13,12 +13,16 @@ public record RepositorySnapshotView(
     boolean immutable,
     String contentHash,
     int branchCount,
-    int commitCount
+    int commitCount,
+    int pullRequestCount,
+    int issueCount,
+    int documentCount
 ) {
     static RepositorySnapshotView from(RepositorySnapshot snapshot) {
         return new RepositorySnapshotView(
             snapshot.id(), snapshot.repositoryId(), snapshot.capturedAt(), snapshot.sourceRevision(),
-            snapshot.status(), true, snapshot.contentHash(), snapshot.branches().size(), snapshot.commits().size()
+            snapshot.status(), true, snapshot.contentHash(), snapshot.branches().size(), snapshot.commits().size(),
+            snapshot.pullRequests().size(), snapshot.issues().size(), snapshot.documents().size()
         );
     }
 }

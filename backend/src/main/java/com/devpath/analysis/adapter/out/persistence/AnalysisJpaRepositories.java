@@ -18,6 +18,7 @@ interface AnalysisJobJpaRepository extends JpaRepository<AnalysisJobJpaEntity, U
         UUID userId, UUID snapshotId, String scope, List<String> statuses
     );
     Optional<AnalysisJobJpaEntity> findByIdAndUserId(UUID id, UUID userId);
+    List<AnalysisJobJpaEntity> findAllByUserIdOrderBySubmittedAtDescIdDesc(UUID userId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select job from AnalysisJobJpaEntity job where job.status = 'QUEUED' and job.nextAttemptAt <= :now order by job.submittedAt")
@@ -91,6 +92,29 @@ interface AnalysisResultJpaRepository extends JpaRepository<AnalysisResultJpaEnt
         """, nativeQuery = true)
     List<AnalysisHistoryProjection> findHistoryByOwnerAndRepository(
         @Param("userId") UUID userId, @Param("repositoryId") UUID repositoryId, Pageable pageable
+    );
+
+    @Query(value = """
+        SELECT ar.analysis_id AS "analysisId", ar.repository_id AS "repositoryId",
+               r.full_name AS "repositoryFullName", ar.snapshot_id AS "snapshotId",
+               ar.evaluation_id AS "evaluationId", ar.skill_matrix_id AS "skillMatrixId",
+               ar.analysis_scope AS "analysisScope", e.overall_score AS "overallScore",
+               e.confidence AS "confidence", e.rule_set_version_label AS "ruleSetVersion",
+               sm.policy_version AS "policyVersion",
+               NOT EXISTS (
+                   SELECT 1 FROM analysis_results newer
+                   WHERE newer.user_id = ar.user_id AND newer.repository_id = ar.repository_id
+                     AND (newer.completed_at > ar.completed_at
+                       OR (newer.completed_at = ar.completed_at AND newer.analysis_id > ar.analysis_id))
+               ) AS "currentForRepository", ar.completed_at AS "completedAt"
+        FROM analysis_results ar
+        JOIN repositories r ON r.repository_id = ar.repository_id AND r.user_id = ar.user_id
+        JOIN evaluations e ON e.evaluation_id = ar.evaluation_id AND e.user_id = ar.user_id
+        JOIN skill_matrices sm ON sm.skill_matrix_id = ar.skill_matrix_id AND sm.user_id = ar.user_id
+        WHERE ar.user_id = :userId AND ar.analysis_id IN (:analysisIds)
+        """, nativeQuery = true)
+    List<AnalysisHistoryProjection> findHistoryByOwnerAndIds(
+        @Param("userId") UUID userId, @Param("analysisIds") List<UUID> analysisIds
     );
 
     long countByUserId(UUID userId);

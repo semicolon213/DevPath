@@ -4,5 +4,5 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ProviderCredentialSummaryPort {
-    List<ConnectedAccountView> findActiveByUserId(UUID userId);
+    List<ConnectedAccountView> findByUserId(UUID userId);
 }

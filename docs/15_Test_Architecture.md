@@ -150,6 +150,20 @@ flowchart TD
 | Golden Dataset | Versioned structured fixture files for deterministic Rule and Career engine tests | ADR-019, ADR-032 |
 | AI Evaluation | Schema, grounding, safety, and consistency evaluations; no exact-string assertions for generative output | ADR-015, ADR-032 |
 
+### 3.2 Current Browser Journey Baseline
+
+The frontend quality baseline uses Vite 8, Vitest 4, Playwright Chromium, and `@axe-core/playwright`. It runs the browser
+against the Vite application with a controlled, contract-shaped API substitute for deterministic local execution. The
+critical success journey verifies repository evidence, a CSRF-protected and idempotent analysis request, completed
+analysis history/detail, Skill Matrix, Career Readiness, recommendations, and the learning roadmap. A separate anonymous
+failure journey verifies actionable authentication recovery. Both journeys run automated WCAG 2.0 A/AA and WCAG 2.1 AA
+axe checks. These tests do not replace system tests with PostgreSQL, live GitHub OAuth/provider verification, backend
+authorization tests, or manual assistive-technology review.
+
+Run the complete frontend gate from the repository root with `npm run frontend:quality`, or run browser checks only with
+`npm run frontend:e2e`. Install the pinned browser once with
+`cd frontend` followed by `npx playwright install chromium`.
+
 ## 4. Test Levels and Boundaries
 
 | Level | Purpose | System Under Test | Real Dependencies | Test Doubles | Speed | Isolation | Owner | Stage | Diagnosis Expectation |
@@ -471,6 +485,11 @@ ADR-024/025 require the following focused persistence gates:
 | Notification providers | Delivery failure, timeout, rate limit, payload minimization |
 
 CI SHOULD use controlled substitutes. Real-provider tests MAY run only in isolated, explicitly approved environments.
+
+The implemented GitHub rate-limit suite simulates provider `403` plus zero remaining quota, verifies reset-header
+normalization, distinguishes permission withdrawal from quota exhaustion, preserves the active credential, records a
+safe audit event, schedules durable synchronization retry at the reset time, returns contract-compliant HTTP 429, and
+checks that the browser does not issue automatic retry bursts.
 
 ## 19. Knowledge Pipeline and Retrieval Tests
 
@@ -974,10 +993,20 @@ DevPath testing prioritizes deterministic correctness, security, privacy, tracea
 |---|---|---|
 | Domain | `backend/src/test/java/com/devpath/identity/domain` | Passed under Java 21 |
 | Application | `backend/src/test/java/com/devpath/identity/application` | Passed under Java 21 |
-| PostgreSQL/Flyway/JPA | `IdentityPersistenceIntegrationTest` | 3 Testcontainers tests skipped because Docker/PostgreSQL is unavailable |
-| Security | `IdentitySecurityIntegrationTest` | Mock OAuth boundary, current user, CSRF, logout, and CORS tests passed |
+| PostgreSQL/Flyway/JPA | PostgreSQL persistence and migration integration suites | Testcontainers suites passed with Docker API compatibility 1.44; 3 separate explicit-`DEVPATH_DB_URL` tests remain skipped |
+| Security | `IdentitySecurityIntegrationTest`, `AbsoluteSessionTimeoutFilterTest` | Mock OAuth boundary, current user, CSRF, logout, CORS, pre-deadline retention, exact-deadline invalidation, SecurityContext clearing, and absolute-timeout audit tests passed |
 | Architecture | `ArchitectureBoundaryTest` | Expanded and passed under Java 21 |
 | Frontend | `frontend/src/app/App.test.tsx`, `frontend/src/features/session` | 9 tests passed |
 | OpenAPI | `contracts/openapi/devpath-openapi.yaml` | Redocly validation passed with advisory warnings |
 
-Java 21 backend tests report 21 total tests, 0 failures, and 3 PostgreSQL Testcontainers skips. Migration execution and JPA schema validation remain pending until Docker or a supported PostgreSQL test environment is available.
+The latest Java 21 backend run reports 124 tests: 122 passed, 0 failed, and 2 explicit-`DEVPATH_DB_URL` skips.
+PostgreSQL Testcontainers migration and JPA suites passed with Docker API compatibility 1.44. Separate local browser
+evidence covers backend-restart persistence, logout, absolute timeout, idle timeout, and OAuth recovery.
+The latest frontend quality run reports 34 Vitest files and 73 tests passed, 5 Playwright Chromium journeys with axe
+passed, the production build passed, and `npm audit` reported 0 vulnerabilities. Manual Chrome evidence additionally
+covers the skip link, visible keyboard focus, route focus restoration, accessibility-tree semantics, and 200% reflow;
+spoken screen-reader output and OS-level reduced-motion behavior remain unverified.
+The FR-031~FR-036 test slice stubs GitHub pull, review, issue, tree, and blob responses; verifies PR filtering from the
+issues endpoint and deterministic README section extraction; validates the V20 schema and JPA round trip against
+PostgreSQL Testcontainers; and renders collaboration/document signals in the repository detail UI. Official
+baseline-v2 tests additionally verify that the newer read-model signals do not change the rule extractor version.

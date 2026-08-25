@@ -2,7 +2,6 @@ import { FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { CareerStage } from "../api/profileApi";
 import { usePreferences, useProfile, useSetCareer, useSetCompany, useUpdateProfile } from "../model/useProfile";
-import { ConnectionPanel } from "../../connections/ui/ConnectionPanel";
 import { useCareers } from "../../careers/model/useCareers";
 import { useCompanies } from "../../companies/model/useCompanies";
 
@@ -20,10 +19,10 @@ export function ProfilePanel() {
 
   useEffect(() => { if (profile.data) { setDisplayName(profile.data.displayName); setStage(profile.data.careerStage ?? ""); setBio(profile.data.bio ?? ""); } }, [profile.data]);
   if (profile.isPending || preferences.isPending || careers.isPending || companies.isPending) return <p role="status">프로필을 불러오는 중입니다.</p>;
-  if (profile.isError || preferences.isError || careers.isError || companies.isError) return <p role="alert">프로필을 불러오지 못했습니다. 다시 시도해 주세요.</p>;
+  if (profile.isError || preferences.isError || careers.isError || companies.isError) return <div className="state-panel" role="alert"><p>프로필과 목표 설정을 불러오지 못했습니다.</p><button type="button" onClick={() => { void profile.refetch(); void preferences.refetch(); void careers.refetch(); void companies.refetch(); }}>다시 시도</button></div>;
 
   function submit(event: FormEvent) { event.preventDefault(); update.mutate({ displayName, careerStage: stage || null, bio: bio || null }); }
-  return <section className="profile-panel" aria-labelledby="profile-title">
+  return <section id="profile" className="profile-panel" aria-labelledby="profile-title">
     <h3 id="profile-title">커리어 프로필</h3>
     <form onSubmit={submit}>
       <label>표시 이름<input value={displayName} maxLength={120} required onChange={event => setDisplayName(event.target.value)} /></label>
@@ -32,11 +31,10 @@ export function ProfilePanel() {
       <button disabled={update.isPending}>{update.isPending ? "저장 중…" : "프로필 저장"}</button>
       {update.isSuccess ? <p role="status">프로필을 저장했습니다.</p> : null}{update.isError ? <p role="alert">프로필 저장에 실패했습니다.</p> : null}
     </form>
-    <div className="target-grid">
-      <label>목표 직무<select value={preferences.data?.careerId ?? ""} onChange={event => event.target.value && career.mutate(event.target.value)}><option value="">목표 직무 선택</option>{careers.data.careers.map(value => <option key={value.careerId} value={value.careerId}>{value.localizedName}</option>)}</select><Link to="/careers">직무별 평가 기준 살펴보기</Link></label>
-      <label>목표 회사<select value={preferences.data?.companyId ?? ""} onChange={event => event.target.value && company.mutate(event.target.value)}><option value="">목표 회사 선택</option>{companies.data.companies.map(value => <option key={value.companyId} value={value.companyId}>{value.localizedName}</option>)}</select><Link to="/companies">회사별 역량 기준 살펴보기</Link></label>
+    <div id="targets" className="target-grid">
+      <div><label htmlFor="career-target">목표 직무</label><select id="career-target" value={preferences.data?.careerId ?? ""} onChange={event => event.target.value && career.mutate(event.target.value)}><option value="">목표 직무 선택</option>{careers.data.careers.map(value => <option key={value.careerId} value={value.careerId}>{value.localizedName}</option>)}</select><Link to="/careers">직무별 평가 기준 살펴보기</Link></div>
+      <div><label htmlFor="company-target">목표 회사</label><select id="company-target" value={preferences.data?.companyId ?? ""} onChange={event => event.target.value && company.mutate(event.target.value)}><option value="">목표 회사 선택</option>{companies.data.companies.map(value => <option key={value.companyId} value={value.companyId}>{value.localizedName}</option>)}</select><Link to="/companies">회사별 역량 기준 살펴보기</Link></div>
     </div>
     {career.isError || company.isError ? <p role="alert">목표 선택에 실패했습니다.</p> : null}
-    <ConnectionPanel />
   </section>;
 }

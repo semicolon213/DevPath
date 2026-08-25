@@ -1,10 +1,12 @@
 package com.devpath.identity.config;
 
 import com.devpath.identity.adapter.in.security.AbsoluteSessionTimeoutFilter;
+import com.devpath.identity.adapter.in.security.AuditedLogoutSuccessHandler;
 import com.devpath.identity.adapter.in.security.GitHubOAuth2UserService;
 import com.devpath.identity.adapter.in.security.NonPersistingOAuth2AuthorizedClientRepository;
 import com.devpath.shared.api.ApiErrorResponse;
 import com.devpath.shared.api.RequestIds;
+import com.devpath.shared.api.RequestCorrelationFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
@@ -17,6 +19,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.intercept.AuthorizationFilter;
+import org.springframework.security.web.authentication.logout.LogoutFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
@@ -33,6 +36,8 @@ public class SecurityConfiguration {
         GitHubOAuth2UserService oAuth2UserService,
         NonPersistingOAuth2AuthorizedClientRepository authorizedClientRepository,
         AbsoluteSessionTimeoutFilter absoluteSessionTimeoutFilter,
+        AuditedLogoutSuccessHandler logoutSuccessHandler,
+        RequestCorrelationFilter requestCorrelationFilter,
         DevPathSecurityProperties properties,
         ObjectMapper objectMapper,
         @Value("${server.servlet.session.cookie.name:DEVPATH_SESSION}") String sessionCookieName
@@ -72,8 +77,7 @@ public class SecurityConfiguration {
                 .invalidateHttpSession(true)
                 .clearAuthentication(true)
                 .deleteCookies(sessionCookieName)
-                .logoutSuccessHandler((request, response, authentication) ->
-                    response.setStatus(HttpServletResponse.SC_NO_CONTENT))
+                .logoutSuccessHandler(logoutSuccessHandler)
             )
             .exceptionHandling(exceptions -> exceptions
                 .authenticationEntryPoint((request, response, exception) -> {
@@ -101,6 +105,7 @@ public class SecurityConfiguration {
                     );
                 })
             )
+            .addFilterBefore(requestCorrelationFilter, LogoutFilter.class)
             .addFilterBefore(absoluteSessionTimeoutFilter, AuthorizationFilter.class);
 
         return http.build();
@@ -116,9 +121,11 @@ public class SecurityConfiguration {
             "Content-Type",
             "Idempotency-Key",
             "X-CSRF-TOKEN",
-            "X-Request-Id"
+            RequestIds.REQUEST_HEADER,
+            RequestIds.CORRELATION_HEADER
         ));
         configuration.setAllowCredentials(true);
+        configuration.setExposedHeaders(List.of(RequestIds.REQUEST_HEADER, RequestIds.CORRELATION_HEADER));
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

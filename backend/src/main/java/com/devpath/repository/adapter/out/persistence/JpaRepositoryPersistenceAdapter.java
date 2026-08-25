@@ -50,4 +50,11 @@ class JpaRepositoryPersistenceAdapter implements RepositoryPersistencePort {
             ? repository.countByUserId(userId)
             : repository.countByUserIdAndLifecycleNot(userId, "ARCHIVED");
     }
+
+    @Override
+    public long countByOwnerAndSyncStatus(UUID userId, String syncStatus, boolean includeArchived) {
+        return includeArchived
+            ? repository.countByUserIdAndSyncStatus(userId, syncStatus)
+            : repository.countByUserIdAndSyncStatusAndLifecycleNot(userId, syncStatus, "ARCHIVED");
+    }
 }

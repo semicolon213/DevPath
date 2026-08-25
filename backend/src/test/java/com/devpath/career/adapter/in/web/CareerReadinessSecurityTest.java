@@ -49,6 +49,7 @@ class CareerReadinessSecurityTest {
     @Autowired MockMvc mockMvc;
     @MockBean CareerReadinessApplicationService service;
     @MockBean GitHubOAuth2UserService oAuth2UserService;
+    @MockBean com.devpath.identity.application.AuthenticationAuditPort authenticationAuditPort;
 
     @Test
     void allReadinessEndpointsRequireAuthenticatedOwnerContext() throws Exception {

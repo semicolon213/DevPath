@@ -12,7 +12,8 @@ import java.util.List;
 
 public final class RepositoryRuleEvidenceMapper {
     public static final String MAPPER_VERSION = "repository-rule-evidence-v2";
-    public static final String EXTRACTOR_VERSION = RepositoryEvidenceExtractor.EXTRACTOR_VERSION;
+    // baseline-v2 is immutable: newer repository read-model evidence must not silently alter official inputs.
+    public static final String EXTRACTOR_VERSION = "engineering-evidence-extractor-v2";
 
     private RepositoryRuleEvidenceMapper() {}
 
@@ -37,7 +38,9 @@ public final class RepositoryRuleEvidenceMapper {
                 .map(path -> prefix + "path:" + path).toList()));
 
         RepositoryEvidenceExtractor.extract(snapshot).stream()
+            .filter(category -> !category.category().equals("COLLABORATION"))
             .flatMap(category -> category.signals().stream())
+            .filter(signal -> !signal.signalKey().equals("README_QUALITY_SECTIONS"))
             .forEach(signal -> facts.add(mapSignal(prefix, signal)));
         return List.copyOf(facts);
     }

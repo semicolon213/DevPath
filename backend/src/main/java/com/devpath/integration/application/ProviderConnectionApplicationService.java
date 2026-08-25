@@ -1,6 +1,7 @@
 package com.devpath.integration.application;
 
 import java.time.Clock;
+import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -20,9 +21,13 @@ public class ProviderConnectionApplicationService implements ListConnectedAccoun
     @Transactional(readOnly = true)
     public ConnectedAccountListView listFor(UUID userId) {
         var now = clock.instant();
-        var activeConnections = credentials.findActiveByUserId(Objects.requireNonNull(userId)).stream()
-            .filter(connection -> connection.expiresAt() == null || connection.expiresAt().isAfter(now))
+        var connections = credentials.findByUserId(Objects.requireNonNull(userId)).stream()
+            .map(connection -> "ACTIVE".equals(connection.status())
+                && connection.expiresAt() != null && !connection.expiresAt().isAfter(now)
+                ? new ConnectedAccountView(connection.connectionId(), connection.provider(), "EXPIRED", List.of(),
+                    connection.connectedAt(), connection.expiresAt())
+                : connection)
             .toList();
-        return new ConnectedAccountListView(activeConnections);
+        return new ConnectedAccountListView(connections);
     }
 }

@@ -12,6 +12,7 @@ public interface AnalysisPersistencePort {
     Optional<AnalysisJob> findActiveByBasis(UUID userId, UUID snapshotId, String analysisScope);
     Optional<AnalysisJob> findByIdAndOwner(UUID jobId, UUID userId);
     Optional<AnalysisJob> findNextClaimable(Instant now);
+    List<AnalysisJob> findRecentJobsByOwner(UUID userId, int limit);
     Optional<CompletedAnalysis> findReusableResult(UUID userId, UUID snapshotId, String analysisScope);
     AnalysisJob saveJob(AnalysisJob job);
     CompletedAnalysis saveResult(CompletedAnalysis analysis);
@@ -19,6 +20,7 @@ public interface AnalysisPersistencePort {
     boolean isCurrentForRepository(UUID userId, UUID repositoryId, UUID analysisId);
     List<AnalysisHistoryItemView> findHistoryByOwner(UUID userId, int page, int limit);
     List<AnalysisHistoryItemView> findHistoryByOwnerAndRepository(UUID userId, UUID repositoryId, int page, int limit);
+    List<AnalysisHistoryItemView> findHistoryByOwnerAndIds(UUID userId, List<UUID> analysisIds);
     long countHistoryByOwner(UUID userId);
     long countHistoryByOwnerAndRepository(UUID userId, UUID repositoryId);
     void appendOutbox(String aggregateType, UUID aggregateId, String eventType, String payload, Instant occurredAt);

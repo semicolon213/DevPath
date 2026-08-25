@@ -1,60 +1,53 @@
-import { getAnalysisHistory, type AnalysisHistoryItem } from "../../analysis/api/analysisApi";
-import { getCareer, type CareerProfile } from "../../careers/api/careerApi";
-import { getCompany, type CompanyProfile } from "../../companies/api/companyApi";
-import { getPreferences, type UserPreferences } from "../../profile/api/profileApi";
-import { getRepositories, type ImportedRepository } from "../../repositories/api/repositoryApi";
-import { getCurrentSkillMatrix, type SkillMatrix } from "../../skills/api/skillMatrixApi";
-import { getCurrentCareerReadiness, type CareerReadiness } from "../../readiness/api/careerReadinessApi";
-import { ApiError } from "../../../shared/api/apiClient";
+import { apiRequest } from "../../../shared/api/apiClient";
 
-export type DashboardSource<T> =
-  | { status: "available"; data: T }
-  | { status: "empty"; data: null }
-  | { status: "unavailable"; data: null };
-
-export type DashboardView = {
-  preferences: UserPreferences;
-  career: DashboardSource<CareerProfile>;
-  company: DashboardSource<CompanyProfile>;
-  repositories: DashboardSource<{ items: ImportedRepository[]; totalCount: number }>;
-  analyses: DashboardSource<{ items: AnalysisHistoryItem[]; totalCount: number }>;
-  skillMatrix: DashboardSource<SkillMatrix>;
-  careerReadiness: DashboardSource<CareerReadiness>;
+export type DashboardSourceStatus = "AVAILABLE" | "EMPTY" | "UNAVAILABLE";
+export type DashboardTarget = { id: string; localizedName: string; profileVersion: string };
+export type DashboardAnalysis = {
+  analysisId: string; repositoryId: string; repositoryFullName: string; overallScore: number;
+  confidence: number; currentForRepository: boolean; completedAt: string;
+};
+export type DashboardRecommendation = {
+  recommendationId: string; category: string; type: string; priority: string; title: string;
+  effortHours: number; position: number; status: string;
+};
+export type DashboardJob = {
+  jobId: string; jobType: "REPOSITORY_SYNC" | "ANALYSIS"; repositoryId: string;
+  status: string; phase: string; progressPercent: number; submittedAt: string; completedAt: string | null;
 };
 
-export async function getDashboardView(): Promise<DashboardView> {
-  const preferences = await getPreferences();
-  const [career, company, repositories, analyses, skillMatrix, careerReadiness] = await Promise.all([
-    optional(preferences.careerId ? getCareer(preferences.careerId) : Promise.resolve(null)),
-    optional(preferences.companyId ? getCompany(preferences.companyId) : Promise.resolve(null)),
-    optional(getRepositories()),
-    optional(getAnalysisHistory()),
-    optional(getCurrentSkillMatrix()),
-    optional(getCurrentCareerReadiness())
-  ]);
-
-  return {
-    preferences,
-    career,
-    company,
-    repositories: mapSource(repositories, page => ({ items: page.repositories, totalCount: page.totalCount })),
-    analyses: mapSource(analyses, page => ({ items: page.analyses, totalCount: page.totalCount })),
-    skillMatrix,
-    careerReadiness
+export type DashboardSummary = {
+  generatedAt: string;
+  targets: { status: DashboardSourceStatus; career: DashboardTarget | null; company: DashboardTarget | null };
+  repositories: {
+    status: DashboardSourceStatus; totalCount: number; synchronizedCount: number;
+    recent: { repositoryId: string; fullName: string; syncStatus: string; lastSyncedAt: string | null }[];
   };
-}
+  analyses: {
+    status: DashboardSourceStatus; totalCount: number; latest: DashboardAnalysis | null;
+    currentByRepository: DashboardAnalysis[];
+  };
+  skillOverview: {
+    status: DashboardSourceStatus; skillMatrixId: string | null; skillCount: number;
+    strengthCount: number; weaknessCount: number; policyVersion: string | null;
+    ruleSetVersion: string | null; generatedAt: string | null;
+  };
+  readiness: {
+    status: DashboardSourceStatus; careerReadinessId: string | null; resultStatus: string | null;
+    score: number | null; level: string | null; confidence: number | null;
+    unavailableCategories: string[]; assessedAt: string | null;
+  };
+  recommendations: {
+    status: DashboardSourceStatus; recommendationSetId: string | null; policyVersion: string | null;
+    items: DashboardRecommendation[]; generatedAt: string | null;
+  };
+  roadmap: {
+    status: DashboardSourceStatus; roadmapId: string | null; policyVersion: string | null;
+    resultStatus: string | null; progressPercent: number | null; milestoneCount: number;
+    stepCount: number; updatedAt: string | null;
+  };
+  recentJobs: { status: DashboardSourceStatus; items: DashboardJob[] };
+};
 
-async function optional<T>(promise: Promise<T | null>): Promise<DashboardSource<T>> {
-  try {
-    const data = await promise;
-    return data === null ? { status: "empty", data: null } : { status: "available", data };
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 401) throw error;
-    if (error instanceof ApiError && error.status === 404) return { status: "empty", data: null };
-    return { status: "unavailable", data: null };
-  }
-}
-
-function mapSource<T, R>(source: DashboardSource<T>, mapper: (data: T) => R): DashboardSource<R> {
-  return source.status === "available" ? { status: "available", data: mapper(source.data) } : source;
+export async function getDashboardSummary(): Promise<DashboardSummary> {
+  return (await apiRequest<DashboardSummary>("/api/v1/dashboard/summary")).data;
 }

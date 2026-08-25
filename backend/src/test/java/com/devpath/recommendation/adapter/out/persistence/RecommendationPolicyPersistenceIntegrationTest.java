@@ -53,7 +53,19 @@ class RecommendationPolicyPersistenceIntegrationTest {
         var roadmapPolicy=adapter.loadActiveRoadmapPolicy(policy.policyId(),policy.careerProfileVersionId());var roadmap=new DeterministicRoadmapEngine().generate(UUID.randomUUID(),set,roadmapPolicy,now);adapter.saveRoadmap(roadmap);
         entityManager.flush();entityManager.clear();
         assertThat(adapter.findSetByIdAndOwner(setId,user)).get().satisfies(value->assertThat(value.recommendations().getFirst().evidenceIds()).containsExactly(evidenceId));
+        assertThat(adapter.findSetsByOwner(user)).extracting(value->value.recommendationSetId()).containsExactly(setId);
+        assertThat(adapter.findSetsByOwner(UUID.randomUUID())).isEmpty();
+        assertThat(adapter.findSetByRecommendationIdAndOwner(recommendation.recommendationId(),user)).isPresent();
+        assertThat(adapter.findSetByRecommendationIdAndOwner(recommendation.recommendationId(),UUID.randomUUID())).isEmpty();
+        assertThat(adapter.findEvidenceByRecommendationAndOwner(recommendation.recommendationId(),user)).singleElement().satisfies(value->{assertThat(value.evidenceId()).isEqualTo(evidenceId);assertThat(value.observedFactSummary()).isEqualTo("test files");});
+        assertThat(adapter.findEvidenceByRecommendationAndOwner(recommendation.recommendationId(),UUID.randomUUID())).isEmpty();
         assertThat(adapter.findRoadmapByIdAndOwner(roadmap.roadmapId(),user)).get().satisfies(value->{assertThat(value.steps()).hasSize(1);assertThat(value.steps().getFirst().expectedEvidence()).containsExactly("test files");});
+        assertThat(adapter.findRoadmapsByOwner(user)).extracting(value->value.roadmapId()).containsExactly(roadmap.roadmapId());
+        assertThat(adapter.findRoadmapsByOwner(UUID.randomUUID())).isEmpty();
+        Instant archivedAt=now.plusSeconds(60);var archived=adapter.updateRoadmap(roadmap.archive(archivedAt));
+        entityManager.flush();entityManager.clear();
+        assertThat(archived.status()).isEqualTo("ARCHIVED");
+        assertThat(adapter.findRoadmapByIdAndOwner(roadmap.roadmapId(),user)).get().satisfies(value->{assertThat(value.status()).isEqualTo("ARCHIVED");assertThat(value.updatedAt()).isEqualTo(archivedAt);assertThat(value.steps()).hasSize(1);});
         assertThat(adapter.findSetByIdAndOwner(setId,UUID.randomUUID())).isEmpty();
     }
     private void seedBasis(UUID user,UUID identity,UUID repository,UUID snapshot,UUID evaluation,UUID matrix,UUID assessment,UUID readiness,UUID gap,UUID evidence,Instant now){var at=now.atOffset(ZoneOffset.UTC);

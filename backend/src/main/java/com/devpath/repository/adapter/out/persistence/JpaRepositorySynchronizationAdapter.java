@@ -18,6 +18,9 @@ class JpaRepositorySynchronizationAdapter implements RepositorySynchronizationPe
     private final RepositoryLanguageJpaRepository languages;
     private final RepositoryDependencyJpaRepository dependencies;
     private final RepositoryFileJpaRepository files;
+    private final RepositoryPullRequestJpaRepository pullRequests;
+    private final RepositoryIssueJpaRepository issues;
+    private final RepositoryDocumentJpaRepository documents;
     private final OutboxEventJpaRepository outbox;
 
     JpaRepositorySynchronizationAdapter(
@@ -28,11 +31,15 @@ class JpaRepositorySynchronizationAdapter implements RepositorySynchronizationPe
         RepositoryLanguageJpaRepository languages,
         RepositoryDependencyJpaRepository dependencies,
         RepositoryFileJpaRepository files,
+        RepositoryPullRequestJpaRepository pullRequests,
+        RepositoryIssueJpaRepository issues,
+        RepositoryDocumentJpaRepository documents,
         OutboxEventJpaRepository outbox
     ) {
         this.jobs = jobs; this.snapshots = snapshots; this.branches = branches;
         this.commits = commits; this.languages = languages; this.dependencies = dependencies;
-        this.files = files; this.outbox = outbox;
+        this.files = files; this.pullRequests = pullRequests; this.issues = issues;
+        this.documents = documents; this.outbox = outbox;
     }
 
     public Optional<RepositorySyncJob> findByOwnerAndIdempotencyKey(UUID userId, String key) {
@@ -48,6 +55,10 @@ class JpaRepositorySynchronizationAdapter implements RepositorySynchronizationPe
     public Optional<RepositorySyncJob> findNextClaimable(Instant now) {
         return jobs.findClaimable(now, PageRequest.of(0, 1)).stream().findFirst().map(RepositorySyncJobJpaEntity::toDomain);
     }
+    public List<RepositorySyncJob> findRecentByOwner(UUID userId, int limit) {
+        return jobs.findAllByUserIdOrderBySubmittedAtDescIdDesc(userId, PageRequest.of(0, limit)).stream()
+            .map(RepositorySyncJobJpaEntity::toDomain).toList();
+    }
     public RepositorySyncJob saveJob(RepositorySyncJob job) {
         return jobs.saveAndFlush(new RepositorySyncJobJpaEntity(job)).toDomain();
     }
@@ -59,6 +70,10 @@ class JpaRepositorySynchronizationAdapter implements RepositorySynchronizationPe
         dependencies.saveAll(snapshot.dependencies().stream()
             .map(value -> new RepositoryDependencyJpaEntity(saved.id(), value)).toList());
         files.saveAll(snapshot.files().stream().map(value -> new RepositoryFileJpaEntity(saved.id(), value)).toList());
+        pullRequests.saveAll(snapshot.pullRequests().stream()
+            .map(value -> new RepositoryPullRequestJpaEntity(saved.id(), value)).toList());
+        issues.saveAll(snapshot.issues().stream().map(value -> new RepositoryIssueJpaEntity(saved.id(), value)).toList());
+        documents.saveAll(snapshot.documents().stream().map(value -> new RepositoryDocumentJpaEntity(saved.id(), value)).toList());
         return snapshot;
     }
     public List<RepositorySnapshot> findSnapshots(UUID userId, UUID repositoryId) {
@@ -79,7 +94,12 @@ class JpaRepositorySynchronizationAdapter implements RepositorySynchronizationPe
                 .map(RepositoryLanguageJpaEntity::toDomain).toList(),
             dependencies.findAllBySnapshotIdOrderByManifestPathAscPackageNameAsc(value.id()).stream()
                 .map(RepositoryDependencyJpaEntity::toDomain).toList(),
-            files.findAllBySnapshotIdOrderByPathAsc(value.id()).stream().map(RepositoryFileJpaEntity::toDomain).toList()
+            files.findAllBySnapshotIdOrderByPathAsc(value.id()).stream().map(RepositoryFileJpaEntity::toDomain).toList(),
+            pullRequests.findAllBySnapshotIdOrderByOpenedAtDesc(value.id()).stream()
+                .map(RepositoryPullRequestJpaEntity::toDomain).toList(),
+            issues.findAllBySnapshotIdOrderByOpenedAtDesc(value.id()).stream().map(RepositoryIssueJpaEntity::toDomain).toList(),
+            documents.findAllBySnapshotIdOrderByDocumentTypeAscPathAsc(value.id()).stream()
+                .map(RepositoryDocumentJpaEntity::toDomain).toList()
         );
     }
 }

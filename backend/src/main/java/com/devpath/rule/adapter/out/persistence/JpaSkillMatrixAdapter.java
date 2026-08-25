@@ -69,6 +69,9 @@ class JpaSkillMatrixAdapter implements SkillMatrixPersistencePort {
     @Override public Optional<SkillMatrix> findByIdAndOwner(UUID matrixId, UUID userId) {
         return matrices.findByIdAndUserId(matrixId, userId).map(this::hydrate);
     }
+    @Override public List<SkillMatrix> findAllByIdsAndOwner(List<UUID> matrixIds, UUID userId) {
+        return matrices.findAllByIdInAndUserId(matrixIds, userId).stream().map(this::hydrate).toList();
+    }
     @Override public Optional<UUID> findRepositoryIdByEvaluationAndOwner(UUID evaluationId, UUID userId) {
         return evaluations.findRepositoryIdByEvaluationIdAndUserId(evaluationId, userId);
     }

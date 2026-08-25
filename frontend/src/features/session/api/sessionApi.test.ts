@@ -67,7 +67,11 @@ describe("session API", () => {
       expect.objectContaining({
         method: "POST",
         credentials: "include",
-        headers: { "X-XSRF-TOKEN": "csrf-token" }
+        headers: expect.objectContaining({
+          "X-XSRF-TOKEN": "csrf-token",
+          "X-Request-Id": expect.any(String),
+          "X-Correlation-Id": expect.any(String)
+        })
       })
     );
   });

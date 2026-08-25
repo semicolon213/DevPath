@@ -345,6 +345,12 @@ ADR-026 establishes GitHub as the initial Spring Security OAuth2 Login provider 
 | Callback replay | MUST reject reused authorization codes or state |
 | Audit logging | MUST audit connect, disconnect, refresh failure, and permission-change events without logging tokens |
 
+The implemented GitHub recovery flow enforces these controls at the credential boundary. Disconnect and provider
+permission withdrawal persist `REVOKED`; an unusable refresh path persists `EXPIRED`. Both transitions overwrite the
+encrypted access-token payload with a random encrypted tombstone, clear refresh-token material and scopes, retain only
+non-secret connection history, and prevent provider reads until a successful owner-bound reauthorization rotates the
+same connection back to `ACTIVE`. Permission and refresh failures emit durable audit events without token content.
+
 ## 10. Authorization Architecture
 
 ### 10.1 Authorization Principles
@@ -552,6 +558,17 @@ Upload validation MUST occur server-side. The platform SHOULD validate extension
 | Future Notion events | Verify provider authenticity when supported and degrade safely otherwise |
 | AI provider APIs | Use server-side keys, minimized context, provider policy review, timeout and fallback |
 | Notification providers | Minimize payloads and avoid private source content unless explicitly required |
+
+The implemented GitHub adapter treats quota exhaustion as an availability condition rather than permission loss.
+
+For FR-031~FR-036, provider PR, review, issue, and README reads remain server-side and owner-scoped through the active
+GitHub credential. Provider payloads are normalized before persistence. README bodies are used transiently to compute
+SHA-256 and section-presence signals, then discarded; only metadata is stored, so private source content is neither
+returned to the browser nor placed in logs, LLM context, or an unapproved object store.
+Provider response bodies are discarded, only validated retry/reset headers cross the adapter boundary, the active
+credential is retained, and direct API responses use a safe `429 RATE_LIMIT_EXCEEDED`. Durable synchronization jobs wait
+until the normalized reset time instead of creating an immediate retry storm. A restricted audit record identifies the
+owner connection and event category without recording tokens, repository content, or raw provider diagnostics.
 
 Provider-specific data MUST remain behind adapters. Provider errors returned to users MUST be normalized and MUST NOT expose tokens, raw provider headers, or internal request details.
 
@@ -1018,14 +1035,15 @@ DevPath security is based on server-side authority, user ownership, deterministi
 
 | Control | Actual Evidence | Status |
 |---|---|---|
-| Opaque session | Spring Session JDBC with `DEVPATH_SESSION` | Security tests passed; PostgreSQL-backed session runtime remains pending |
+| Opaque session | Spring Session JDBC with `DEVPATH_SESSION` | PostgreSQL runtime, backend-restart persistence, logout invalidation, and post-expiration 401 passed locally |
 | Cookie policy | HttpOnly, Secure by default, SameSite=Lax, explicit path | Configured; local profile disables Secure for HTTP only |
 | CSRF | Cookie token repository and explicit `X-CSRF-TOKEN` header | Enabled; logout protected |
 | CORS | Configured frontend origin only, credentialed requests, minimal methods/headers | Implemented |
 | Session fixation | Spring Security `migrateSession` | Implemented |
-| Absolute timeout | `AbsoluteSessionTimeoutFilter`, default 12 hours | Implemented |
+| Absolute timeout | `AbsoluteSessionTimeoutFilter`, default 12 hours | Exact-boundary tests and a temporary 10-second live expiration passed; session and SecurityContext are invalidated before authorization and a durable audit event is recorded |
+| Idle timeout | Spring Session JDBC, default 30 minutes | A temporary 10-second live expiration returned 401 and removed the expired row; JDBC cleanup does not publish a user-attributed expiration event, so durable idle-timeout audit remains open |
 | Provider-token isolation | `NonPersistingOAuth2AuthorizedClientRepository` | Provider token is not persisted or returned |
 | Disabled accounts | Domain authentication invariant | Implemented |
-| Audit | `AuthenticationAuditPort` with redacted structured log adapter | Operational only; durable audit persistence deferred |
+| Audit | `AuthenticationAuditPort` with append-only PostgreSQL adapter | Login, logout, and absolute-timeout records are durable; user-attributed idle-timeout audit remains open |
 
 Active-session bulk revocation on a future account status change remains deferred because this slice does not implement suspension or deletion commands.

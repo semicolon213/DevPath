@@ -44,13 +44,13 @@ DevPath는 AI 보조 개발자 커리어 인텔리전스 플랫폼이다. GitHub
 
 구현됨:
 
-- Java 21, Spring Boot 3.3.5 백엔드와 React TypeScript 프론트엔드
+- Java 21, Spring Boot 3.3.5 백엔드와 Node.js 20.19+/22.12+, React TypeScript, React Router 7.18.2, Vite 8 프론트엔드
 - 모듈러 모놀리스 및 헥사고날 패키지 경계
 - GitHub OAuth2 로그인, 서버 관리 opaque session, CSRF, 로그아웃, 현재 사용자 조회
 - 공급자 독립 내부 `User` identity와 GitHub `ExternalIdentity` 연결
 - 사용자 프로필과 Career/Company preference
 - GitHub 연결, 저장소 검색 및 가져오기
-- 저장소 동기화 작업, immutable snapshot, 언어·dependency·file 기반 기술 및 근거 추출
+- 저장소 동기화 작업, immutable snapshot, 언어·dependency·file·PR·review·issue·README 기반 기술 및 비점수 근거 추출
 - 분석 작업과 이력, 결정론 Rule Engine, 점수 상세, 근거 연결
 - Skill Matrix 생성과 조회
 - Backend/Frontend Career catalog 및 Career Readiness/Skill Gap 계산
@@ -58,7 +58,7 @@ DevPath는 AI 보조 개발자 커리어 인텔리전스 플랫폼이다. GitHub
 - `recommendation-v1` 결정론 추천과 `roadmap-v1` 학습 로드맵
 - owner-scoped REST API와 구현된 범위의 OpenAPI 계약
 - React Query 기반 세션 bootstrap 및 repository, analysis, skill, readiness, roadmap 화면
-- PostgreSQL, Spring Data JPA adapter, Flyway V1~V19 migration
+- PostgreSQL, Spring Data JPA adapter, Flyway V1~V20 migration
 - repository sync 및 analysis를 위한 현재 프로세스 내부 작업 실행 기반
 - 도메인, 애플리케이션, 영속성, 보안, 아키텍처 및 프론트엔드 테스트
 
@@ -75,11 +75,11 @@ DevPath는 AI 보조 개발자 커리어 인텔리전스 플랫폼이다. GitHub
 
 현재 검증 근거:
 
-- Docker와 `DOCKER_API_VERSION=1.44`를 사용한 백엔드 테스트: 97건 중 94건 PASS, 실패 0건, 외부 DB 환경변수 조건부 테스트 3건 SKIP
-- Testcontainers 기반 PostgreSQL 통합 테스트 10건 PASS
+- Docker와 `DOCKER_API_VERSION=1.44`를 사용한 백엔드 테스트: 124건 중 122건 PASS, 실패 0건, 외부 DB 환경변수 조건부 테스트 2건 SKIP
+- Testcontainers 기반 PostgreSQL 통합 테스트 11건 PASS
 - 백엔드 build PASS
-- 프론트엔드 테스트 49건 PASS 및 production build PASS
-- OpenAPI 유효성 검사 PASS. 기존 권고 경고 9건 존재
+- 프론트엔드 Vitest 34개 파일 73건 PASS, Playwright Chromium 및 axe 사용자 여정 5건 PASS, production build와 전체 npm audit PASS
+- OpenAPI 유효성 검사 PASS. 기존 권고 경고 8건 존재
 
 계획된 모듈을 구현된 기능으로 표현하지 않는다. 이 기준선 이후의 변경은 실제 코드와 검증 결과에 근거해서만 갱신한다.
 
@@ -186,6 +186,10 @@ Proposed ADR은 해당 결정이 실제로 필요한 작업만 차단한다. 그
 
 수정 중:
 
+- 기본 구현 단위는 개별 화면, endpoint 또는 component가 아니라 사용자가 하나의 목표를 처음부터 끝까지 달성할 수 있는 큰 수직 기능(capability)이다.
+- 수직 기능에는 필요한 contract, backend, frontend, 권한·보안, loading/empty/error/retry 상태, 접근성, 자동화 test, 문서 근거를 함께 포함한다.
+- 이미 구현된 하위 기능은 재사용하되, 최종 사용자 여정이 실제로 연결되고 검증되기 전에는 기능 단위 구현을 완료했다고 보고하지 않는다.
+- contract나 상위 요구사항이 비어 있어 전체 기능을 안전하게 완성할 수 없으면 임의의 화면 조각으로 축소하지 말고, 가능한 범위와 결정 blocker를 명시한다.
 - 하나의 응집된 capability로 patch 범위를 제한한다.
 - 증상이 아니라 원인을 수정한다.
 - 관련 없는 refactor, 대규모 rename, formatting sweep, dependency upgrade, 문서 재작성을 하지 않는다.
@@ -213,6 +217,8 @@ npm run backend:test
 npm run backend:build
 npm run frontend:install
 npm run frontend:test
+npm run frontend:e2e
+npm run frontend:quality
 npm run frontend:build
 npm run test
 npm run verify

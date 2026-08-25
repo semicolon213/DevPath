@@ -138,6 +138,28 @@ class ProviderCredentialJpaEntity {
         this.updatedAt = now;
     }
 
+    void deactivate(
+        String status,
+        byte[] discardedAccessToken,
+        byte[] discardedAccessTokenIv,
+        String keyVersion,
+        Instant now
+    ) {
+        if (!"EXPIRED".equals(status) && !"REVOKED".equals(status)) {
+            throw new IllegalArgumentException("Unsupported inactive credential status");
+        }
+        this.encryptedAccessToken = discardedAccessToken.clone();
+        this.accessTokenIv = discardedAccessTokenIv.clone();
+        this.encryptedRefreshToken = null;
+        this.refreshTokenIv = null;
+        this.refreshTokenExpiresAt = null;
+        this.scopeSummary = "";
+        this.expiresAt = now;
+        this.keyVersion = keyVersion;
+        this.status = status;
+        this.updatedAt = now;
+    }
+
     private static byte[] copy(byte[] value) {
         return value == null ? null : value.clone();
     }

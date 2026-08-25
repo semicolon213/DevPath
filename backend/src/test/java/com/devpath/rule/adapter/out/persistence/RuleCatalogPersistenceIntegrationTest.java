@@ -119,11 +119,16 @@ class RuleCatalogPersistenceIntegrationTest {
         assertThat(reloaded.result().overallScore()).isEqualByComparingTo(completed.result().overallScore());
         assertThat(reloaded.result().categoryScores()).hasSize(1);
         assertThat(adapter.findByIdAndOwner(evaluationId, UUID.randomUUID())).isEmpty();
-        assertThat(adapter.findEvidenceByEvaluationAndOwner(evaluationId, userId)).singleElement()
+        var ownerEvidence = adapter.findEvidenceByEvaluationAndOwner(evaluationId, userId);
+        assertThat(ownerEvidence).singleElement()
             .satisfies(link -> {
                 assertThat(link.ruleId()).isEqualTo("README_PRESENT");
                 assertThat(link.evidence().sourceReference()).endsWith(":path:README.md");
             });
+        UUID evidenceId = ownerEvidence.get(0).evidence().evidenceId();
+        assertThat(adapter.findEvidenceByIdsAndOwner(List.of(evidenceId), userId)).singleElement()
+            .satisfies(value -> assertThat(value.evidenceId()).isEqualTo(evidenceId));
+        assertThat(adapter.findEvidenceByIdsAndOwner(List.of(evidenceId), UUID.randomUUID())).isEmpty();
     }
 
     @Test
@@ -137,6 +142,8 @@ class RuleCatalogPersistenceIntegrationTest {
         assertThat(policy.skills()).hasSize(8);
         assertThat(policy.developingMinimum()).isEqualByComparingTo("40.00");
         assertThat(policy.strengthMinimum()).isEqualByComparingTo("80.00");
+        assertThat(adapter.findAllByIdsAndOwner(List.of(UUID.randomUUID(), UUID.randomUUID()), UUID.randomUUID()))
+            .isEmpty();
         Integer tableCount = jdbcTemplate.queryForObject(
             "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('skills','skill_matrix_policies','skill_policy_mappings','skill_matrices','skill_assessments','skill_evidence_links','skill_repository_links','skill_assessment_facts')",
             Integer.class

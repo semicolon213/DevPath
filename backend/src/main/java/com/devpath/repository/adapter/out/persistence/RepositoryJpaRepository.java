@@ -17,4 +17,6 @@ interface RepositoryJpaRepository extends JpaRepository<RepositoryJpaEntity, UUI
     );
     long countByUserId(UUID userId);
     long countByUserIdAndLifecycleNot(UUID userId, String lifecycle);
+    long countByUserIdAndSyncStatus(UUID userId, String syncStatus);
+    long countByUserIdAndSyncStatusAndLifecycleNot(UUID userId, String syncStatus, String lifecycle);
 }

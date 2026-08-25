@@ -6,6 +6,7 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 interface ProviderCredentialJpaRepository extends JpaRepository<ProviderCredentialJpaEntity, UUID> {
-    List<ProviderCredentialJpaEntity> findAllByUserIdAndStatusOrderByConnectedAtAsc(UUID userId, String status);
+    List<ProviderCredentialJpaEntity> findAllByUserIdOrderByConnectedAtAsc(UUID userId);
+    Optional<ProviderCredentialJpaEntity> findByUserIdAndProvider(UUID userId, String provider);
     Optional<ProviderCredentialJpaEntity> findByUserIdAndProviderAndStatus(UUID userId, String provider, String status);
 }

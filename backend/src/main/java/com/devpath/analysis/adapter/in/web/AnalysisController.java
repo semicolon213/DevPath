@@ -4,6 +4,7 @@ import com.devpath.analysis.application.AnalysisApplicationService;
 import com.devpath.analysis.application.AnalysisJobView;
 import com.devpath.analysis.application.AnalysisHistoryView;
 import com.devpath.analysis.application.AnalysisResultView;
+import com.devpath.analysis.application.AnalysisComparisonView;
 import com.devpath.shared.api.ApiResponse;
 import com.devpath.shared.api.RequestIds;
 import jakarta.servlet.http.HttpServletRequest;
@@ -70,6 +71,15 @@ public class AnalysisController {
         HttpServletRequest request
     ) {
         return ApiResponse.of(service.listHistory(userId(authentication), limit, cursor), RequestIds.resolve(request));
+    }
+
+    @GetMapping("/analyses/compare")
+    ApiResponse<AnalysisComparisonView> compare(
+        Authentication authentication,
+        @RequestParam("analysisId") java.util.List<UUID> analysisIds,
+        HttpServletRequest request
+    ) {
+        return ApiResponse.of(service.compare(userId(authentication), analysisIds), RequestIds.resolve(request));
     }
 
     @GetMapping("/repositories/{repositoryId}/analyses")

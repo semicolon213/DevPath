@@ -9,8 +9,11 @@
     "frontend:install": "node scripts/run-frontend.mjs ci",
     "frontend:build": "node scripts/run-frontend.mjs run build",
     "frontend:test": "node scripts/run-frontend.mjs run test",
+    "frontend:e2e": "node scripts/run-frontend.mjs run test:e2e",
+    "frontend:quality": "node scripts/run-frontend.mjs run quality",
+    "contract:lint": "npx --yes @redocly/cli@1.34.5 lint contracts/openapi/devpath-openapi.yaml --skip-rule=no-server-example.com",
     "test": "node scripts/run-gradle.mjs test && node scripts/run-frontend.mjs run test",
-    "verify": "node scripts/run-gradle.mjs clean build && node scripts/run-frontend.mjs ci && node scripts/run-frontend.mjs run test && node scripts/run-frontend.mjs run build"
+    "verify": "node scripts/run-gradle.mjs clean build && node scripts/run-frontend.mjs ci && node scripts/run-frontend.mjs run test && node scripts/run-frontend.mjs run build",
+    "verify:mvp": "node scripts/run-gradle.mjs clean build && node scripts/run-frontend.mjs ci && node scripts/run-frontend.mjs run quality && npm run contract:lint"
   }
 }
-

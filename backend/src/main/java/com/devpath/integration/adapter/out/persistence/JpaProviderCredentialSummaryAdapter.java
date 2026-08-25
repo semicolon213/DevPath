@@ -16,8 +16,8 @@ class JpaProviderCredentialSummaryAdapter implements ProviderCredentialSummaryPo
     }
 
     @Override
-    public List<ConnectedAccountView> findActiveByUserId(UUID userId) {
-        return repository.findAllByUserIdAndStatusOrderByConnectedAtAsc(userId, "ACTIVE").stream()
+    public List<ConnectedAccountView> findByUserId(UUID userId) {
+        return repository.findAllByUserIdOrderByConnectedAtAsc(userId).stream()
             .map(entity -> new ConnectedAccountView(
                 entity.id(),
                 entity.provider(),

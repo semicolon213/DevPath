@@ -1,11 +1,13 @@
 openapi: 3.0.3
 info:
   title: DevPath Implemented API
-  version: 0.11.0
+  version: 0.21.0
   description: >
     Implemented contract for authenticated identity, repository synchronization, deterministic analysis,
     rule evaluation, Skill Matrix, career catalog, career readiness, deterministic recommendation,
-    learning roadmap, and company catalog slices. Provider access tokens and unimplemented APIs are excluded.
+    learning roadmap, company catalog, onboarding-progress, dashboard-summary, GitHub connection-recovery,
+    provider rate-limit recovery, and repository collaboration/document evidence slices. Provider access tokens,
+    private README content, and unimplemented APIs are excluded.
 servers:
   - url: http://localhost:8080
     description: Local backend
@@ -151,14 +153,14 @@ paths:
   /api/v1/users/me/connections:
     get:
       x-api-id: API-ID-004
-      summary: List the current user's active provider connections
-      description: Login identity alone does not imply repository-access authorization.
+      summary: List the current user's provider connections
+      description: Login identity alone does not imply repository-access authorization. Inactive connection history is returned with empty scopes so the client can offer recovery without attempting provider access.
       operationId: listUserConnections
       tags: [Identity, Integration]
       security: [{sessionCookie: []}]
       responses:
         "200":
-          description: Active provider connections owned by the current user.
+          description: Active or recoverable inactive provider connections owned by the current user.
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ConnectedAccountListEnvelope"}
@@ -359,6 +361,14 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "429":
+          description: GitHub request quota is exhausted; the connection remains active and retry timing is exposed safely.
+          headers:
+            Retry-After: {schema: {type: string}, description: Provider-safe delay seconds or HTTP reset date when known.}
+            X-RateLimit-Reset: {schema: {type: string}, description: Provider reset time as Unix epoch seconds when known.}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
         "503":
           description: GitHub is unavailable or reconnection is required.
           content:
@@ -401,6 +411,14 @@ paths:
               schema: {$ref: "#/components/schemas/ErrorEnvelope"}
         "409":
           description: A concurrent repository registration changed the resource state.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "429":
+          description: GitHub request quota is exhausted; retry after the returned provider-safe timing.
+          headers:
+            Retry-After: {schema: {type: string}, description: Provider-safe delay seconds or HTTP reset date when known.}
+            X-RateLimit-Reset: {schema: {type: string}, description: Provider reset time as Unix epoch seconds when known.}
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ErrorEnvelope"}
@@ -782,6 +800,39 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/analyses/compare:
+    get:
+      x-api-id: API-ANA-008
+      summary: Compare two immutable analyses owned by the current user
+      description: Returns stored official results in request order without calculating a delta or improvement score.
+      operationId: compareAnalyses
+      tags: [Analysis]
+      security: [{sessionCookie: []}]
+      parameters:
+        - name: analysisId
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            minItems: 2
+            maxItems: 2
+            uniqueItems: true
+            items: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Exactly two owner-scoped immutable analysis summaries in request order.
+          content: {application/json: {schema: {$ref: "#/components/schemas/AnalysisComparisonEnvelope"}}}
+        "400":
+          description: The request does not contain exactly two distinct analysis IDs.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: At least one analysis is not found for the current owner.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
   /api/v1/analyses/{analysisId}:
     get:
       x-api-id: API-ANA-003
@@ -937,6 +988,46 @@ paths:
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/skill-matrices/compare:
+    get:
+      x-api-id: API-SKL-003
+      summary: Compare exactly two immutable Skill Matrices owned by the current user
+      operationId: compareSkillMatrices
+      tags: [Skill]
+      security: [{sessionCookie: []}]
+      parameters:
+        - name: skillMatrixId
+          in: query
+          required: true
+          style: form
+          explode: true
+          schema:
+            type: array
+            minItems: 2
+            maxItems: 2
+            uniqueItems: true
+            items: {type: string, format: uuid}
+      responses:
+        "200":
+          description: Stored official Skill Matrix values in request order; no delta or trend is derived.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SkillMatrixComparisonEnvelope"}
+        "400":
+          description: Exactly two distinct Skill Matrix IDs were not supplied.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: At least one Skill Matrix was missing or not owned by the current user.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
   /api/v1/skill-matrices/{skillMatrixId}:
     get:
       x-api-id: API-SKL-002
@@ -959,6 +1050,56 @@ paths:
               schema: {$ref: "#/components/schemas/ErrorEnvelope"}
         "404":
           description: Skill Matrix not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/skills/{skillId}:
+    get:
+      x-api-id: API-SKL-004
+      summary: Retrieve the current immutable assessment for a stable skill owned by the current user
+      operationId: getCurrentSkillDetail
+      tags: [Skill]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: skillId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Current stored skill assessment and its Skill Matrix reproduction metadata.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SkillDetailEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: No current assessment exists for this skill and owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/skills/{skillId}/evidence:
+    get:
+      x-api-id: API-SKL-005
+      summary: Retrieve normalized evidence linked to the owner's current assessment for a stable skill
+      operationId: getCurrentSkillEvidence
+      tags: [Skill]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: skillId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Owner-scoped normalized evidence; an assessment with no direct evidence returns an empty list.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SkillEvidenceListEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: No current assessment exists for this skill and owner.
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ErrorEnvelope"}
@@ -1142,6 +1283,72 @@ paths:
         "404":
           description: No current recommendation set exists.
           content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/recommendations:
+    get:
+      x-api-id: API-REC-004
+      summary: List owner-scoped recommendation-set history
+      operationId: listRecommendationSets
+      tags: [Recommendation]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Recommendation sets ordered from most recently generated to oldest.
+          content: {application/json: {schema: {$ref: "#/components/schemas/RecommendationSetListEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/recommendations/{recommendationId}:
+    get:
+      x-api-id: API-REC-003
+      summary: Retrieve owner-scoped recommendation detail
+      operationId: getRecommendation
+      tags: [Recommendation]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: recommendationId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Structured deterministic recommendation detail.
+          content: {application/json: {schema: {$ref: "#/components/schemas/RecommendationEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: Owner-scoped recommendation not found.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/recommendations/{recommendationId}/evidence:
+    get:
+      x-api-id: API-REC-008
+      summary: Retrieve evidence linked to an owner-scoped recommendation
+      operationId: getRecommendationEvidence
+      tags: [Recommendation]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: recommendationId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Immutable observed evidence linked to the recommendation.
+          content: {application/json: {schema: {$ref: "#/components/schemas/RecommendationEvidenceListEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: Owner-scoped recommendation not found.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/learning-roadmaps:
+    get:
+      x-api-id: API-LRN-003
+      summary: List owner-scoped learning-roadmap history
+      operationId: listLearningRoadmaps
+      tags: [Learning]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Learning roadmaps ordered from most recently generated to oldest, including archived roadmaps.
+          content: {application/json: {schema: {$ref: "#/components/schemas/LearningRoadmapListEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
   /api/v1/learning-roadmaps/active:
     get:
       x-api-id: API-LRN-002
@@ -1177,6 +1384,72 @@ paths:
           content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
         "404":
           description: Owner-scoped roadmap not found.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/learning-roadmaps/{roadmapId}/archive:
+    post:
+      x-api-id: API-LRN-009
+      summary: Archive an owner-scoped learning roadmap
+      description: Repeated requests return the current archived state without mutating deterministic roadmap contents.
+      operationId: archiveLearningRoadmap
+      tags: [Learning]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: roadmapId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {$ref: "#/components/parameters/CsrfHeader"}
+        - {$ref: "#/components/parameters/IdempotencyKeyHeader"}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ArchiveResourceRequest"}
+      responses:
+        "200":
+          description: Archived roadmap, or its unchanged current archived state on a repeated request.
+          content: {application/json: {schema: {$ref: "#/components/schemas/LearningRoadmapEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "403":
+          description: CSRF validation failed.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: Owner-scoped roadmap not found.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/users/me/onboarding-progress:
+    get:
+      x-api-id: API-ID-010
+      summary: Retrieve the current user's onboarding progress
+      description: >
+        Owner-scoped deterministic projection over persisted profile, preference, active GitHub connection,
+        repository, synchronization, and completed-analysis resources. Company selection remains optional;
+        this projection does not calculate an official score or readiness value.
+      operationId: getOnboardingProgress
+      tags: [Identity]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Current persisted onboarding progress and the server-selected next recommended step.
+          content: {application/json: {schema: {$ref: "#/components/schemas/OnboardingProgressEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/dashboard/summary:
+    get:
+      x-api-id: API-DSH-001
+      summary: Retrieve the owner-scoped dashboard summary
+      description: >
+        Read-only composition of authoritative repository, job, analysis, Skill Matrix, career-readiness,
+        recommendation, and learning-roadmap sources. Section status distinguishes empty data from an
+        unavailable source. The dashboard does not calculate or persist official results.
+      operationId: getDashboardSummary
+      tags: [Dashboard]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Dashboard summary, including partial section states when an optional source is unavailable.
+          content: {application/json: {schema: {$ref: "#/components/schemas/DashboardSummaryEnvelope"}}}
+        "401":
+          description: No valid session.
           content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
 components:
   securitySchemes:
@@ -1327,7 +1600,7 @@ components:
       properties:
         connectionId: {type: string, format: uuid}
         provider: {type: string, enum: [GITHUB]}
-        status: {type: string, enum: [ACTIVE, REVOKED]}
+        status: {type: string, enum: [ACTIVE, EXPIRED, REVOKED]}
         scopes:
           type: array
           items: {type: string}
@@ -1567,6 +1840,23 @@ components:
       properties:
         data: {$ref: "#/components/schemas/AnalysisHistory"}
         metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    AnalysisComparison:
+      type: object
+      additionalProperties: false
+      required: [analyses]
+      properties:
+        analyses:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items: {$ref: "#/components/schemas/AnalysisHistoryItem"}
+    AnalysisComparisonEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/AnalysisComparison"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
     CareerSummary:
       type: object
       additionalProperties: false
@@ -1669,7 +1959,7 @@ components:
     RepositorySnapshot:
       type: object
       additionalProperties: false
-      required: [snapshotId, repositoryId, capturedAt, sourceRevision, status, immutable, contentHash, branchCount, commitCount]
+      required: [snapshotId, repositoryId, capturedAt, sourceRevision, status, immutable, contentHash, branchCount, commitCount, pullRequestCount, issueCount, documentCount]
       properties:
         snapshotId: {type: string, format: uuid}
         repositoryId: {type: string, format: uuid}
@@ -1680,6 +1970,9 @@ components:
         contentHash: {type: string, pattern: "^[a-f0-9]{64}$"}
         branchCount: {type: integer, minimum: 0}
         commitCount: {type: integer, minimum: 0}
+        pullRequestCount: {type: integer, minimum: 0}
+        issueCount: {type: integer, minimum: 0}
+        documentCount: {type: integer, minimum: 0}
     RepositorySnapshotList:
       type: object
       additionalProperties: false
@@ -1756,7 +2049,7 @@ components:
       additionalProperties: false
       required: [category, label, signals]
       properties:
-        category: {type: string, enum: [ARCHITECTURE, DATABASE, TESTING, DEVOPS, DOCUMENTATION, ACTIVITY]}
+        category: {type: string, enum: [ARCHITECTURE, DATABASE, TESTING, DEVOPS, DOCUMENTATION, COLLABORATION, ACTIVITY]}
         label: {type: string}
         signals:
           type: array
@@ -1946,6 +2239,71 @@ components:
       properties:
         data: {$ref: "#/components/schemas/SkillMatrix"}
         metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    SkillMatrixComparison:
+      type: object
+      additionalProperties: false
+      required: [matrices]
+      properties:
+        matrices:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items: {$ref: "#/components/schemas/SkillMatrix"}
+    SkillMatrixComparisonEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/SkillMatrixComparison"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    SkillDetail:
+      type: object
+      additionalProperties: false
+      required: [skillMatrixId, evaluationId, policyVersion, ruleSetVersion, matrixStatus, generatedAt, skill]
+      properties:
+        skillMatrixId: {type: string, format: uuid}
+        evaluationId: {type: string, format: uuid}
+        policyVersion: {type: string}
+        ruleSetVersion: {type: string}
+        matrixStatus: {type: string, enum: [CURRENT]}
+        generatedAt: {type: string, format: date-time}
+        skill: {$ref: "#/components/schemas/SkillAssessment"}
+    SkillDetailEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/SkillDetail"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    SkillEvidence:
+      type: object
+      additionalProperties: false
+      required: [evidenceId, snapshotId, evidenceType, sourceReference, observedFactSummary, confidence]
+      properties:
+        evidenceId: {type: string, format: uuid}
+        snapshotId: {type: string, format: uuid}
+        evidenceType: {type: string, enum: [REPOSITORY_PATH, LANGUAGE_STATISTIC, SNAPSHOT_SIGNAL]}
+        sourceReference: {type: string, maxLength: 1200}
+        observedFactSummary: {type: string, maxLength: 500}
+        confidence: {type: number, format: double, minimum: 0, maximum: 100}
+    SkillEvidenceList:
+      type: object
+      additionalProperties: false
+      required: [skillId, skillAssessmentId, skillMatrixId, evidence]
+      properties:
+        skillId: {type: string, format: uuid}
+        skillAssessmentId: {type: string, format: uuid}
+        skillMatrixId: {type: string, format: uuid}
+        evidence:
+          type: array
+          items: {$ref: "#/components/schemas/SkillEvidence"}
+    SkillEvidenceListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/SkillEvidenceList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
     SkillGap:
       type: object
       additionalProperties: false
@@ -2045,6 +2403,55 @@ components:
       properties:
         data: {$ref: "#/components/schemas/RecommendationSet"}
         metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RecommendationEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/Recommendation"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RecommendationSetList:
+      type: object
+      additionalProperties: false
+      required: [recommendationSets]
+      properties:
+        recommendationSets:
+          type: array
+          items: {$ref: "#/components/schemas/RecommendationSet"}
+    RecommendationSetListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RecommendationSetList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RecommendationEvidence:
+      type: object
+      additionalProperties: false
+      required: [evidenceId, evidenceType, sourceReference, observedFactSummary, confidence, createdAt]
+      properties:
+        evidenceId: {type: string, format: uuid}
+        evidenceType: {type: string, maxLength: 32}
+        sourceReference: {type: string, maxLength: 1200}
+        observedFactSummary: {type: string, maxLength: 500}
+        confidence: {type: number, minimum: 0, maximum: 100}
+        createdAt: {type: string, format: date-time}
+    RecommendationEvidenceList:
+      type: object
+      additionalProperties: false
+      required: [recommendationId, evidence]
+      properties:
+        recommendationId: {type: string, format: uuid}
+        evidence:
+          type: array
+          items: {$ref: "#/components/schemas/RecommendationEvidence"}
+    RecommendationEvidenceListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RecommendationEvidenceList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
     RoadmapMilestone:
       type: object
       additionalProperties: false
@@ -2092,6 +2499,213 @@ components:
       required: [data, metadata]
       properties:
         data: {$ref: "#/components/schemas/LearningRoadmap"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    LearningRoadmapList:
+      type: object
+      additionalProperties: false
+      required: [roadmaps]
+      properties:
+        roadmaps:
+          type: array
+          items: {$ref: "#/components/schemas/LearningRoadmap"}
+    LearningRoadmapListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/LearningRoadmapList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    ArchiveResourceRequest:
+      type: object
+      additionalProperties: false
+    DashboardSourceStatus:
+      type: string
+      enum: [AVAILABLE, EMPTY, UNAVAILABLE]
+    DashboardTarget:
+      type: object
+      additionalProperties: false
+      required: [id, localizedName, profileVersion]
+      properties:
+        id: {type: string}
+        localizedName: {type: string}
+        profileVersion: {type: string}
+    DashboardTargetSummary:
+      type: object
+      additionalProperties: false
+      required: [status, career, company]
+      properties:
+        status: {$ref: "#/components/schemas/DashboardSourceStatus"}
+        career: {type: object, allOf: [{$ref: "#/components/schemas/DashboardTarget"}], nullable: true}
+        company: {type: object, allOf: [{$ref: "#/components/schemas/DashboardTarget"}], nullable: true}
+    DashboardRepositoryItem:
+      type: object
+      additionalProperties: false
+      required: [repositoryId, fullName, syncStatus, lastSyncedAt]
+      properties:
+        repositoryId: {type: string, format: uuid}
+        fullName: {type: string}
+        syncStatus: {type: string, enum: [NOT_SYNCED, SYNCHRONIZED, FAILED]}
+        lastSyncedAt: {type: string, format: date-time, nullable: true}
+    DashboardRepositorySummary:
+      type: object
+      additionalProperties: false
+      required: [status, totalCount, synchronizedCount, recent]
+      properties:
+        status: {$ref: "#/components/schemas/DashboardSourceStatus"}
+        totalCount: {type: integer, format: int64, minimum: 0}
+        synchronizedCount: {type: integer, format: int64, minimum: 0}
+        recent: {type: array, maxItems: 8, items: {$ref: "#/components/schemas/DashboardRepositoryItem"}}
+    DashboardAnalysisItem:
+      type: object
+      additionalProperties: false
+      required: [analysisId, repositoryId, repositoryFullName, overallScore, confidence, currentForRepository, completedAt]
+      properties:
+        analysisId: {type: string, format: uuid}
+        repositoryId: {type: string, format: uuid}
+        repositoryFullName: {type: string}
+        overallScore: {type: number, format: double, minimum: 0, maximum: 100}
+        confidence: {type: number, format: double, minimum: 0, maximum: 100}
+        currentForRepository: {type: boolean}
+        completedAt: {type: string, format: date-time}
+    DashboardAnalysisSummary:
+      type: object
+      additionalProperties: false
+      required: [status, totalCount, latest, currentByRepository]
+      properties:
+        status: {$ref: "#/components/schemas/DashboardSourceStatus"}
+        totalCount: {type: integer, format: int64, minimum: 0}
+        latest: {type: object, allOf: [{$ref: "#/components/schemas/DashboardAnalysisItem"}], nullable: true}
+        currentByRepository: {type: array, maxItems: 8, items: {$ref: "#/components/schemas/DashboardAnalysisItem"}}
+    DashboardSkillSummary:
+      type: object
+      additionalProperties: false
+      required: [status, skillMatrixId, skillCount, strengthCount, weaknessCount, policyVersion, ruleSetVersion, generatedAt]
+      properties:
+        status: {$ref: "#/components/schemas/DashboardSourceStatus"}
+        skillMatrixId: {type: string, format: uuid, nullable: true}
+        skillCount: {type: integer, minimum: 0}
+        strengthCount: {type: integer, minimum: 0}
+        weaknessCount: {type: integer, minimum: 0}
+        policyVersion: {type: string, nullable: true}
+        ruleSetVersion: {type: string, nullable: true}
+        generatedAt: {type: string, format: date-time, nullable: true}
+    DashboardReadinessSummary:
+      type: object
+      additionalProperties: false
+      required: [status, careerReadinessId, resultStatus, score, level, confidence, unavailableCategories, assessedAt]
+      properties:
+        status: {$ref: "#/components/schemas/DashboardSourceStatus"}
+        careerReadinessId: {type: string, format: uuid, nullable: true}
+        resultStatus: {type: string, enum: [COMPLETED, INSUFFICIENT_EVIDENCE], nullable: true}
+        score: {type: number, format: double, minimum: 0, maximum: 100, nullable: true}
+        level: {type: string, enum: [NONE, BEGINNER, DEVELOPING, COMPETENT, STRONG], nullable: true}
+        confidence: {type: number, format: double, minimum: 0, maximum: 100, nullable: true}
+        unavailableCategories: {type: array, items: {type: string}}
+        assessedAt: {type: string, format: date-time, nullable: true}
+    OnboardingStep:
+      type: object
+      additionalProperties: false
+      required: [step, requirement, status, resourceId, actionPath]
+      properties:
+        step: {type: string, enum: [ACCOUNT, PROFILE, CAREER_TARGET, COMPANY_TARGET, GITHUB_CONNECTION, REPOSITORY_IMPORT, INITIAL_SYNC, INITIAL_ANALYSIS]}
+        requirement: {type: string, enum: [REQUIRED, RECOMMENDED, OPTIONAL]}
+        status: {type: string, enum: [COMPLETE, INCOMPLETE]}
+        resourceId: {type: string, nullable: true}
+        actionPath: {type: string, pattern: "^/"}
+    OnboardingProgress:
+      type: object
+      additionalProperties: false
+      required: [status, completedStepCount, totalStepCount, nextStep, steps, generatedAt]
+      properties:
+        status: {type: string, enum: [GETTING_STARTED, IN_PROGRESS, DASHBOARD_READY]}
+        completedStepCount: {type: integer, minimum: 0, maximum: 8}
+        totalStepCount: {type: integer, minimum: 8, maximum: 8}
+        nextStep: {type: string, enum: [ACCOUNT, PROFILE, CAREER_TARGET, GITHUB_CONNECTION, REPOSITORY_IMPORT, INITIAL_SYNC, INITIAL_ANALYSIS, DASHBOARD_READY]}
+        steps: {type: array, minItems: 8, maxItems: 8, items: {$ref: "#/components/schemas/OnboardingStep"}}
+        generatedAt: {type: string, format: date-time}
+    OnboardingProgressEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/OnboardingProgress"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    DashboardRecommendationItem:
+      type: object
+      additionalProperties: false
+      required: [recommendationId, category, type, priority, title, effortHours, position, status]
+      properties:
+        recommendationId: {type: string, format: uuid}
+        category: {type: string}
+        type: {type: string, enum: [STUDY, PROJECT, ARCHITECTURE, PORTFOLIO]}
+        priority: {type: string, enum: [CRITICAL, HIGH, MEDIUM, LOW]}
+        title: {type: string}
+        effortHours: {type: integer, minimum: 1}
+        position: {type: integer, minimum: 0}
+        status: {type: string, enum: [PROPOSED, ACCEPTED, DISMISSED, COMPLETED]}
+    DashboardRecommendationSummary:
+      type: object
+      additionalProperties: false
+      required: [status, recommendationSetId, policyVersion, items, generatedAt]
+      properties:
+        status: {$ref: "#/components/schemas/DashboardSourceStatus"}
+        recommendationSetId: {type: string, format: uuid, nullable: true}
+        policyVersion: {type: string, nullable: true}
+        items: {type: array, maxItems: 3, items: {$ref: "#/components/schemas/DashboardRecommendationItem"}}
+        generatedAt: {type: string, format: date-time, nullable: true}
+    DashboardRoadmapSummary:
+      type: object
+      additionalProperties: false
+      required: [status, roadmapId, policyVersion, resultStatus, progressPercent, milestoneCount, stepCount, updatedAt]
+      properties:
+        status: {$ref: "#/components/schemas/DashboardSourceStatus"}
+        roadmapId: {type: string, format: uuid, nullable: true}
+        policyVersion: {type: string, nullable: true}
+        resultStatus: {type: string, enum: [CREATED, IN_PROGRESS, COMPLETED, ARCHIVED], nullable: true}
+        progressPercent: {type: number, minimum: 0, maximum: 100, nullable: true}
+        milestoneCount: {type: integer, minimum: 0}
+        stepCount: {type: integer, minimum: 0}
+        updatedAt: {type: string, format: date-time, nullable: true}
+    DashboardJobItem:
+      type: object
+      additionalProperties: false
+      required: [jobId, jobType, repositoryId, status, phase, progressPercent, submittedAt, completedAt]
+      properties:
+        jobId: {type: string, format: uuid}
+        jobType: {type: string, enum: [REPOSITORY_SYNC, ANALYSIS]}
+        repositoryId: {type: string, format: uuid}
+        status: {type: string, enum: [QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELLED, EXPIRED]}
+        phase: {type: string}
+        progressPercent: {type: integer, minimum: 0, maximum: 100}
+        submittedAt: {type: string, format: date-time}
+        completedAt: {type: string, format: date-time, nullable: true}
+    DashboardJobSummary:
+      type: object
+      additionalProperties: false
+      required: [status, items]
+      properties:
+        status: {$ref: "#/components/schemas/DashboardSourceStatus"}
+        items: {type: array, maxItems: 8, items: {$ref: "#/components/schemas/DashboardJobItem"}}
+    DashboardSummary:
+      type: object
+      additionalProperties: false
+      required: [generatedAt, targets, repositories, analyses, skillOverview, readiness, recommendations, roadmap, recentJobs]
+      properties:
+        generatedAt: {type: string, format: date-time}
+        targets: {$ref: "#/components/schemas/DashboardTargetSummary"}
+        repositories: {$ref: "#/components/schemas/DashboardRepositorySummary"}
+        analyses: {$ref: "#/components/schemas/DashboardAnalysisSummary"}
+        skillOverview: {$ref: "#/components/schemas/DashboardSkillSummary"}
+        readiness: {$ref: "#/components/schemas/DashboardReadinessSummary"}
+        recommendations: {$ref: "#/components/schemas/DashboardRecommendationSummary"}
+        roadmap: {$ref: "#/components/schemas/DashboardRoadmapSummary"}
+        recentJobs: {$ref: "#/components/schemas/DashboardJobSummary"}
+    DashboardSummaryEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/DashboardSummary"}
         metadata: {$ref: "#/components/schemas/ApiMetadata"}
     CsrfToken:
       type: object

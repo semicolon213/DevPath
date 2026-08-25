@@ -36,7 +36,7 @@ export function RepositoriesPage() {
         </div>
         <div className="workspace-actions">
           <Link className="button-link button-secondary" to="/skills">기술 분석 보기</Link>
-          <Link className="button-link" to="/">저장소 추가</Link>
+          <Link className="button-link" to="/onboarding#github">저장소 추가</Link>
         </div>
       </header>
 
@@ -61,7 +61,7 @@ export function RepositoriesPage() {
         <div className="state-panel">
           <h2>{includeArchived ? "등록된 저장소가 없습니다" : "표시할 활성 저장소가 없습니다"}</h2>
           <p>{includeArchived ? "홈에서 GitHub 저장소를 선택해 DevPath 작업 공간에 추가해 주세요." : "보관 저장소를 확인하려면 위 필터를 켜 주세요."}</p>
-          <Link className="button-link" to="/">GitHub 저장소 선택</Link>
+          <Link className="button-link" to="/onboarding#github">GitHub 저장소 선택</Link>
         </div>
       ) : (
         <section aria-labelledby="registered-repositories-title">

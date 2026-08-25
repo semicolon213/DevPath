@@ -77,6 +77,25 @@ public record RepositorySyncJob(
             startedAt, now, nextAttemptAt, null, code, safeMessage);
     }
 
+    public RepositorySyncJob waitForRateLimit(Instant retryAt, Instant now) {
+        Objects.requireNonNull(retryAt);
+        Objects.requireNonNull(now);
+        if (status != RepositorySyncJobStatus.RUNNING) {
+            return this;
+        }
+        if (attemptCount >= maxAttempts) {
+            return failTerminal(
+                "RATE_LIMIT_EXCEEDED",
+                "GitHub request limit remained exhausted after the maximum attempts.",
+                now
+            );
+        }
+        Instant safeRetryAt = retryAt.isAfter(now) ? retryAt : now.plusSeconds(60);
+        return copy(RepositorySyncJobStatus.QUEUED, "RETRY_WAIT", 0, attemptCount,
+            startedAt, null, safeRetryAt, null, "RATE_LIMIT_EXCEEDED",
+            "GitHub request limit reached; synchronization will resume after reset.");
+    }
+
     public RepositorySyncJob failTerminal(String code, String message, Instant now) {
         if (status != RepositorySyncJobStatus.RUNNING) {
             return this;

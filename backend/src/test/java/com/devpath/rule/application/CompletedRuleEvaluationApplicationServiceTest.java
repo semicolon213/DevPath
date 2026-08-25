@@ -79,5 +79,6 @@ class CompletedRuleEvaluationApplicationServiceTest {
         }
         @Override public CompletedRuleEvaluation saveCompleted(CompletedRuleEvaluation evaluation) { saved.add(evaluation); return evaluation; }
         @Override public List<RuleEvaluationEvidenceLink> findEvidenceByEvaluationAndOwner(UUID evaluationId, UUID userId) { return List.of(); }
+        @Override public List<com.devpath.rule.domain.RuleEvaluationEvidence> findEvidenceByIdsAndOwner(List<UUID> evidenceIds, UUID userId) { return List.of(); }
     }
 }

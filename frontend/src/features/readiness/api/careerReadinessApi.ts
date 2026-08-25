@@ -40,3 +40,16 @@ export async function getCurrentCareerReadiness() {
 export async function getCareerReadiness(careerReadinessId: string) {
   return (await apiRequest<CareerReadiness>(`/api/v1/career-readiness/${careerReadinessId}`)).data;
 }
+
+export async function getCareerReadinessGaps(careerReadinessId: string) {
+  return (await apiRequest<{ careerReadinessId: string; skillGaps: SkillGap[] }>(
+    `/api/v1/career-readiness/${careerReadinessId}/skill-gaps`
+  )).data;
+}
+
+export async function getCareerReadinessWorkspace(careerReadinessId: string) {
+  const [readiness, gaps] = await Promise.all([
+    getCareerReadiness(careerReadinessId), getCareerReadinessGaps(careerReadinessId)
+  ]);
+  return { readiness: { ...readiness, skillGaps: gaps.skillGaps }, gaps };
+}

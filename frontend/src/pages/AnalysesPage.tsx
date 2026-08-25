@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { useAnalysisHistory } from "../features/analysis/model/useAnalysis";
 import { ApiError } from "../shared/api/apiClient";
 
 export function AnalysesPage() {
   const query = useAnalysisHistory();
+  const [selected,setSelected]=useState<string[]>([]);
 
   if (query.isPending) return <PageShell><p role="status">분석 이력을 불러오는 중입니다.</p></PageShell>;
   if (query.isError) return <PageShell><HistoryError error={query.error} retry={() => query.refetch()} /></PageShell>;
@@ -26,6 +28,8 @@ export function AnalysesPage() {
         <span>저장된 분석 결과</span>
       </section>
 
+      {analyses.length>=2?<fieldset className="analysis-selection-panel"><legend>비교할 분석 선택</legend><p>완료 분석 두 개를 선택하면 저장된 공식 결과를 나란히 확인할 수 있습니다.</p><div><strong>{selected.length} / 2 선택</strong>{selected.length===2?<Link className="button-link" to={`/analyses/compare?analysisId=${selected[0]}&analysisId=${selected[1]}`}>선택한 결과 비교</Link>:<span>두 개를 선택해 주세요</span>}</div></fieldset>:null}
+
       {analyses.length === 0 ? (
         <div className="state-panel">
           <h2>아직 완료된 분석이 없습니다</h2>
@@ -43,6 +47,7 @@ export function AnalysesPage() {
           <div className="analysis-history-list">
             {analyses.map(analysis => (
               <article className="analysis-history-card" key={analysis.analysisId}>
+                <label className="analysis-compare-choice"><input type="checkbox" checked={selected.includes(analysis.analysisId)} disabled={!selected.includes(analysis.analysisId)&&selected.length===2} onChange={()=>setSelected(current=>current.includes(analysis.analysisId)?current.filter(id=>id!==analysis.analysisId):[...current,analysis.analysisId])}/><span>비교 대상으로 선택</span></label>
                 <div className="analysis-history-card__main">
                   <div>
                     <span className={`status-badge${analysis.currentForRepository ? " status-badge--active" : ""}`}>

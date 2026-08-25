@@ -53,6 +53,7 @@ class RuleEvaluationSecurityTest {
     @Autowired MockMvc mockMvc;
     @MockBean CompletedRuleEvaluationApplicationService service;
     @MockBean GitHubOAuth2UserService oAuth2UserService;
+    @MockBean com.devpath.identity.application.AuthenticationAuditPort authenticationAuditPort;
 
     @Test
     void allEvaluationReadsRequireAnAuthenticatedOwnerContext() throws Exception {

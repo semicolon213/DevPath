@@ -1,6 +1,9 @@
 package com.devpath.identity.adapter.in.web;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,6 +20,8 @@ import com.devpath.identity.adapter.in.security.DevPathOAuth2User;
 import com.devpath.identity.adapter.in.security.GitHubOAuth2UserService;
 import com.devpath.identity.adapter.in.security.NonPersistingOAuth2AuthorizedClientRepository;
 import com.devpath.identity.application.AuthenticatedUser;
+import com.devpath.identity.application.AuthenticationAuditEvent;
+import com.devpath.identity.application.AuthenticationAuditPort;
 import com.devpath.identity.application.FindCurrentUserUseCase;
 import com.devpath.identity.application.UserProfileApplicationService;
 import com.devpath.identity.application.UserProfileView;
@@ -72,11 +77,19 @@ class IdentitySecurityIntegrationTest {
     @MockBean
     private ListConnectedAccountsUseCase connectedAccounts;
 
+    @MockBean
+    private AuthenticationAuditPort authenticationAuditPort;
+
     @Test
     void rejectsAnonymousCurrentUserRequests() throws Exception {
-        mockMvc.perform(get("/api/v1/users/me"))
+        mockMvc.perform(get("/api/v1/users/me")
+                .header("X-Request-Id", "mvp-gate-request")
+                .header("X-Correlation-Id", "mvp-gate-journey"))
             .andExpect(status().isUnauthorized())
-            .andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"));
+            .andExpect(header().string("X-Request-Id", "mvp-gate-request"))
+            .andExpect(header().string("X-Correlation-Id", "mvp-gate-journey"))
+            .andExpect(jsonPath("$.error.code").value("AUTHENTICATION_REQUIRED"))
+            .andExpect(jsonPath("$.metadata.requestId").value("mvp-gate-request"));
     }
 
     @Test
@@ -130,8 +143,19 @@ class IdentitySecurityIntegrationTest {
                 post("/api/v1/session/logout")
                     .with(oauth2Login().oauth2User(principal(user)))
                     .with(csrf())
+                    .header("X-Request-Id", "logout-request")
+                    .header("X-Correlation-Id", "logout-journey")
             )
-            .andExpect(status().isNoContent());
+            .andExpect(status().isNoContent())
+            .andExpect(header().string("X-Request-Id", "logout-request"))
+            .andExpect(header().string("X-Correlation-Id", "logout-journey"));
+
+        verify(authenticationAuditPort).record(
+            org.mockito.ArgumentMatchers.eq(AuthenticationAuditEvent.LOGOUT_SUCCEEDED),
+            org.mockito.ArgumentMatchers.eq(USER_ID),
+            org.mockito.ArgumentMatchers.eq(OAuthProvider.GITHUB),
+            any(Instant.class)
+        );
     }
 
     @Test
@@ -140,10 +164,15 @@ class IdentitySecurityIntegrationTest {
                 options("/api/v1/users/me")
                     .header("Origin", "http://localhost:5173")
                     .header("Access-Control-Request-Method", "GET")
+                    .header("Access-Control-Request-Headers", "X-Request-Id,X-Correlation-Id")
             )
             .andExpect(status().isOk())
             .andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:5173"))
-            .andExpect(header().string("Access-Control-Allow-Credentials", "true"));
+            .andExpect(header().string("Access-Control-Allow-Credentials", "true"))
+            .andExpect(header().string("Access-Control-Allow-Headers", containsString("X-Request-Id")))
+            .andExpect(header().string("Access-Control-Allow-Headers", containsString("X-Correlation-Id")))
+            .andExpect(header().string("Access-Control-Expose-Headers", containsString("X-Request-Id")))
+            .andExpect(header().string("Access-Control-Expose-Headers", containsString("X-Correlation-Id")));
 
         mockMvc.perform(
                 options("/api/v1/users/me/profile")

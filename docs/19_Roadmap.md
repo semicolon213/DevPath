@@ -275,6 +275,14 @@ Implement the Identity and Persistence foundation as the first authenticated ver
 
 ## 17. User Profile and Career Target Slice
 
+The visible settings capability now separates `/settings/profile` and `/settings/integrations` behind a shared
+`/settings` workspace. Profile, supported career/company targets, GitHub connection/reconnection/disconnection, and
+provider-authorized repository registration continue to use the canonical identity and integration APIs through React
+Query. The home route no longer duplicates these forms, while onboarding composes the same feature components. Loading,
+anonymous/provider-safe error recovery, responsive navigation, explicit form labels, and automated axe coverage are
+included. Privacy preference and account-deletion routes remain outside this slice because their implemented API and
+state-transition contracts are not yet available.
+
 | Scope | Exit Criteria |
 |---|---|
 | User profile retrieval | Authenticated user can view own profile |
@@ -288,6 +296,18 @@ Implement the Identity and Persistence foundation as the first authenticated ver
 Supported roles and companies MUST follow deterministic specifications; unsupported targets fail safely.
 
 ## 18. GitHub Connection Slice
+
+The implemented recovery capability now preserves an owner-scoped, non-secret connection state across `ACTIVE`,
+`EXPIRED`, and `REVOKED`. Disconnect, detected provider permission withdrawal, and unusable refresh expiry discard the
+actual encrypted provider secrets and scopes, stop future provider reads, and expose an actionable reconnect state in
+`/settings/integrations`. Successful reauthorization rotates the existing connection back to active instead of creating
+a duplicate record. Automated backend and frontend tests cover transition, secret discard, status projection, and the
+inactive UI path. A live provider revocation exercise remains owner verification work.
+
+FR-046 rate-limit recovery is also implemented across provider discovery, repository registration, and background
+synchronization. Quota exhaustion no longer revokes a valid credential or becomes a generic 503: direct requests return
+safe 429 timing, durable jobs wait until the provider reset, audit records contain no raw provider data, and the Korean
+UI presents the reset and manual retry path without an automatic retry storm.
 
 | Scope | Exit Criteria |
 |---|---|
@@ -391,7 +411,10 @@ provide cursor-paginated owner-scoped history with official persisted score meta
 recalculation. Repeated requests with the same snapshot, scope, and active rule basis reuse the completed job/result;
 history and detail reads derive the newest completed result per repository as current while retaining older immutable
 results. The detail UI adds Korean rule labels and explanations of persisted observation, formula, weight, and score
-without calculating an official value. Comparison, career/company policy selection, and broader milestone evidence remain pending; this note
+without calculating an official value. API-ANA-008 and the Korean `/analyses/compare` workspace now allow two
+owner-scoped immutable results to be selected from history and displayed side by side with their official category
+scores, confidence, rule/formula/extractor versions, and evidence counts. No delta or improvement score is calculated.
+Career/company policy selection and broader milestone evidence remain pending; this note
 does not mark the Rule Engine or AnalysisResult milestone complete.
 
 The Skill Matrix foundation now includes a PostgreSQL-authoritative `skill-matrix-v1` policy, stable category-to-skill
@@ -400,8 +423,12 @@ traceability, structured downstream facts, current/historical owner reads throug
 tests. Completed RuleEvaluation persistence now invokes idempotent Skill Matrix generation, and the Korean `/skills`
 view presents current scores, levels, confidence, versions, evidence counts, responsive layout, and distinct loading,
 empty, anonymous, and transport-error states. Repository detail now requests and polls durable baseline analysis jobs,
-then refreshes the current matrix. Historical comparison, remaining Skill APIs, career readiness, and richer evidence
-navigation remain pending; this evidence does not mark the Skill Matrix milestone complete.
+then refreshes the current matrix. API-SKL-003 and the Korean `/skills/compare` workspace now compare two owner-scoped
+immutable matrices selected through analysis history, including stored scores, levels, confidence, evidence counts,
+policy/rule versions, strengths, and weaknesses. No delta, replacement level, or growth trend is calculated. API-SKL-004/005
+and `/skills/:skillId` now provide current owner-scoped skill drilldown, Matrix reproduction metadata, and normalized
+evidence navigation with durable read audits. Technology/framework proficiency APIs and historical per-skill timelines
+remain pending; this evidence does not mark the Skill Matrix milestone complete.
 
 ## 24. Rule Category Delivery Plan
 
@@ -531,6 +558,12 @@ owner-scoped APIs, and frontend result view are implemented for owner/coordinato
 
 AI explanation remains separate.
 
+The Korean career-growth workspace now connects current readiness, immutable historical readiness detail,
+API-CAR-006 Skill Gap lists, current skill/evidence drilldown, recommendation-set history, and the active learning
+roadmap. Historical readiness is entered through the recommendation set that references it and displays stored
+score/level/confidence, policy/profile/rule versions, all category gaps, and evidence counts without deriving a new
+readiness or recommendation priority.
+
 ## 31. Recommendation and Learning Roadmap Slice
 
 The owner approved MVP `recommendation-v1` and `roadmap-v1` for Backend and Frontend. Missing, Weak, and Partial gaps
@@ -547,9 +580,26 @@ career-specific prerequisite order and require a later official category score o
 | API/frontend | Empty/unsupported states handled |
 | Persistence/tests | Results stored/retrieved and tested |
 
+The visible roadmap workspace now includes the current plan, complete owner-scoped history, lifecycle labels, and a
+CSRF-protected idempotent archive action. API-LRN-003/004/009, durable `ROADMAP_ARCHIVED` audit evidence, and matching
+frontend/server-state invalidation are implemented without changing generated steps or official progress. Step progress
+controls remain deferred until the deterministic progress formula and allowed status transitions are approved.
+
+The visible recommendation workspace now separates deterministic recommendations from the learning plan and exposes
+owner-scoped recommendation-set history, individual completion criteria, rationale codes, expected evidence, and linked
+observed evidence through API-REC-003/004/008. Recommendation priority and generated content remain immutable. User
+accept/dismiss/complete controls remain deferred until the allowed recommendation-status transition contract is approved.
+
 AI prose is not required for completion.
 
 ## 32. Repository Analysis User Journey
+
+The visible first-analysis capability now begins at `/onboarding`: the server projects eight ordered setup steps from
+persisted owner-scoped profile, target, active GitHub connection, repository, synchronization, and analysis resources,
+selects the next recommended action, and appends a durable progress-view audit record. The route connects existing
+target forms and GitHub repository registration to repository sync/analysis workspaces, then hands a completed journey
+to dashboard, Skill Matrix, readiness, and recommendation workspaces. Company selection remains explicitly optional,
+and neither the server projection nor the browser derives an official score or readiness value.
 
 | Screen/Route | API | Server State | Client State | States | Auth | Accessibility | Test Level |
 |---|---|---|---|---|---|---|---|
@@ -560,6 +610,16 @@ AI prose is not required for completion.
 | Analysis Request | Analysis job | Snapshot/result | Button state | Progress/fail | Owner | Status | Integration/E2E |
 | Analysis Result | Result API | Analysis/skills/evidence | Display prefs | Missing evidence/error | Owner | Tables/charts alt | Feature/E2E |
 | Career Readiness | Readiness API | Gaps/recommendations | Target display | Empty/unsupported | Owner | Labels | Feature |
+
+The implemented browser-journey evidence uses Playwright and a contract-shaped controlled API substitute to verify the
+repository detail, CSRF-protected idempotent analysis request, completed job, analysis history/detail, Skill Matrix,
+Career Readiness, recommendation, and learning-roadmap route sequence. An anonymous readiness failure path verifies an
+actionable recovery link. Automated axe checks cover WCAG 2.0 A/AA and WCAG 2.1 AA rules on the critical success screens
+and anonymous error screen. These are deterministic frontend browser E2E tests, not deployed-system or live GitHub OAuth
+tests. Separate local live-provider/system evidence is recorded in `docs/20_MVP_Release_Evidence.md`; keyboard-only
+navigation, visible skip/focus behavior, asynchronous route-focus restoration, accessibility-tree semantics, and 200%
+zoom/reflow have also passed locally. M32 still requires owner review, provider permission/revocation edge-case evidence,
+spoken screen-reader output, and an OS-level reduced-motion exercise before its milestone gate can be approved.
 
 ## 33. Dashboard MVP Milestone
 
@@ -576,13 +636,17 @@ AI prose is not required for completion.
 
 Placeholder analytics without reliable source MUST NOT be included.
 
-The current frontend MVP composition exposes a Korean `/dashboard` route backed only by the implemented owner-scoped
-preference, repository, analysis-history, career/company-catalog, and Skill Matrix APIs. It represents loading, empty,
-partial-source failure, authenticated success, and anonymous failure states. Repository sync counts and current-analysis
-cards explicitly describe their fetched-page scope, while readiness and recommendation cards remain marked as not yet
-calculated because the governing numeric thresholds and response contracts are unresolved. This slice does not implement
-or claim completion of API-DSH-001, a durable dashboard projection, readiness, recommendations, or the Dashboard MVP
-Milestone. Frontend tests and production build provide implementation evidence for this composition only.
+The implemented Korean `/dashboard` route now uses the canonical owner-scoped API-DSH-001 summary endpoint. The backend
+composes PostgreSQL-authoritative repository, repository-sync job, analysis job/result, Skill Matrix, career-readiness,
+recommendation, and learning-roadmap sources without recalculating official results or storing a dashboard projection.
+Exact active-repository and synchronized counts, latest/current analyses, selected targets, top recommendations, roadmap
+progress, and recent jobs are included. Per-section `AVAILABLE`, `EMPTY`, and `UNAVAILABLE` states preserve partial
+results, while the endpoint itself remains authentication-required and records a durable dashboard-view audit event.
+
+Backend application/security/architecture tests and frontend feature/build tests provide implementation evidence for
+this slice. API-DSH-002 through 010, company readiness, artifact summaries, charts, filters, export, cache/projection
+storage, and AI-generated dashboard content remain excluded. This implementation evidence does not itself approve or
+declare the Dashboard MVP milestone complete; owner/coordinator review is still required.
 
 ## 34. MVP Completion Gate
 
@@ -605,6 +669,20 @@ Milestone. Frontend tests and production build provide implementation evidence f
 | Critical tests pass | Test report |
 | Deployment smoke passes | Smoke result |
 | Known limitations documented | Release notes |
+
+Current M34 evidence is indexed in `docs/20_MVP_Release_Evidence.md`. Local implementation now includes sanitized
+`X-Request-Id`/`X-Correlation-Id` propagation, response support headers, frontend request context, bounded
+request-completion logs, and durable audit records. This advances the critical-telemetry gate without selecting the
+technology covered by Proposed ADR-031. The reproducible `npm run verify:mvp` command combines backend,
+Testcontainers, frontend unit/browser/accessibility, production-build, dependency-audit, and OpenAPI checks.
+
+The 2026-08-25 local live-provider journey now records GitHub OAuth, repository discovery, durable synchronization,
+immutable snapshot creation, deterministic analysis, dashboard/readiness, roadmap, keyboard/focus, accessibility-tree,
+and 200% zoom/reflow evidence. M34 remains unapproved: spoken screen-reader and reduced-motion review, external security
+review, and staging deployment smoke are not recorded.
+Staging/production observability, deployment, and secret management remain blocked by Proposed ADR-031, ADR-033, and
+ADR-034 respectively. Post-MVP milestone work must not use
+this local evidence as implicit approval of the MVP gate.
 
 ## 35. Knowledge Source Registration Slice
 
@@ -1304,16 +1382,21 @@ Progress tracks milestone status, exit criteria, blocking defects, open ADRs, re
 |---|---|---|
 | PostgreSQL/Flyway foundation | Verified | Empty-database PostgreSQL Testcontainers migration and JPA integration tests passed under Java 21 with no skipped tests |
 | Internal user and external GitHub identity | Verified foundation | Domain, application, JPA adapters, Java 21 build, PostgreSQL integration tests, and local GitHub OAuth login passed |
-| Opaque JDBC session | Partial | Security tests and PostgreSQL-backed OAuth session startup passed; restart persistence and explicit revocation evidence remain pending |
-| Current-user and logout APIs | Partial | Implemented and documented; MockMvc security tests passed, while the complete live logout/revocation journey remains pending |
+| Opaque JDBC session | Verified local | Security tests, PostgreSQL-backed OAuth startup, two clean backend-restart persistence checks, explicit logout invalidation, exact-boundary absolute expiration, short-window JDBC idle expiration, and post-expiration 401 passed; staging evidence and user-attributed durable idle-expiration audit remain pending |
+| Current-user and logout APIs | Verified local | MockMvc security tests and the 2026-08-25 live journey verified authenticated current-user retrieval, CSRF-protected 204 logout, protected-resource 401 after logout, correlation headers/logging, and a durable `LOGOUT_SUCCEEDED` audit record |
 | Frontend session bootstrap | Complete | Tests and production build passed |
-| GitHub connection slice | Partial | Session-bound GitHub App authorization/callback, owner-scoped encrypted tokens and refresh, bounded full provider pagination, reauthorization, disconnect/local discard with remote revocation attempt, and Korean UI states are implemented; live provider verification and organization permission edge cases remain pending |
+| GitHub connection slice | Partial | Session-bound GitHub App authorization/callback, owner-scoped encrypted tokens and refresh, bounded full provider pagination, persistent ACTIVE/EXPIRED/REVOKED recovery, actual-secret discard, reauthorization, disconnect with remote revocation attempt, permission/rate-limit auditing, 429 reset recovery, and Korean UI states are implemented; the 2026-08-25 local OAuth and discovery journey passed, while organization permission edge cases and a live revocation exercise remain pending |
 | Repository registration slice | Partial | GitHub selection, server-side permission re-verification, canonical metadata persistence, duplicate-safe registration, owner-scoped cursor list/detail/archive/restore APIs, lifecycle filtering, audit events, and Korean repository workspace/detail UI are implemented; live provider verification remains pending |
-| Repository synchronization and snapshot slice | Partial | PostgreSQL durable jobs/outbox, bounded retries, owner-scoped status APIs, GitHub branch/commit collection, immutable snapshot persistence, current-snapshot linking, audit events, and Korean progress/history UI are implemented; live provider verification, cancellation, incremental sync, and broader PR/issue/document/dependency collection remain pending |
+| Repository synchronization and snapshot slice | Partial | PostgreSQL durable jobs/outbox, bounded generic retries, provider-reset-aware rate-limit waiting, owner-scoped status APIs, GitHub branch/commit/language/dependency/file/PR/review/issue/README collection, immutable snapshot persistence, current-snapshot linking, deterministic non-scoring collaboration/document evidence, audit events, and Korean progress/history UI are implemented; the 2026-08-25 live core sync journey passed, while cancellation, incremental sync, release/contributor collection, and live collaboration-data verification remain pending |
+| Learning roadmap workspace | Partial | Current roadmap, owner-scoped history/detail, lifecycle labels, idempotent archive, durable audit, and Korean UI are implemented; step-progress mutation remains blocked on an approved deterministic formula and transition contract |
 | OpenAPI subset | Complete | Redocly validation passed |
-| Durable security audit store | Partial | Append-only PostgreSQL audit records cover existing authentication and GitHub connect/disconnect/refresh-failure/permission-change events; broader product and administration events remain pending |
+| Durable security audit store | Partial | Append-only PostgreSQL audit records cover login, logout, absolute session timeout, and GitHub connect/disconnect/refresh-failure/permission-change events; broader product and administration events remain pending |
 | Account-status session revocation | Deferred | Requires future suspension/deletion use case |
 | Identity module completion | Owner review pending | Foundation gate evidence is available; broader account lifecycle and deferred revocation capabilities remain outside this slice |
 
-The Java 21 compile/test/build and PostgreSQL migration/JPA integration blockers are resolved. Local PostgreSQL-backed application startup and GitHub OAuth login have been observed. Owner review is still required before declaring the milestone complete, and this foundation does not complete the broader Identity module.
+The Java 21 compile/test/build and PostgreSQL migration/JPA integration blockers are resolved. Local PostgreSQL-backed
+application startup, GitHub OAuth login, backend-restart session persistence, logout invalidation, absolute/idle timeout
+enforcement, and durable logout/absolute-timeout audit persistence have been observed. Owner review is still required
+before declaring the milestone complete. JDBC idle cleanup does not publish a user-attributed expiration event, and this
+foundation does not complete the broader Identity module.
 

@@ -16,6 +16,7 @@ interface SkillMatrixJpaRepository extends JpaRepository<SkillMatrixJpaEntity, U
     Optional<SkillMatrixJpaEntity> findByEvaluationIdAndUserId(UUID evaluationId, UUID userId);
     Optional<SkillMatrixJpaEntity> findByUserIdAndStatus(UUID userId, String status);
     Optional<SkillMatrixJpaEntity> findByIdAndUserId(UUID id, UUID userId);
+    List<SkillMatrixJpaEntity> findAllByIdInAndUserId(List<UUID> ids, UUID userId);
 }
 interface SkillAssessmentJpaRepository extends JpaRepository<SkillAssessmentJpaEntity, UUID> {
     List<SkillAssessmentJpaEntity> findAllByMatrixIdOrderBySkillIdAsc(UUID matrixId);

@@ -51,6 +51,7 @@ class RepositorySynchronizationSecurityTest {
     @Autowired MockMvc mockMvc;
     @MockBean RepositorySynchronizationApplicationService service;
     @MockBean GitHubOAuth2UserService oAuth2UserService;
+    @MockBean com.devpath.identity.application.AuthenticationAuditPort authenticationAuditPort;
 
     @Test
     void syncRequiresSessionCsrfAndIdempotencyKey() throws Exception {

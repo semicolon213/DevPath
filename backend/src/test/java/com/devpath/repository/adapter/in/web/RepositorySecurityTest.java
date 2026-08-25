@@ -7,6 +7,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.devpath.identity.adapter.in.security.AbsoluteSessionTimeoutFilter;
@@ -21,6 +22,7 @@ import com.devpath.identity.domain.OAuthProvider;
 import com.devpath.repository.application.RepositoryApplicationService;
 import com.devpath.repository.application.RepositoryListView;
 import com.devpath.repository.application.RepositoryView;
+import com.devpath.integration.application.GitHubRateLimitExceededException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +57,7 @@ class RepositorySecurityTest {
     @Autowired MockMvc mockMvc;
     @MockBean RepositoryApplicationService service;
     @MockBean GitHubOAuth2UserService oAuth2UserService;
+    @MockBean com.devpath.identity.application.AuthenticationAuditPort authenticationAuditPort;
 
     @Test
     void importRequiresTheAuthenticatedOwnerAndCsrf() throws Exception {
@@ -77,6 +80,23 @@ class RepositorySecurityTest {
             .andExpect(jsonPath("$.data.repositoryId").value(REPOSITORY_ID.toString()));
 
         verify(service).importGitHub(USER_ID, "42");
+    }
+
+    @Test
+    void importSurfacesAProviderRateLimitWithoutTreatingItAsInvalidAccess() throws Exception {
+        Instant resetAt = Instant.parse("2026-08-11T01:00:00Z");
+        when(service.importGitHub(USER_ID, "42")).thenThrow(
+            new GitHubRateLimitExceededException(resetAt, null, new RuntimeException("provider payload"))
+        );
+
+        mockMvc.perform(post("/api/v1/repositories/imports")
+                .with(oauth2Login().oauth2User(principal())).with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"providerRepositoryId\":\"42\"}"))
+            .andExpect(status().isTooManyRequests())
+            .andExpect(header().string("Retry-After", "Tue, 11 Aug 2026 01:00:00 GMT"))
+            .andExpect(header().string("X-RateLimit-Reset", Long.toString(resetAt.getEpochSecond())))
+            .andExpect(jsonPath("$.error.code").value("RATE_LIMIT_EXCEEDED"));
     }
 
     @Test

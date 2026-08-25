@@ -28,6 +28,7 @@ interface RuleExecutionResultJpaRepository extends JpaRepository<RuleExecutionRe
 }
 interface RuleEvidenceJpaRepository extends JpaRepository<RuleEvidenceJpaEntity, UUID> {
     Optional<RuleEvidenceJpaEntity> findByUserIdAndSnapshotIdAndSourceReferenceHash(UUID userId, UUID snapshotId, String hash);
+    List<RuleEvidenceJpaEntity> findAllByIdInAndUserIdOrderByIdAsc(List<UUID> ids, UUID userId);
 }
 interface ScoreEvidenceLinkJpaRepository extends JpaRepository<ScoreEvidenceLinkJpaEntity, UUID> {
     List<ScoreEvidenceLinkJpaEntity> findAllByEvaluationIdOrderByRuleExecutionResultIdAscEvidenceIdAsc(UUID evaluationId);

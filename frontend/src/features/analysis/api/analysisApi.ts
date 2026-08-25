@@ -99,6 +99,8 @@ export type AnalysisDetail = {
   evidence: RuleEvidence[];
   matrix: SkillMatrix;
 };
+export type AnalysisComparison = { analyses: AnalysisHistoryItem[] };
+export type AnalysisComparisonDetail = { analyses: Array<{ summary: AnalysisHistoryItem; evaluation: RuleEvaluation }> };
 
 type CsrfToken = { headerName: string; token: string };
 
@@ -133,6 +135,13 @@ export async function getRepositoryAnalysisHistory(repositoryId: string, cursor:
 
 export async function getAnalysisResult(analysisId: string) {
   return (await apiRequest<AnalysisResult>(`/api/v1/analyses/${analysisId}`)).data;
+}
+
+export async function getAnalysisComparison(analysisIds:string[]):Promise<AnalysisComparisonDetail>{
+  const query=new URLSearchParams();analysisIds.forEach(id=>query.append("analysisId",id));
+  const comparison=(await apiRequest<AnalysisComparison>(`/api/v1/analyses/compare?${query}`)).data;
+  const evaluations=await Promise.all(comparison.analyses.map(item=>apiRequest<RuleEvaluation>(`/api/v1/rule-evaluations/${item.evaluationId}`)));
+  return {analyses:comparison.analyses.map((summary,index)=>({summary,evaluation:evaluations[index].data}))};
 }
 
 export async function getAnalysisDetail(analysisId: string): Promise<AnalysisDetail> {

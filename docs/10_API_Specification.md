@@ -136,7 +136,7 @@ The API must not expose:
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | User | Current authenticated account. | Identity | userId | Limited mutable profile/account state | Active, Suspended, DeletionRequested, Deleted | UserProfile, connections | OAuth provisioning | `/users/me` | Profile/preferences APIs | Deletion request | Self or admin |
 | UserProfile | Developer profile metadata. | Identity/Profile | profileId | Mutable by owner | Draft, Complete, Archived | User, preferences | Provisioned with user | `/users/me/profile` | PATCH profile | Archive via account lifecycle | Self |
-| GitHubConnection | GitHub OAuth connection. | Identity | connectionId | Status mutable | Pending, Active, Revoked, Disconnected | Repositories | Initiate OAuth | List connections | Permission refresh by provider | Disconnect | Self |
+| GitHubConnection | GitHub OAuth connection. | Identity | connectionId | Status mutable | Pending, Active, Expired, Revoked, Disconnected | Repositories | Initiate OAuth | List connections | Permission refresh by provider | Disconnect | Self |
 | NotionConnection | Notion OAuth connection. | Identity/Knowledge | connectionId | Status mutable | Pending, Active, Revoked, Disconnected | KnowledgeDocuments | Initiate OAuth | List connections | Permission refresh by provider | Disconnect | Self |
 | Repository | Canonical repository. | Repository | repositoryId | Current metadata mutable by sync | Discovered, Active, Archived | Snapshots, technologies, evidence | Import/register | List/detail | Archive/restore | Archive | Owner |
 | RepositorySnapshot | Immutable repository state. | Repository | snapshotId | Immutable | Capturing, Ready, Failed, Superseded | Repository, Analysis | Created by sync/snapshot command | List/detail | None | Retention archive only | Owner |
@@ -227,6 +227,10 @@ The API must not expose:
 | `X-Timezone` | Optional | User API | Client timezone for presentation-sensitive responses. |
 | `X-Client-Version` | Optional | Client API | Client application version for compatibility diagnostics. |
 | `X-Request-Timestamp` | Optional | Signed callbacks/internal | Request timestamp for replay protection where required. |
+
+The implemented HTTP boundary accepts only bounded opaque request/correlation identifiers matching
+`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`. Invalid values are replaced instead of reflected into logs. Every response exposes
+the resolved `X-Request-Id` and `X-Correlation-Id`; API error metadata uses the same resolved request identifier.
 | `X-Internal-Service` | Internal only | Internal API | Service identity marker; not accepted from public clients. |
 
 ### 6.2 Common Query Parameters
@@ -436,6 +440,13 @@ Unauthorized private resource access should return `404 RESOURCE_NOT_FOUND` when
 | API-ID-007 | PUT | `/api/v1/users/me/preferences/company` | Set target company. | Required | Self | None | None | SetCompanyTargetRequest | UserPreferenceResponse | 200 | VALIDATION_ERROR | Idempotent by companyId | TargetCompanyChanged | FR-009, CR-003 |
 | API-ID-008 | POST | `/api/v1/users/me/deletion-requests` | Request account deletion. | Required | Self | None | None | CreateDeletionRequest | JobStatusResponse | 202 | RESOURCE_CONFLICT | Required | UserDeletionRequested | FR-012, FR-015 |
 | API-ID-009 | GET | `/api/v1/users/me/archive-state` | Retrieve account archival/deletion state. | Required | Self | None | None | None | AccountArchiveStateResponse | 200 | AUTHENTICATION_REQUIRED | Safe/idempotent | None | FR-015 |
+| API-ID-010 | GET | `/api/v1/users/me/onboarding-progress` | Retrieve deterministic onboarding progress from persisted owner-scoped resources. | Required | Self | None | None | None | OnboardingProgressResponse | 200 | AUTHENTICATION_REQUIRED | Safe/idempotent | OnboardingProgressViewed | FR-018~FR-019 |
+
+The implemented `API-ID-010` projection reports account, profile, career target, optional company target, active GitHub
+connection, repository import, initial synchronization, and initial analysis steps. It reads the authoritative persisted
+resources instead of storing a duplicate browser progress model, emits a durable view audit event, and never calculates
+an official score, readiness value, or recommendation priority. `DASHBOARD_READY` requires a completed analysis but does
+not require the optional company target.
 
 ## 11. GitHub and Notion Integration APIs
 
@@ -446,8 +457,8 @@ Unauthorized private resource access should return `404 RESOURCE_NOT_FOUND` when
 | API-INT-001 | POST | `/api/v1/integrations/github/authorize` | Initiate GitHub OAuth connection. | Required | Self | InitiateOAuthRequest | OAuthAuthorizationResponse | 200 | VALIDATION_ERROR | Required | Creates OAuth state | FR-021 |
 | API-INT-002 | GET | `/api/v1/integrations/github/callback` | Handle GitHub API integration authorization callback; application-login callback remains security-boundary owned under ADR-026. | Callback | OAuth state bound to authenticated account-link context | Provider callback params | OAuthCallbackResponse | 200, 302 | AUTHENTICATION_REQUIRED, DEPENDENCY_UNAVAILABLE | Required by state | GitHubAccountConnected | FR-021 |
 | API-INT-003 | DELETE | `/api/v1/integrations/github` | Disconnect GitHub. | Required | Self | None | ConnectedAccountResponse | 200 | RESOURCE_NOT_FOUND | Required | IntegrationDisconnected | FR-014~FR-015 |
-| API-INT-004 | GET | `/api/v1/integrations/github/repositories` | List provider-accessible repositories before import. | Required | Self with GitHub permission | None | ProviderRepositoryListResponse | 200 | DEPENDENCY_UNAVAILABLE | Safe/idempotent | None | FR-024 |
-| API-INT-005 | POST | `/api/v1/repositories/imports` | Import/register a GitHub repository. | Required | Self with GitHub permission | ImportRepositoryRequest | RepositoryResponse | 201 | VALIDATION_ERROR, RESOURCE_CONFLICT | Required | RepositoryDiscovered | FR-025 |
+| API-INT-004 | GET | `/api/v1/integrations/github/repositories` | List provider-accessible repositories before import. | Required | Self with GitHub permission | None | ProviderRepositoryListResponse | 200 | RATE_LIMIT_EXCEEDED, DEPENDENCY_UNAVAILABLE | Safe/idempotent | None | FR-024, FR-046 |
+| API-INT-005 | POST | `/api/v1/repositories/imports` | Import/register a GitHub repository. | Required | Self with GitHub permission | ImportRepositoryRequest | RepositoryResponse | 201 | VALIDATION_ERROR, RESOURCE_CONFLICT, RATE_LIMIT_EXCEEDED | Required | RepositoryDiscovered | FR-025, FR-046 |
 | API-INT-006 | POST | `/api/v1/repositories/{repositoryId}/sync` | Synchronize repository. | Required | Repository owner | SyncRepositoryRequest | JobStatusResponse | 202 | RATE_LIMIT_EXCEEDED, SYNCHRONIZATION_FAILED | Required | SynchronizationRequested | FR-026~FR-050 |
 | API-INT-007 | GET | `/api/v1/repository-sync-jobs/{jobId}` | Check sync status. | Required | Job owner | None | JobStatusResponse | 200 | RESOURCE_NOT_FOUND | Safe/idempotent | None | FR-049 |
 
@@ -486,9 +497,21 @@ scope includes the default branch, complete bounded branch pagination, and compl
 pagination. Results beyond the configured safe provider-page ceiling fail instead of becoming silent
 partial snapshots. Job and snapshot reads are owner-scoped and expose only safe failure details.
 
-For the implemented `API-ID-004` subset, `ConnectedAccountListResponse.data.connections` contains only active, owner-scoped provider API connections. Each item contains `connectionId`, `provider`, `status`, a non-secret `scopes` summary, `connectedAt`, and nullable `expiresAt`. A GitHub login identity without an active encrypted provider credential is not returned as a repository-access connection.
+For the implemented `API-ID-004` subset, `ConnectedAccountListResponse.data.connections` contains the owner's current provider API connection record in `ACTIVE`, `EXPIRED`, or `REVOKED` state. Each item contains `connectionId`, `provider`, `status`, a non-secret `scopes` summary, `connectedAt`, and nullable `expiresAt`. Inactive records expose an empty scope list and allow the client to offer reauthorization without attempting provider access. A GitHub login identity that has never established a provider credential is not returned as a repository-access connection.
 
-The implemented GitHub App authorization slice uses `API-INT-001` to create a CSRF-protected, session/user-bound OAuth state with a ten-minute lifetime. `API-INT-002` consumes that state once, verifies the GitHub account matches the login identity, requires at least one accessible GitHub App installation, and stores access/refresh tokens encrypted server-side. `API-INT-004` returns normalized repository metadata across installations without exposing provider tokens or raw provider payloads.
+The implemented GitHub App authorization slice uses `API-INT-001` to create a CSRF-protected, session/user-bound OAuth state with a ten-minute lifetime. `API-INT-002` consumes that state once, verifies the GitHub account matches the login identity, requires at least one accessible GitHub App installation, and stores access/refresh tokens encrypted server-side. Reauthorization rotates the existing owner connection back to `ACTIVE`. Disconnect, detected permission withdrawal, and unusable refresh expiry transition the record to `REVOKED` or `EXPIRED`, discard the actual stored provider secrets, clear the scope summary, and require reauthorization before future provider access. `API-INT-004` returns normalized repository metadata across installations without exposing provider tokens or raw provider payloads.
+
+GitHub `429`, or `403` with zero remaining provider quota, is handled separately from permission withdrawal. The
+implemented response uses `429 RATE_LIMIT_EXCEEDED`, retains the active connection, exposes only normalized
+`Retry-After` and `X-RateLimit-Reset` timing, and never returns provider payloads. Repository synchronization records
+`RATE_LIMIT_EXCEEDED` in its durable job state and waits until the known provider reset before claiming the next attempt;
+unknown reset timing uses a bounded conservative delay. The browser suppresses automatic query retries for 429 and
+shows an actionable reset-time message.
+
+The implemented repository synchronization subset for FR-031~FR-036 also collects bounded pull requests, review
+counts, non-PR issues, and the root README. `API-REP-007` and `API-REP-008` expose additive snapshot counts for pull
+requests, issues, and documents. `API-REP-011` exposes deterministic `COLLABORATION` signals and README section
+signals without calculating an official score. Private README content is not returned by any API.
 
 ## 12. Repository APIs
 
@@ -538,10 +561,15 @@ Clients may submit only supported references such as repository IDs, snapshot ID
 
 Skill scores must reference an analysis result and evidence. Historical SkillMatrix resources are immutable.
 
-The implemented read subset is API-SKL-001/002. The browser consumes API-SKL-001 through React Query on the Korean
+The implemented read subset is API-SKL-001/002/003/004/005. The browser consumes API-SKL-001 through React Query on the Korean
 `/skills` view and treats `404` (no completed matrix), `401` (anonymous session), and transport failure as distinct
-states. A persisted RuleEvaluation invokes idempotent Skill Matrix generation internally; no public analysis-trigger
-endpoint or background job technology is implied by this subset.
+states. API-SKL-003 accepts exactly two distinct repeated `skillMatrixId` query parameters, verifies that both immutable
+matrices belong to the authenticated owner, and returns them in request order. It does not derive a delta, growth trend,
+replacement level, or new official result. A persisted RuleEvaluation invokes idempotent Skill Matrix generation
+internally. API-SKL-004/005 treat `skillId` as the stable Skill catalog identity and resolve its assessment and normalized
+evidence from the authenticated owner's current immutable Matrix. Historical Matrix assessments remain available through
+API-SKL-002. A missing current assessment and a cross-owner resource both return `404`; no public analysis-trigger endpoint
+or background job technology is implied by this subset.
 
 ## 15. Career and Company APIs
 
@@ -572,6 +600,10 @@ The implemented API-CAR-004/005/006 subset returns owner-scoped immutable `readi
 comparisons for Backend and Frontend. A completed result exposes the separately weighted score and confidence; an
 unsupported required category produces `INSUFFICIENT_EVIDENCE` with null score and level. These endpoints never
 accept client-supplied weights, scores, levels, gaps, confidence, or recommendation priority.
+The browser exposes the current result at `/career-readiness` and historical results at
+`/career-readiness/{careerReadinessId}`. Recommendation-set history is the discoverable entry point to its source
+readiness result, and every gap links to the current owner-scoped skill/evidence drilldown without recalculating the
+historical score or recommendation priority.
 
 The implemented API-CMP-001/002 subset reads the six SRS-supported companies and immutable active `company-v1`
 profiles from PostgreSQL. It exposes only generic technology focus, engineering culture, competency emphasis,
@@ -594,10 +626,12 @@ same catalog; extension candidates remain unavailable.
 
 Recommendation responses must distinguish deterministic recommendation data from optional AI-generated explanation fields.
 
-The implemented MVP API-REC-002 subset returns the current owner-scoped `recommendation-v1` set generated from an
-immutable Backend/Frontend CareerReadiness result. Each item exposes its source gap, category, configured type,
-deterministic priority, rationale code, effort, completion criteria, expected evidence, and observed evidence IDs.
-No AI prose or company modifier is included.
+The implemented MVP API-REC-002/003/004/008 subset returns the current owner-scoped `recommendation-v1` set, immutable
+recommendation-set history, individual recommendation detail, and linked observed evidence generated from an immutable
+Backend/Frontend CareerReadiness result. Each item exposes its source gap, category, configured type, deterministic
+priority, rationale code, effort, completion criteria, expected evidence, and owner-scoped observed evidence. No AI
+prose or company modifier is included. Accept, dismiss, and complete mutations remain unimplemented until their allowed
+state-transition contract is approved.
 
 ## 17. Learning Roadmap APIs
 
@@ -616,9 +650,12 @@ No AI prose or company modifier is included.
 
 User-editable roadmap fields include display title, user notes, target dates, and progress state. Generated reasoning, source recommendation references, and deterministic ordering basis are immutable.
 
-The implemented MVP API-LRN-002/004 read subset returns `roadmap-v1` milestones and steps generated with the
-recommendation set. Steps expose deterministic order, prerequisite step IDs, configured effort and difficulty,
-completion criteria, expected evidence, and lifecycle status. Mutation APIs remain unimplemented.
+The implemented MVP API-LRN-002/003/004/009 subset returns the active roadmap, owner-scoped roadmap history, and
+roadmap detail, and supports CSRF-protected idempotent archival. `roadmap-v1` milestones and steps expose deterministic
+order, prerequisite step IDs, configured effort and difficulty, completion criteria, expected evidence, and lifecycle
+status. Archival changes only the roadmap lifecycle state and updated timestamp; generated structure, official progress,
+and source references remain unchanged. Step-progress and other user-editable mutations remain unimplemented because
+their official progress formula and transition rules require an approved deterministic contract.
 
 ## 18. Knowledge APIs
 
@@ -748,6 +785,14 @@ Question generation and answer feedback are separate. The API must not imply det
 | API-DSH-010 | GET | `/api/v1/dashboard/synchronization/status` | Retrieve synchronization status. | Required | Owner | SynchronizationStatusResponse | 200 | Safe | FR-281~FR-320 |
 
 Dashboard APIs are read models only and must not become sources of truth.
+
+Implemented API-DSH-001 scope: the owner-scoped summary composes selected career/company targets, active repository
+counts and recent repository state, completed analysis count/latest/current results, current Skill Matrix, current career
+readiness, the top three deterministic recommendations, active learning-roadmap progress, and the eight most recent
+repository-sync/analysis jobs. Every section reports `AVAILABLE`, `EMPTY`, or `UNAVAILABLE`; a failed optional source
+does not hide other authoritative results. The endpoint records a durable dashboard-view audit event. It does not
+calculate official scores, persist a dashboard projection, introduce a cache, or implement API-DSH-002 through 010,
+company readiness, artifacts, charts, filters, export, or AI-generated dashboard content.
 
 ## 25. Administration APIs
 
@@ -988,6 +1033,7 @@ Internal stack traces and sensitive provider payloads must not be exposed.
 | API-ID-006 | Identity | PUT | `/api/v1/users/me/preferences/career` | SetCareerTarget | Required | No | Required | SetCareerTargetRequest | UserPreferenceResponse | 200 | CR-001 |
 | API-ID-007 | Identity | PUT | `/api/v1/users/me/preferences/company` | SetCompanyTarget | Required | No | Required | SetCompanyTargetRequest | UserPreferenceResponse | 200 | CR-003 |
 | API-ID-008 | Identity | POST | `/api/v1/users/me/deletion-requests` | RequestDeletion | Required | Yes | Required | CreateDeletionRequest | JobStatusResponse | 202 | FR-012 |
+| API-ID-010 | Identity | GET | `/api/v1/users/me/onboarding-progress` | GetOnboardingProgress | Required | No | Safe | None | OnboardingProgressResponse | 200 | FR-018~FR-019 |
 | API-INT-001 | Integration | POST | `/api/v1/integrations/github/authorize` | InitiateGitHubOAuth | Required | No | Required | InitiateOAuthRequest | OAuthAuthorizationResponse | 200 | FR-021 |
 | API-INT-002 | Integration | GET | `/api/v1/integrations/github/callback` | GitHubIntegrationCallback | Callback | No | State | ProviderCallback | OAuthCallbackResponse | 200/302 | FR-021 |
 | API-INT-004 | Integration | GET | `/api/v1/integrations/github/repositories` | ListGitHubRepositories | Required | No | Safe | None | ProviderRepositoryListResponse | 200 | FR-024 |
@@ -1105,8 +1151,18 @@ Matrix policy version, repository display name, and `currentForRepository`. The 
 is derived as current; older results remain immutable history. The history read model never recalculates official results.
 Successful history and result-detail retrievals create durable `AUDIT_RESTRICTED` audit records; operational logs are
 not used as an audit substitute.
+API-ANA-008 accepts exactly two distinct `analysisId` query parameters and returns the corresponding owner-scoped
+immutable history items in request order. The comparison UI retrieves each referenced immutable RuleEvaluation and
+places official overall/category values, confidence, versions, and evidence counts side by side. Neither server nor
+browser calculates or persists a delta, trend, improvement score, or replacement official result. Successful comparison
+reads create a durable `ANALYSES_COMPARED` audit record; a missing or cross-owner input returns `404`.
 
-The implemented API-SKL-001/002 subset returns the current or a historical owner-scoped immutable Skill Matrix.
+The implemented API-SKL-001/002/003/004/005 subset returns the current or a historical owner-scoped immutable Skill Matrix and
+compares exactly two matrices using their stored values only. Successful comparisons create a durable
+`SKILL_MATRICES_COMPARED` audit record; a missing or cross-owner input returns `404`. Current skill detail includes its
+stored assessment plus Matrix/evaluation/policy reproduction metadata. Current skill evidence exposes only normalized,
+owner-scoped evidence linked through `skill_evidence_links`; successful reads emit `SKILL_DETAIL_VIEWED` or
+`SKILL_EVIDENCE_VIEWED` durable audit records.
 Each assessment includes its stable skill identity, source category, authoritative score, policy-derived level,
 confidence, strength/weakness flags, explicit growth state, aggregate rule-result reference, Evidence IDs,
 Repository IDs, structured downstream facts, and exact rule-set version. The browser displays these values without
@@ -1131,7 +1187,7 @@ recalculation. A missing matrix and a matrix owned by another user both return `
 | PortfolioResponse | portfolioId, status, activeVersionId, sections, sourceRefs | Portfolio resource. | User private/public if published | Portfolio |
 | ResumeResponse | resumeId, status, activeVersionId, sections, sourceRefs | Resume resource. | Generated personal content | Resume |
 | InterviewQuestionSetResponse | questionSetId, careerId, companyId, questions, generatedAt | Interview question set. | User private | Interview |
-| DashboardSummaryResponse | repositories, latestAnalysis, skillOverview, readiness, recommendations, roadmap | Dashboard summary read model. | User private | Dashboard |
+| DashboardSummaryResponse | generatedAt, targets, repositories, analyses, skillOverview, readiness, recommendations, roadmap, recentJobs | Owner-scoped summary with per-section availability; read-only composition, not a source of truth. | User private | Dashboard |
 
 ### 36.3 Schema Count by Domain
 
@@ -1205,7 +1261,7 @@ recalculation. A missing matrix and a matrix owned by another user both return `
 
 | Requirement Range | API Operations | Status |
 |---|---|---|
-| FR-001~FR-020 | API-ID-001~API-ID-009, API-INT-001~API-INT-003 | Covered |
+| FR-001~FR-020 | API-ID-001~API-ID-010, API-INT-001~API-INT-003 | Covered |
 | FR-021~FR-050 | API-INT-001~API-INT-007, API-REP-001~API-REP-012 | Covered |
 | FR-051~FR-070 | API-INT-008~API-INT-012, API-KNW-001~API-KNW-011 | Covered |
 | FR-071~FR-100 | API-REP-006~API-REP-012, API-ANA-001~API-ANA-008 | Covered |

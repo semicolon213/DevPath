@@ -45,6 +45,7 @@ class CareerCatalogSecurityTest {
     @Autowired MockMvc mockMvc;
     @MockBean CareerCatalogApplicationService service;
     @MockBean GitHubOAuth2UserService oAuth2UserService;
+    @MockBean com.devpath.identity.application.AuthenticationAuditPort authenticationAuditPort;
 
     @Test
     void requiresAuthenticationAndReturnsOnlyProfileMetadata() throws Exception {

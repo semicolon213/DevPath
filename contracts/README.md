@@ -5,7 +5,9 @@ This directory owns machine-readable contract artifacts.
 Current scope:
 
 - `openapi/devpath-openapi.yaml` contains the implemented health, identity, integration, repository, analysis,
-  Skill Matrix, career catalog, Backend/Frontend career-readiness, deterministic recommendation/learning-roadmap,
-  and company-catalog API subset.
+  immutable analysis and Skill Matrix comparison, current skill detail/evidence, career catalog, Backend/Frontend career-readiness, deterministic recommendation
+  current/history/detail/evidence, learning-roadmap current/history/detail/archive,
+  company-catalog, owner-scoped onboarding-progress, dashboard-summary, GitHub connection-recovery, provider
+  rate-limit recovery, and repository collaboration/document evidence API subset.
 - Business APIs that are not implemented remain specified only in `docs/10_API_Specification.md` and must not be
   added to the machine-readable contract until their handlers exist.

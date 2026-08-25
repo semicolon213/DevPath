@@ -25,4 +25,19 @@ class RepositorySyncJobTest {
         assertThat(failed.attemptCount()).isEqualTo(3);
         assertThat(failed.completedAt()).isNotNull();
     }
+
+    @Test
+    void waitsUntilTheProviderResetInsteadOfUsingTheGenericRetryDelay() {
+        RepositorySyncJob running = RepositorySyncJob
+            .queue(UUID.randomUUID(), UUID.randomUUID(), "request-rate-limit", NOW)
+            .start(NOW);
+        Instant resetAt = NOW.plusSeconds(900);
+
+        RepositorySyncJob waiting = running.waitForRateLimit(resetAt, NOW);
+
+        assertThat(waiting.status()).isEqualTo(RepositorySyncJobStatus.QUEUED);
+        assertThat(waiting.phase()).isEqualTo("RETRY_WAIT");
+        assertThat(waiting.nextAttemptAt()).isEqualTo(resetAt);
+        assertThat(waiting.errorCode()).isEqualTo("RATE_LIMIT_EXCEEDED");
+    }
 }

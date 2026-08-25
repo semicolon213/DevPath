@@ -15,6 +15,7 @@ import com.devpath.analysis.application.AnalysisJobView;
 import com.devpath.analysis.application.AnalysisHistoryItemView;
 import com.devpath.analysis.application.AnalysisHistoryView;
 import com.devpath.analysis.application.AnalysisResultView;
+import com.devpath.analysis.application.AnalysisComparisonView;
 import com.devpath.identity.adapter.in.security.AbsoluteSessionTimeoutFilter;
 import com.devpath.identity.adapter.in.security.DevPathOAuth2User;
 import com.devpath.identity.adapter.in.security.GitHubOAuth2UserService;
@@ -53,9 +54,11 @@ class AnalysisSecurityTest {
     private static final UUID REPOSITORY_ID = UUID.fromString("4650f15a-b8aa-47bd-8c15-7579e05f737e");
     private static final UUID JOB_ID = UUID.fromString("f055f15a-b8aa-47bd-8c15-7579e05f737e");
     private static final UUID ANALYSIS_ID = UUID.fromString("a055f15a-b8aa-47bd-8c15-7579e05f737e");
+    private static final UUID PREVIOUS_ANALYSIS_ID = UUID.fromString("b055f15a-b8aa-47bd-8c15-7579e05f737e");
     @Autowired MockMvc mockMvc;
     @MockBean AnalysisApplicationService service;
     @MockBean GitHubOAuth2UserService oAuth2UserService;
+    @MockBean com.devpath.identity.application.AuthenticationAuditPort authenticationAuditPort;
 
     @Test
     void commandsRequireSessionAndCsrfWhileReadsUseAuthenticatedOwner() throws Exception {
@@ -65,6 +68,8 @@ class AnalysisSecurityTest {
         when(service.getResult(USER_ID, ANALYSIS_ID)).thenReturn(result());
         when(service.listHistory(USER_ID, 10, null)).thenReturn(history());
         when(service.listRepositoryHistory(USER_ID, REPOSITORY_ID, 10, null)).thenReturn(history());
+        when(service.compare(USER_ID,List.of(PREVIOUS_ANALYSIS_ID,ANALYSIS_ID)))
+            .thenReturn(new AnalysisComparisonView(List.of(historyItem(PREVIOUS_ANALYSIS_ID),historyItem(ANALYSIS_ID))));
         String body = "{\"repositoryId\":\"" + REPOSITORY_ID + "\",\"analysisScope\":\"REPOSITORY_BASELINE\"}";
 
         mockMvc.perform(post("/api/v1/analyses").contentType(MediaType.APPLICATION_JSON).content(body)
@@ -86,6 +91,12 @@ class AnalysisSecurityTest {
         mockMvc.perform(get("/api/v1/repositories/{repositoryId}/analyses", REPOSITORY_ID).param("limit", "10")
             .with(oauth2Login().oauth2User(principal()))).andExpect(status().isOk())
             .andExpect(jsonPath("$.data.totalCount").value(1));
+        mockMvc.perform(get("/api/v1/analyses/compare").param("analysisId",PREVIOUS_ANALYSIS_ID.toString(),ANALYSIS_ID.toString()))
+            .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/analyses/compare").param("analysisId",PREVIOUS_ANALYSIS_ID.toString(),ANALYSIS_ID.toString())
+            .with(oauth2Login().oauth2User(principal()))).andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.analyses[0].analysisId").value(PREVIOUS_ANALYSIS_ID.toString()))
+            .andExpect(jsonPath("$.data.analyses[1].analysisId").value(ANALYSIS_ID.toString()));
 
         verify(service).getJob(USER_ID, JOB_ID);
         verify(service).getResult(USER_ID, ANALYSIS_ID);
@@ -101,10 +112,13 @@ class AnalysisSecurityTest {
             UUID.randomUUID(), "REPOSITORY_BASELINE", true, Instant.parse("2026-08-11T10:00:02Z"));
     }
     private AnalysisHistoryView history() {
-        return new AnalysisHistoryView(List.of(new AnalysisHistoryItemView(ANALYSIS_ID, REPOSITORY_ID,
+        return new AnalysisHistoryView(List.of(historyItem(ANALYSIS_ID)), 10, null, 1);
+    }
+    private AnalysisHistoryItemView historyItem(UUID analysisId) {
+        return new AnalysisHistoryItemView(analysisId, REPOSITORY_ID,
             "owner/devpath", UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), "REPOSITORY_BASELINE",
             new BigDecimal("75.50"), new BigDecimal("88.00"), "baseline-v1", "skill-matrix-v1",
-            true, Instant.parse("2026-08-11T10:00:02Z"))), 10, null, 1);
+            true, Instant.parse("2026-08-11T10:00:02Z"));
     }
     private DevPathOAuth2User principal() {
         var user = new AuthenticatedUser(USER_ID, "DevPath User", null, AccountStatus.ACTIVE,

@@ -7,7 +7,7 @@ import java.util.Locale;
 import java.util.function.Predicate;
 
 public final class RepositoryEvidenceExtractor {
-    public static final String EXTRACTOR_VERSION = "engineering-evidence-extractor-v2";
+    public static final String EXTRACTOR_VERSION = "engineering-evidence-extractor-v3";
 
     private RepositoryEvidenceExtractor() {}
 
@@ -15,7 +15,7 @@ public final class RepositoryEvidenceExtractor {
         return List.of(
             architecture(snapshot.files()), database(snapshot.files(), snapshot.dependencies()),
             testing(snapshot.files(), snapshot.dependencies()),
-            devops(snapshot.files()), documentation(snapshot.files()), activity(snapshot)
+            devops(snapshot.files()), documentation(snapshot), collaboration(snapshot), activity(snapshot)
         );
     }
 
@@ -107,19 +107,47 @@ public final class RepositoryEvidenceExtractor {
         ));
     }
 
-    private static EngineeringEvidenceCategory documentation(List<RepositoryFile> files) {
+    private static EngineeringEvidenceCategory documentation(RepositorySnapshot snapshot) {
+        List<RepositoryFile> files = snapshot.files();
         List<String> readme = paths(files, path -> fileName(path).startsWith("readme."));
+        List<RepositoryDocument> readmeDocuments = snapshot.documents().stream()
+            .filter(value -> value.documentType().equals("README")).toList();
+        List<String> capturedReadmePaths = readmeDocuments.stream().map(RepositoryDocument::path).sorted().toList();
+        int qualitySignalCount = readmeDocuments.stream().mapToInt(value -> value.qualitySignals().size()).sum();
         List<String> api = paths(files, path -> path.contains("openapi") || path.contains("swagger") || path.contains("/api-doc"));
         List<String> architecture = paths(files, path -> path.contains("architecture") || path.contains("/adr")
             || fileName(path).equals("design.md"));
         List<String> contributing = paths(files, path -> fileName(path).startsWith("contributing."));
         List<String> license = paths(files, path -> fileName(path).startsWith("license"));
         return category("DOCUMENTATION", "Documentation", List.of(
-            signal("README_PRESENT", "README present", !readme.isEmpty(), readme.size(), null, readme),
+            signal("README_PRESENT", "README present", !readmeDocuments.isEmpty() || !readme.isEmpty(),
+                !readmeDocuments.isEmpty() ? readmeDocuments.size() : readme.size(), null,
+                !capturedReadmePaths.isEmpty() ? capturedReadmePaths : readme),
+            signal("README_QUALITY_SECTIONS", "README quality sections", qualitySignalCount > 0,
+                qualitySignalCount,
+                joinLimited(readmeDocuments.stream().flatMap(value -> value.qualitySignals().stream()).distinct().sorted().toList()),
+                capturedReadmePaths),
             signal("API_DOCUMENTATION", "API documentation", !api.isEmpty(), api.size(), null, api),
             signal("ARCHITECTURE_DOCUMENTATION", "Architecture documentation", !architecture.isEmpty(), architecture.size(), null, architecture),
             signal("CONTRIBUTING_GUIDE", "Contributing guide", !contributing.isEmpty(), contributing.size(), null, contributing),
             signal("LICENSE_PRESENT", "License present", !license.isEmpty(), license.size(), null, license)
+        ));
+    }
+
+    private static EngineeringEvidenceCategory collaboration(RepositorySnapshot snapshot) {
+        int merged = Math.toIntExact(snapshot.pullRequests().stream().filter(value -> value.status().equals("MERGED")).count());
+        int reviews = snapshot.pullRequests().stream().mapToInt(RepositoryPullRequest::reviewCount).sum();
+        int closedIssues = Math.toIntExact(snapshot.issues().stream().filter(value -> value.status().equals("CLOSED")).count());
+        int labelledIssues = Math.toIntExact(snapshot.issues().stream().filter(value -> !value.labels().isEmpty()).count());
+        return category("COLLABORATION", "Collaboration", List.of(
+            signal("PULL_REQUEST_COUNT", "Captured pull requests", !snapshot.pullRequests().isEmpty(),
+                snapshot.pullRequests().size(), Integer.toString(snapshot.pullRequests().size()), List.of()),
+            signal("MERGED_PULL_REQUEST_COUNT", "Merged pull requests", merged > 0, merged, Integer.toString(merged), List.of()),
+            signal("PULL_REQUEST_REVIEW_COUNT", "Pull request reviews", reviews > 0, reviews, Integer.toString(reviews), List.of()),
+            signal("ISSUE_COUNT", "Captured issues", !snapshot.issues().isEmpty(),
+                snapshot.issues().size(), Integer.toString(snapshot.issues().size()), List.of()),
+            signal("CLOSED_ISSUE_COUNT", "Closed issues", closedIssues > 0, closedIssues, Integer.toString(closedIssues), List.of()),
+            signal("LABELLED_ISSUE_COUNT", "Labelled issues", labelledIssues > 0, labelledIssues, Integer.toString(labelledIssues), List.of())
         ));
     }
 

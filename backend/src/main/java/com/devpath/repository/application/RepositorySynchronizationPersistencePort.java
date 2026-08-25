@@ -12,6 +12,7 @@ public interface RepositorySynchronizationPersistencePort {
     Optional<RepositorySyncJob> findActiveByRepository(UUID repositoryId);
     Optional<RepositorySyncJob> findByIdAndOwner(UUID jobId, UUID userId);
     Optional<RepositorySyncJob> findNextClaimable(Instant now);
+    List<RepositorySyncJob> findRecentByOwner(UUID userId, int limit);
     RepositorySyncJob saveJob(RepositorySyncJob job);
     RepositorySnapshot saveSnapshot(RepositorySnapshot snapshot);
     List<RepositorySnapshot> findSnapshots(UUID userId, UUID repositoryId);

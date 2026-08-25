@@ -29,13 +29,20 @@ class RepositoryEvidenceExtractorTest {
             UUID.randomUUID(), UUID.randomUUID(), revision, Instant.parse("2026-08-11T00:00:00Z"),
             List.of(new RepositoryBranch("main", revision, true)),
             List.of(new RepositoryCommit(revision, "owner", Instant.parse("2026-08-10T00:00:00Z"), "test")),
-            List.of(), dependencies, files
+            List.of(), dependencies, files,
+            List.of(new RepositoryPullRequest("501", "MERGED", Instant.parse("2026-08-01T00:00:00Z"),
+                Instant.parse("2026-08-03T00:00:00Z"), Instant.parse("2026-08-03T00:00:00Z"), 2)),
+            List.of(new RepositoryIssue("601", "CLOSED", List.of("bug"),
+                Instant.parse("2026-08-02T00:00:00Z"), Instant.parse("2026-08-04T00:00:00Z"))),
+            List.of(new RepositoryDocument("README", "README.md",
+                "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", 120,
+                List.of("OVERVIEW", "SETUP", "USAGE", "TESTING")))
         );
 
         var categories = RepositoryEvidenceExtractor.extract(snapshot);
 
         assertThat(categories).extracting(EngineeringEvidenceCategory::category)
-            .containsExactly("ARCHITECTURE", "DATABASE", "TESTING", "DEVOPS", "DOCUMENTATION", "ACTIVITY");
+            .containsExactly("ARCHITECTURE", "DATABASE", "TESTING", "DEVOPS", "DOCUMENTATION", "COLLABORATION", "ACTIVITY");
         assertSignal(categories, "HEXAGONAL_BOUNDARIES", true);
         assertSignal(categories, "DATABASE_TECHNOLOGIES", true);
         assertSignal(categories, "DATA_ACCESS_DEPENDENCIES", true);
@@ -44,6 +51,9 @@ class RepositoryEvidenceExtractorTest {
         assertSignal(categories, "TEST_FILES", true);
         assertSignal(categories, "CONTAINER_CONFIGURATION", true);
         assertSignal(categories, "README_PRESENT", true);
+        assertSignal(categories, "README_QUALITY_SECTIONS", true);
+        assertSignal(categories, "PULL_REQUEST_REVIEW_COUNT", true);
+        assertSignal(categories, "CLOSED_ISSUE_COUNT", true);
         assertSignal(categories, "COMMIT_COUNT", true);
     }
 

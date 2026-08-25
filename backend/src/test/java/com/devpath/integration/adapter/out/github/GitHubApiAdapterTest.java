@@ -1,6 +1,7 @@
 package com.devpath.integration.adapter.out.github;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -11,6 +12,7 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withNoContent;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withStatus;
 
 import com.devpath.integration.adapter.out.persistence.EncryptedProviderCredentialStore;
 import com.devpath.integration.adapter.out.persistence.StoredProviderCredential;
@@ -23,7 +25,9 @@ import java.util.Optional;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
@@ -105,6 +109,88 @@ class GitHubApiAdapterTest {
     }
 
     @Test
+    void revokesTheStoredCredentialWhenGitHubReportsARepositoryPermissionChange() {
+        var builder = RestClient.builder();
+        var server = MockRestServiceServer.bindTo(builder).build();
+        var credentials = mock(EncryptedProviderCredentialStore.class);
+        var audit = mock(IntegrationAuditPort.class);
+        var adapter = new GitHubApiAdapter(properties(), credentials, audit, builder);
+        UUID userId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-08-11T00:00:00Z");
+        StoredProviderCredential stored = stored(userId, now);
+        when(credentials.findActive(userId)).thenReturn(Optional.of(stored));
+        server.expect(once(), requestTo("https://api.github.com/user/installations?per_page=100&page=1"))
+            .andRespond(withStatus(HttpStatus.FORBIDDEN));
+
+        assertThatThrownBy(() -> adapter.listRepositories(userId, now))
+            .isInstanceOf(com.devpath.integration.application.GitHubPermissionChangedException.class);
+
+        verify(credentials).revokeActive(userId, now);
+        verify(audit).record(
+            com.devpath.integration.application.IntegrationAuditEvent.GITHUB_PERMISSION_CHANGED,
+            userId, stored.connectionId().toString(), now
+        );
+        server.verify();
+    }
+
+    @Test
+    void preservesTheConnectionAndSurfacesTheProviderResetWhenGitHubIsRateLimited() {
+        var builder = RestClient.builder();
+        var server = MockRestServiceServer.bindTo(builder).build();
+        var credentials = mock(EncryptedProviderCredentialStore.class);
+        var audit = mock(IntegrationAuditPort.class);
+        var adapter = new GitHubApiAdapter(properties(), credentials, audit, builder);
+        UUID userId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-08-11T00:00:00Z");
+        Instant resetAt = now.plusSeconds(900);
+        StoredProviderCredential stored = stored(userId, now);
+        when(credentials.findActive(userId)).thenReturn(Optional.of(stored));
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-RateLimit-Remaining", "0");
+        headers.set("X-RateLimit-Reset", Long.toString(resetAt.getEpochSecond()));
+        server.expect(once(), requestTo("https://api.github.com/user/installations?per_page=100&page=1"))
+            .andRespond(withStatus(HttpStatus.FORBIDDEN).headers(headers));
+
+        assertThatThrownBy(() -> adapter.listRepositories(userId, now))
+            .isInstanceOfSatisfying(
+                com.devpath.integration.application.GitHubRateLimitExceededException.class,
+                exception -> assertThat(exception.resetAt()).isEqualTo(resetAt)
+            );
+
+        verify(audit).record(
+            com.devpath.integration.application.IntegrationAuditEvent.GITHUB_RATE_LIMITED,
+            userId, stored.connectionId().toString(), now
+        );
+        verify(credentials, org.mockito.Mockito.never()).revokeActive(userId, now);
+        server.verify();
+    }
+
+    @Test
+    void expiresTheStoredCredentialWhenNoUsableRefreshTokenRemains() {
+        var builder = RestClient.builder();
+        var credentials = mock(EncryptedProviderCredentialStore.class);
+        var audit = mock(IntegrationAuditPort.class);
+        var adapter = new GitHubApiAdapter(properties(), credentials, audit, builder);
+        UUID userId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-08-11T00:00:00Z");
+        StoredProviderCredential expired = new StoredProviderCredential(
+            UUID.randomUUID(), userId, UUID.randomUUID(), "secret-access-token", now.minusSeconds(60),
+            null, null, "repo", now.minusSeconds(3_600)
+        );
+        when(credentials.findActive(userId)).thenReturn(Optional.of(expired));
+
+        assertThatThrownBy(() -> adapter.listRepositories(userId, now))
+            .isInstanceOf(com.devpath.integration.application.GitHubIntegrationUnavailableException.class)
+            .hasMessageContaining("reconnected");
+
+        verify(credentials).expireActive(userId, now);
+        verify(audit).record(
+            com.devpath.integration.application.IntegrationAuditEvent.GITHUB_TOKEN_REFRESH_FAILED,
+            userId, expired.connectionId().toString(), now
+        );
+    }
+
+    @Test
     void removesTheLocalCredentialAndAttemptsRemoteRevocationOnDisconnect() {
         var builder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(builder).build();
@@ -115,7 +201,7 @@ class GitHubApiAdapterTest {
         UUID userId = UUID.randomUUID();
         Instant now = Instant.parse("2026-08-11T00:00:00Z");
         StoredProviderCredential stored = stored(userId, now);
-        when(credentials.removeActive(userId)).thenReturn(Optional.of(stored));
+        when(credentials.revokeActive(userId, now)).thenReturn(Optional.of(stored));
         server.expect(once(), requestTo("https://api.github.com/applications/client-id/token"))
             .andExpect(method(HttpMethod.DELETE))
             .andRespond(withNoContent());
@@ -123,12 +209,12 @@ class GitHubApiAdapterTest {
         var result = adapter.disconnect(userId, now);
 
         assertThat(result.status()).isEqualTo("REVOKED");
-        verify(credentials).removeActive(userId);
+        verify(credentials).revokeActive(userId, now);
         server.verify();
     }
 
     @Test
-    void collectsBranchesCommitsLanguagesAndManifestDependenciesIntoProviderIndependentSnapshotFacts() {
+    void collectsCodeCollaborationAndReadmeIntoProviderIndependentSnapshotFacts() {
         var builder = RestClient.builder();
         var server = MockRestServiceServer.bindTo(builder).build();
         var credentials = mock(EncryptedProviderCredentialStore.class);
@@ -147,13 +233,35 @@ class GitHubApiAdapterTest {
         server.expect(once(), requestTo("https://api.github.com/repositories/42/languages"))
             .andRespond(withSuccess("{\"Java\":7500,\"TypeScript\":2500}", MediaType.APPLICATION_JSON));
         String blobSha = "cccccccccccccccccccccccccccccccccccccccc";
+        String readmeSha = "dddddddddddddddddddddddddddddddddddddddd";
         server.expect(once(), requestTo("https://api.github.com/repositories/42/git/trees/abc123?recursive=1"))
-            .andRespond(withSuccess("{\"truncated\":false,\"tree\":[{\"path\":\"frontend/package.json\",\"type\":\"blob\",\"sha\":\""
-                + blobSha + "\",\"size\":100}]}", MediaType.APPLICATION_JSON));
+            .andRespond(withSuccess("{\"truncated\":false,\"tree\":["
+                + "{\"path\":\"frontend/package.json\",\"type\":\"blob\",\"sha\":\"" + blobSha + "\",\"size\":100},"
+                + "{\"path\":\"README.md\",\"type\":\"blob\",\"sha\":\"" + readmeSha + "\",\"size\":120}]}",
+                MediaType.APPLICATION_JSON));
         String manifest = "{\"dependencies\":{\"react\":\"18.3.1\",\"pg\":\"8.0.0\"}}";
         server.expect(once(), requestTo("https://api.github.com/repositories/42/git/blobs/" + blobSha))
             .andRespond(withSuccess("{\"encoding\":\"base64\",\"content\":\""
                 + Base64.getEncoder().encodeToString(manifest.getBytes(java.nio.charset.StandardCharsets.UTF_8))
+                + "\"}", MediaType.APPLICATION_JSON));
+        server.expect(once(), requestTo("https://api.github.com/repositories/42/pulls?state=all&sort=created&direction=desc&per_page=100&page=1"))
+            .andRespond(withSuccess("""
+                [{"id":501,"number":7,"state":"closed","created_at":"2026-08-01T00:00:00Z",
+                  "closed_at":"2026-08-03T00:00:00Z","merged_at":"2026-08-03T00:00:00Z"}]
+                """, MediaType.APPLICATION_JSON));
+        server.expect(once(), requestTo("https://api.github.com/repositories/42/pulls/7/reviews?per_page=100&page=1"))
+            .andRespond(withSuccess("[{\"id\":1},{\"id\":2}]", MediaType.APPLICATION_JSON));
+        server.expect(once(), requestTo("https://api.github.com/repositories/42/issues?state=all&sort=created&direction=desc&per_page=100&page=1"))
+            .andRespond(withSuccess("""
+                [{"id":601,"state":"closed","labels":[{"name":"bug"}],
+                  "created_at":"2026-08-02T00:00:00Z","closed_at":"2026-08-04T00:00:00Z"},
+                 {"id":501,"state":"closed","labels":[],"created_at":"2026-08-01T00:00:00Z",
+                  "closed_at":"2026-08-03T00:00:00Z","pull_request":{}}]
+                """, MediaType.APPLICATION_JSON));
+        String readme = "# DevPath\n\n## Setup\nInstall it.\n\n## Usage\nRun it.\n\n## Testing\nTest it.";
+        server.expect(once(), requestTo("https://api.github.com/repositories/42/git/blobs/" + readmeSha))
+            .andRespond(withSuccess("{\"encoding\":\"base64\",\"content\":\""
+                + Base64.getEncoder().encodeToString(readme.getBytes(java.nio.charset.StandardCharsets.UTF_8))
                 + "\"}", MediaType.APPLICATION_JSON));
 
         var result = adapter.collectRepository(userId, "42", "main", now);
@@ -168,9 +276,17 @@ class GitHubApiAdapterTest {
             .containsExactly("Java", "TypeScript");
         assertThat(result.dependencies()).extracting(value -> value.packageName())
             .containsExactly("react", "pg");
-        assertThat(result.files()).singleElement().satisfies(file ->
-            assertThat(file.path()).isEqualTo("frontend/package.json")
-        );
+        assertThat(result.files()).extracting(value -> value.path()).containsExactly("README.md", "frontend/package.json");
+        assertThat(result.pullRequests()).singleElement().satisfies(value -> {
+            assertThat(value.status()).isEqualTo("MERGED");
+            assertThat(value.reviewCount()).isEqualTo(2);
+        });
+        assertThat(result.issues()).singleElement().satisfies(value -> assertThat(value.labels()).containsExactly("bug"));
+        assertThat(result.documents()).singleElement().satisfies(value -> {
+            assertThat(value.documentType()).isEqualTo("README");
+            assertThat(value.contentHash()).matches("[a-f0-9]{64}");
+            assertThat(value.qualitySignals()).containsExactly("OVERVIEW", "SETUP", "USAGE", "TESTING");
+        });
         server.verify();
     }
 

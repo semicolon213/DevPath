@@ -36,6 +36,10 @@ class JpaAnalysisPersistenceAdapter implements AnalysisPersistencePort {
     public Optional<AnalysisJob> findNextClaimable(Instant now) {
         return jobs.findClaimable(now, PageRequest.of(0, 1)).stream().findFirst().map(AnalysisJobJpaEntity::toDomain);
     }
+    public List<AnalysisJob> findRecentJobsByOwner(UUID userId, int limit) {
+        return jobs.findAllByUserIdOrderBySubmittedAtDescIdDesc(userId, PageRequest.of(0, limit)).stream()
+            .map(AnalysisJobJpaEntity::toDomain).toList();
+    }
     public Optional<CompletedAnalysis> findReusableResult(UUID userId, UUID snapshotId, String scope) {
         return results.findReusableResult(userId, snapshotId, scope, PageRequest.of(0, 1)).stream().findFirst()
             .map(AnalysisResultJpaEntity::toDomain);
@@ -61,6 +65,9 @@ class JpaAnalysisPersistenceAdapter implements AnalysisPersistencePort {
     ) {
         return results.findHistoryByOwnerAndRepository(userId, repositoryId, PageRequest.of(page, limit)).stream()
             .map(this::toView).toList();
+    }
+    public List<AnalysisHistoryItemView> findHistoryByOwnerAndIds(UUID userId, List<UUID> analysisIds) {
+        return results.findHistoryByOwnerAndIds(userId, analysisIds).stream().map(this::toView).toList();
     }
     public long countHistoryByOwner(UUID userId) { return results.countByUserId(userId); }
     public long countHistoryByOwnerAndRepository(UUID userId, UUID repositoryId) {

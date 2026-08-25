@@ -23,6 +23,7 @@ import com.devpath.identity.domain.AccountStatus;
 import com.devpath.identity.domain.OAuthProvider;
 import com.devpath.integration.application.GitHubIntegrationApplicationService;
 import com.devpath.integration.application.GitHubRepositoryListView;
+import com.devpath.integration.application.GitHubRateLimitExceededException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +58,7 @@ class GitHubIntegrationSecurityTest {
     @Autowired MockMvc mockMvc;
     @MockBean GitHubIntegrationApplicationService service;
     @MockBean GitHubOAuth2UserService oAuth2UserService;
+    @MockBean com.devpath.identity.application.AuthenticationAuditPort authenticationAuditPort;
 
     @Test
     void authorizationRequiresAuthenticationAndCsrf() throws Exception {
@@ -89,7 +91,7 @@ class GitHubIntegrationSecurityTest {
                 .param("state", state.getValue())
                 .param("code", "temporary-code"))
             .andExpect(status().isFound())
-            .andExpect(header().string("Location", "http://localhost:5173/?githubConnection=success"));
+            .andExpect(header().string("Location", "http://localhost:5173/settings/integrations?githubConnection=success"));
         verify(service).complete(USER_ID, "temporary-code");
     }
 
@@ -102,6 +104,24 @@ class GitHubIntegrationSecurityTest {
                 .with(oauth2Login().oauth2User(principal())))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.repositories").isArray());
+    }
+
+    @Test
+    void providerRateLimitReturnsARecoverable429WithoutProviderDetails() throws Exception {
+        Instant resetAt = Instant.parse("2026-08-11T01:00:00Z");
+        when(service.listRepositories(USER_ID)).thenThrow(
+            new GitHubRateLimitExceededException(resetAt, 120L, new RuntimeException("provider payload"))
+        );
+
+        mockMvc.perform(get("/api/v1/integrations/github/repositories")
+                .with(oauth2Login().oauth2User(principal())))
+            .andExpect(status().isTooManyRequests())
+            .andExpect(header().string("Retry-After", "120"))
+            .andExpect(header().string("X-RateLimit-Reset", Long.toString(resetAt.getEpochSecond())))
+            .andExpect(jsonPath("$.error.code").value("RATE_LIMIT_EXCEEDED"))
+            .andExpect(jsonPath("$.error.message").value(
+                "GitHub request limit was reached. Retry after the provider limit resets."
+            ));
     }
 
     @Test

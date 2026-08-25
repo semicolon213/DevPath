@@ -42,6 +42,7 @@ it("renders official scores, confidence, evidence, and Korean labels", async () 
 
   expect(await screen.findByRole("heading", { name: "기술 역량 분석" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "기술 문서화" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "기술 문서화" })).toHaveAttribute("href", "/skills/skill-1");
   expect(screen.getByText("100")).toBeInTheDocument();
   expect(screen.getByText("87.5%")).toBeInTheDocument();
   expect(screen.getAllByText("강점")).toHaveLength(2);

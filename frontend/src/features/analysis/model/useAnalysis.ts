@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery } from "@tanstack/react-query";
-import { getAnalysisDetail, getAnalysisHistory, getAnalysisJob, getRepositoryAnalysisHistory, requestAnalysis } from "../api/analysisApi";
+import { getAnalysisComparison, getAnalysisDetail, getAnalysisHistory, getAnalysisJob, getRepositoryAnalysisHistory, requestAnalysis } from "../api/analysisApi";
 
 export const analysisHistoryKey = ["analyses", "history"] as const;
 
@@ -45,3 +45,5 @@ export function useAnalysisDetail(analysisId: string | undefined) {
     enabled: Boolean(analysisId)
   });
 }
+
+export function useAnalysisComparison(analysisIds:string[]){const valid=analysisIds.length===2&&analysisIds[0]!==analysisIds[1];return useQuery({queryKey:["analyses","compare",...analysisIds],queryFn:()=>getAnalysisComparison(analysisIds),enabled:valid});}

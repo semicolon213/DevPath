@@ -3,7 +3,7 @@ import { apiRequest } from "../../../shared/api/apiClient";
 export type ConnectedAccount = {
   connectionId: string;
   provider: "GITHUB";
-  status: "ACTIVE" | "REVOKED";
+  status: "ACTIVE" | "EXPIRED" | "REVOKED";
   scopes: string[];
   connectedAt: string;
   expiresAt: string | null;

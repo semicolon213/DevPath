@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Route, Routes } from "react-router-dom";
 import { renderWithProviders } from "../test/renderWithProviders";
@@ -74,7 +74,7 @@ it("shows normalized languages frameworks and databases with evidence paths", as
     }, metadata }));
     if (url.endsWith("/evidence")) return Promise.resolve(Response.json({ data: {
       repositoryId: repository.repositoryId, snapshotId: "snapshot-id",
-      extractorVersion: "engineering-evidence-extractor-v2",
+      extractorVersion: "engineering-evidence-extractor-v3",
       categories: [
         { category: "DATABASE", label: "Database", signals: [
           { signalKey: "DATABASE_MIGRATIONS", label: "Database migrations", present: true, count: 2,
@@ -87,6 +87,16 @@ it("shows normalized languages frameworks and databases with evidence paths", as
         { category: "DEVOPS", label: "DevOps", signals: [
           { signalKey: "CONTAINER_CONFIGURATION", label: "Container configuration", present: true,
             count: 1, observedValue: null, evidencePaths: ["dockerfile"] }
+        ] },
+        { category: "DOCUMENTATION", label: "Documentation", signals: [
+          { signalKey: "README_QUALITY_SECTIONS", label: "README quality sections", present: true,
+            count: 4, observedValue: "OVERVIEW, SETUP, TESTING, USAGE", evidencePaths: ["README.md"] }
+        ] },
+        { category: "COLLABORATION", label: "Collaboration", signals: [
+          { signalKey: "PULL_REQUEST_REVIEW_COUNT", label: "Pull request reviews", present: true,
+            count: 8, observedValue: "8", evidencePaths: [] },
+          { signalKey: "CLOSED_ISSUE_COUNT", label: "Closed issues", present: true,
+            count: 5, observedValue: "5", evidencePaths: [] }
         ] }
       ]
     }, metadata }));
@@ -110,4 +120,46 @@ it("shows normalized languages frameworks and databases with evidence paths", as
   expect(screen.getByText("데이터베이스 근거")).toBeInTheDocument();
   expect(screen.getByText("데이터베이스 마이그레이션")).toBeInTheDocument();
   expect(screen.getByText("컨테이너 설정")).toBeInTheDocument();
+  expect(screen.getByText("협업")).toBeInTheDocument();
+  expect(screen.getByText("PR 리뷰")).toBeInTheDocument();
+  expect(screen.getByText("종료된 이슈")).toBeInTheDocument();
+  expect(screen.getByText("README 품질 섹션")).toBeInTheDocument();
+});
+
+it("shows automatic provider-reset recovery for a rate-limited synchronization job", async () => {
+  const repository = {
+    repositoryId: "3fd75d74-17d4-4dc5-bf3b-251f611633f2", providerRepositoryId: "42",
+    name: "devpath", fullName: "owner/devpath", owner: "owner", visibility: "PUBLIC",
+    defaultBranch: "main", providerArchived: false, lifecycle: "ACTIVE", syncStatus: "NOT_SYNCED",
+    htmlUrl: "https://github.com/owner/devpath", discoveredAt: "2026-08-11T00:00:00Z",
+    lastSyncedAt: null, currentSnapshotId: null
+  };
+  const metadata = { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T00:00:00Z" };
+  const job = {
+    jobId: "38393675-fd18-410d-9fb8-cff66200fa46", jobType: "REPOSITORY_SYNC",
+    status: "queued", phase: "RETRY_WAIT", progressPercent: 0, attemptCount: 1, maxAttempts: 3,
+    submittedAt: "2026-08-11T00:00:00Z", startedAt: "2026-08-11T00:00:01Z", completedAt: null,
+    pollingUrl: "/api/v1/repository-sync-jobs/38393675-fd18-410d-9fb8-cff66200fa46",
+    resultResourceUrl: null, errorCode: "RATE_LIMIT_EXCEEDED",
+    errorMessage: "GitHub request limit reached; synchronization will resume after reset.", retryable: false
+  };
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+    const url = input.toString();
+    if (url.endsWith("/csrf")) return Promise.resolve(Response.json({ data: { headerName: "X-CSRF-TOKEN", token: "token" }, metadata }));
+    if (url.endsWith("/sync") || url.includes("/repository-sync-jobs/")) {
+      return Promise.resolve(Response.json({ data: job, metadata }, { status: url.endsWith("/sync") ? 202 : 200 }));
+    }
+    if (url.endsWith("/snapshots")) return Promise.resolve(Response.json({ data: { snapshots: [] }, metadata }));
+    return Promise.resolve(Response.json({ data: repository, metadata }));
+  }));
+
+  renderWithProviders(
+    <Routes><Route path="/repositories/:repositoryId" element={<RepositoryDetailPage />} /></Routes>,
+    ["/repositories/3fd75d74-17d4-4dc5-bf3b-251f611633f2"]
+  );
+
+  fireEvent.click(await screen.findByRole("button", { name: "GitHub 동기화" }));
+
+  expect(await screen.findByText("재시도 대기 중")).toBeInTheDocument();
+  expect(screen.getByText(/요청 한도가 해제되면 서버가 자동으로/)).toBeInTheDocument();
 });

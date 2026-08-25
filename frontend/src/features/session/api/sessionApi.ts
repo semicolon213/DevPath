@@ -1,4 +1,4 @@
-import { ApiError, apiRequest, getApiBaseUrl } from "../../../shared/api/apiClient";
+import { ApiError, apiRequest, getApiBaseUrl, requestContextHeaders } from "../../../shared/api/apiClient";
 
 export type CurrentUser = {
   userId: string;
@@ -33,11 +33,13 @@ export async function logout(): Promise<void> {
     method: "POST",
     credentials: "include",
     headers: {
+      ...requestContextHeaders(),
       [csrf.data.headerName]: csrf.data.token
     }
   });
 
   if (!response.ok) {
-    throw new ApiError(response.status, `DevPath logout failed with status ${response.status}`);
+    throw new ApiError(response.status, `DevPath logout failed with status ${response.status}`,
+      response.headers.get("X-Request-Id"), response.headers.get("X-Correlation-Id"));
   }
 }

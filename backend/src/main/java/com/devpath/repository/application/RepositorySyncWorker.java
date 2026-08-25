@@ -2,7 +2,9 @@ package com.devpath.repository.application;
 
 import com.devpath.integration.application.GitHubConnectionPort;
 import com.devpath.integration.application.GitHubIntegrationUnavailableException;
+import com.devpath.integration.application.GitHubRateLimitExceededException;
 import java.time.Clock;
+import java.time.Instant;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -36,6 +38,9 @@ class RepositorySyncWorker {
                     item.repository().defaultBranch(), clock.instant()
                 );
                 transactions.complete(item, collected, clock.instant());
+            } catch (GitHubRateLimitExceededException exception) {
+                Instant now = clock.instant();
+                transactions.rateLimited(item, exception.retryAt(now), now);
             } catch (GitHubIntegrationUnavailableException exception) {
                 transactions.fail(item, "DEPENDENCY_UNAVAILABLE", "GitHub repository collection is temporarily unavailable.", clock.instant());
             } catch (RuntimeException exception) {

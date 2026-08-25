@@ -12,7 +12,7 @@ import {
   useRestoreRepository
 } from "../features/repositories/model/useRepositories";
 import { repositoriesKey } from "../features/repositories/model/useRepositories";
-import { ApiError } from "../shared/api/apiClient";
+import { ApiError, rateLimitMessage } from "../shared/api/apiClient";
 import { syncLabel } from "./RepositoriesPage";
 import { useAnalysisJob, useRequestAnalysis } from "../features/analysis/model/useAnalysis";
 import { currentSkillMatrixKey } from "../features/skills/model/useSkillMatrix";
@@ -107,6 +107,9 @@ export function RepositoryDetailPage() {
           <progress max="100" value={job.data.progressPercent}>{job.data.progressPercent}%</progress>
           {job.data.status === "failed" ? (
             <p role="alert">동기화에 실패했습니다. GitHub 연결과 저장소 권한을 확인한 뒤 다시 요청해 주세요.</p>
+          ) : null}
+          {job.data.phase === "RETRY_WAIT" && job.data.errorCode === "RATE_LIMIT_EXCEEDED" ? (
+            <p role="status">GitHub 요청 한도가 해제되면 서버가 자동으로 동기화를 다시 시작합니다.</p>
           ) : null}
         </section>
       ) : synchronize.isError ? (
@@ -270,6 +273,9 @@ export function RepositoryDetailPage() {
               <div><dt>소스 리비전</dt><dd><code>{snapshot.sourceRevision.slice(0, 12)}</code></dd></div>
               <div><dt>브랜치</dt><dd>{snapshot.branchCount}개</dd></div>
               <div><dt>커밋</dt><dd>{snapshot.commitCount}개</dd></div>
+              <div><dt>PR</dt><dd>{snapshot.pullRequestCount}개</dd></div>
+              <div><dt>이슈</dt><dd>{snapshot.issueCount}개</dd></div>
+              <div><dt>문서</dt><dd>{snapshot.documentCount}개</dd></div>
             </dl>
           </article>
         ))}
@@ -300,8 +306,8 @@ function technologyCategoryLabel(category: "LANGUAGE" | "FRAMEWORK" | "DATABASE"
   return "언어";
 }
 
-function evidenceCategoryLabel(category: "ARCHITECTURE" | "DATABASE" | "TESTING" | "DEVOPS" | "DOCUMENTATION" | "ACTIVITY") {
-  return { ARCHITECTURE: "아키텍처", DATABASE: "데이터베이스 근거", TESTING: "테스트", DEVOPS: "DevOps", DOCUMENTATION: "문서화", ACTIVITY: "활동" }[category];
+function evidenceCategoryLabel(category: "ARCHITECTURE" | "DATABASE" | "TESTING" | "DEVOPS" | "DOCUMENTATION" | "COLLABORATION" | "ACTIVITY") {
+  return { ARCHITECTURE: "아키텍처", DATABASE: "데이터베이스 근거", TESTING: "테스트", DEVOPS: "DevOps", DOCUMENTATION: "문서화", COLLABORATION: "협업", ACTIVITY: "활동" }[category];
 }
 
 const evidenceLabels: Record<string, string> = {
@@ -320,6 +326,13 @@ const evidenceLabels: Record<string, string> = {
   INFRASTRUCTURE_AS_CODE: "인프라 코드",
   DEPLOYMENT_CONFIGURATION: "배포 설정",
   README_PRESENT: "README",
+  README_QUALITY_SECTIONS: "README 품질 섹션",
+  PULL_REQUEST_COUNT: "수집된 PR",
+  MERGED_PULL_REQUEST_COUNT: "병합된 PR",
+  PULL_REQUEST_REVIEW_COUNT: "PR 리뷰",
+  ISSUE_COUNT: "수집된 이슈",
+  CLOSED_ISSUE_COUNT: "종료된 이슈",
+  LABELLED_ISSUE_COUNT: "라벨이 있는 이슈",
   API_DOCUMENTATION: "API 문서",
   ARCHITECTURE_DOCUMENTATION: "아키텍처 문서",
   CONTRIBUTING_GUIDE: "기여 가이드",
@@ -334,6 +347,8 @@ function evidenceSignalLabel(signalKey: string) {
 }
 
 function syncRequestError(error: Error) {
+  const limited = rateLimitMessage(error);
+  if (limited) return limited;
   if (!(error instanceof ApiError)) return "브라우저에서 동기화 요청을 만들지 못했습니다. 페이지를 새로고침해 주세요.";
   if (error.status === 401) return "로그인 세션이 만료되었습니다. 다시 로그인해 주세요.";
   if (error.status === 403) return "보안 토큰이 만료되었습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.";

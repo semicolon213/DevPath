@@ -6,6 +6,9 @@ import com.devpath.repository.domain.RepositoryLanguage;
 import com.devpath.repository.domain.RepositoryDependency;
 import com.devpath.repository.domain.RepositoryFile;
 import com.devpath.repository.domain.RepositorySnapshot;
+import com.devpath.repository.domain.RepositoryPullRequest;
+import com.devpath.repository.domain.RepositoryIssue;
+import com.devpath.repository.domain.RepositoryDocument;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -41,11 +44,13 @@ class RepositorySnapshotJpaEntity {
 
     RepositorySnapshot toDomain(
         List<RepositoryBranch> branches, List<RepositoryCommit> commits, List<RepositoryLanguage> languages,
-        List<RepositoryDependency> dependencies, List<RepositoryFile> files
+        List<RepositoryDependency> dependencies, List<RepositoryFile> files,
+        List<RepositoryPullRequest> pullRequests, List<RepositoryIssue> issues,
+        List<RepositoryDocument> documents
     ) {
         return new RepositorySnapshot(
             id, repositoryId, userId, sourceRevision, capturedAt, status, contentHash,
-            retentionStatus, branches, commits, languages, dependencies, files
+            retentionStatus, branches, commits, languages, dependencies, files, pullRequests, issues, documents
         );
     }
 }
@@ -150,4 +155,72 @@ class RepositoryFileJpaEntity {
         byteSize = file.byteSize(); extractorVersion = file.extractorVersion();
     }
     RepositoryFile toDomain() { return new RepositoryFile(path, blobSha, byteSize, extractorVersion); }
+}
+
+@Entity
+@Table(name = "repository_pull_requests")
+class RepositoryPullRequestJpaEntity {
+    @Id @Column(name = "pull_request_record_id") private UUID id;
+    @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
+    @Column(name = "provider_pull_request_id", nullable = false, updatable = false, length = 128) private String providerId;
+    @Column(name = "status", nullable = false, updatable = false, length = 16) private String status;
+    @Column(name = "opened_at", nullable = false, updatable = false) private Instant openedAt;
+    @Column(name = "closed_at", updatable = false) private Instant closedAt;
+    @Column(name = "merged_at", updatable = false) private Instant mergedAt;
+    @Column(name = "review_count", nullable = false, updatable = false) private int reviewCount;
+
+    protected RepositoryPullRequestJpaEntity() {}
+    RepositoryPullRequestJpaEntity(UUID snapshotId, RepositoryPullRequest value) {
+        id = UUID.randomUUID(); this.snapshotId = snapshotId; providerId = value.providerPullRequestId();
+        status = value.status(); openedAt = value.openedAt(); closedAt = value.closedAt();
+        mergedAt = value.mergedAt(); reviewCount = value.reviewCount();
+    }
+    RepositoryPullRequest toDomain() {
+        return new RepositoryPullRequest(providerId, status, openedAt, closedAt, mergedAt, reviewCount);
+    }
+}
+
+@Entity
+@Table(name = "repository_issues")
+class RepositoryIssueJpaEntity {
+    @Id @Column(name = "issue_record_id") private UUID id;
+    @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
+    @Column(name = "provider_issue_id", nullable = false, updatable = false, length = 128) private String providerId;
+    @Column(name = "status", nullable = false, updatable = false, length = 16) private String status;
+    @Column(name = "labels_text", nullable = false, updatable = false) private String labelsText;
+    @Column(name = "opened_at", nullable = false, updatable = false) private Instant openedAt;
+    @Column(name = "closed_at", updatable = false) private Instant closedAt;
+
+    protected RepositoryIssueJpaEntity() {}
+    RepositoryIssueJpaEntity(UUID snapshotId, RepositoryIssue value) {
+        id = UUID.randomUUID(); this.snapshotId = snapshotId; providerId = value.providerIssueId();
+        status = value.status(); labelsText = String.join("\n", value.labels());
+        openedAt = value.openedAt(); closedAt = value.closedAt();
+    }
+    RepositoryIssue toDomain() {
+        return new RepositoryIssue(providerId, status,
+            labelsText.isBlank() ? List.of() : List.of(labelsText.split("\\n", -1)), openedAt, closedAt);
+    }
+}
+
+@Entity
+@Table(name = "repository_documents")
+class RepositoryDocumentJpaEntity {
+    @Id @Column(name = "repository_document_id") private UUID id;
+    @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
+    @Column(name = "document_type", nullable = false, updatable = false, length = 32) private String documentType;
+    @Column(name = "normalized_path", nullable = false, updatable = false, length = 1000) private String path;
+    @Column(name = "content_hash", nullable = false, updatable = false, length = 64) private String contentHash;
+    @Column(name = "byte_size", nullable = false, updatable = false) private long byteSize;
+    @Column(name = "quality_signals", nullable = false, updatable = false, length = 255) private String qualitySignals;
+
+    protected RepositoryDocumentJpaEntity() {}
+    RepositoryDocumentJpaEntity(UUID snapshotId, RepositoryDocument value) {
+        id = UUID.randomUUID(); this.snapshotId = snapshotId; documentType = value.documentType(); path = value.path();
+        contentHash = value.contentHash(); byteSize = value.byteSize(); qualitySignals = String.join(",", value.qualitySignals());
+    }
+    RepositoryDocument toDomain() {
+        return new RepositoryDocument(documentType, path, contentHash, byteSize,
+            qualitySignals.isBlank() ? List.of() : List.of(qualitySignals.split(",", -1)));
+    }
 }

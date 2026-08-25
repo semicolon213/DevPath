@@ -41,7 +41,7 @@ public class EncryptedProviderCredentialStore {
         EncryptedSecret refresh = refreshToken == null
             ? null
             : cipher.encrypt(refreshToken, context(userId, "refresh"));
-        var existing = repository.findByUserIdAndProviderAndStatus(userId, PROVIDER, "ACTIVE");
+        var existing = repository.findByUserIdAndProvider(userId, PROVIDER);
         ProviderCredentialJpaEntity entity;
         if (existing.isPresent()) {
             entity = existing.get();
@@ -70,15 +70,25 @@ public class EncryptedProviderCredentialStore {
     }
 
     @Transactional
-    public Optional<StoredProviderCredential> removeActive(UUID userId) {
+    public Optional<StoredProviderCredential> revokeActive(UUID userId, Instant now) {
+        return deactivateActive(userId, "REVOKED", now);
+    }
+
+    @Transactional
+    public Optional<StoredProviderCredential> expireActive(UUID userId, Instant now) {
+        return deactivateActive(userId, "EXPIRED", now);
+    }
+
+    private Optional<StoredProviderCredential> deactivateActive(UUID userId, String status, Instant now) {
         Optional<ProviderCredentialJpaEntity> entity =
             repository.findByUserIdAndProviderAndStatus(userId, PROVIDER, "ACTIVE");
         if (entity.isEmpty()) {
             return Optional.empty();
         }
         StoredProviderCredential credential = decrypt(entity.get());
-        repository.delete(entity.get());
-        repository.flush();
+        EncryptedSecret discarded = cipher().encrypt(UUID.randomUUID().toString(), context(userId, "access"));
+        entity.get().deactivate(status, discarded.ciphertext(), discarded.iv(), discarded.keyVersion(), now);
+        repository.saveAndFlush(entity.get());
         return Optional.of(credential);
     }
 

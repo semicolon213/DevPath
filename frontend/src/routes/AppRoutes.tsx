@@ -6,12 +6,23 @@ import { RepositoryDetailPage } from "../pages/RepositoryDetailPage";
 import { SkillsPage } from "../pages/SkillsPage";
 import { AnalysesPage } from "../pages/AnalysesPage";
 import { AnalysisDetailPage } from "../pages/AnalysisDetailPage";
+import { AnalysisComparisonPage } from "../pages/AnalysisComparisonPage";
+import { SkillMatrixComparisonPage } from "../pages/SkillMatrixComparisonPage";
+import { SkillDetailPage } from "../pages/SkillDetailPage";
 import { CareersPage } from "../pages/CareersPage";
 import { CareerDetailPage } from "../pages/CareerDetailPage";
 import { CompaniesPage } from "../pages/CompaniesPage";
 import { CompanyDetailPage } from "../pages/CompanyDetailPage";
 import { DashboardPage } from "../pages/DashboardPage";
 import { CareerReadinessPage } from "../pages/CareerReadinessPage";
+import { CareerReadinessDetailPage } from "../pages/CareerReadinessDetailPage";
 import { LearningRoadmapPage } from "../pages/LearningRoadmapPage";
-export function AppRoutes(){return <Routes><Route path="/" element={<HomePage/>}/><Route path="/dashboard" element={<DashboardPage/>}/><Route path="/repositories" element={<RepositoriesPage/>}/><Route path="/repositories/:repositoryId" element={<RepositoryDetailPage/>}/><Route path="/skills" element={<SkillsPage/>}/><Route path="/career-readiness" element={<CareerReadinessPage/>}/><Route path="/roadmap" element={<LearningRoadmapPage/>}/><Route path="/analyses" element={<AnalysesPage/>}/><Route path="/analyses/:analysisId" element={<AnalysisDetailPage/>}/><Route path="/careers" element={<CareersPage/>}/><Route path="/careers/:careerId" element={<CareerDetailPage/>}/><Route path="/companies" element={<CompaniesPage/>}/><Route path="/companies/:id" element={<CompanyDetailPage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes>}
+import { RecommendationsPage } from "../pages/RecommendationsPage";
+import { RecommendationDetailPage } from "../pages/RecommendationDetailPage";
+import { OnboardingPage } from "../pages/OnboardingPage";
+import { SettingsPage } from "../pages/SettingsPage";
+import { ProfileSettingsPage } from "../pages/ProfileSettingsPage";
+import { IntegrationSettingsPage } from "../pages/IntegrationSettingsPage";
+import { RouteAccessibility } from "../shared/ui/RouteAccessibility";
+export function AppRoutes(){return <><RouteAccessibility/><Routes><Route path="/" element={<HomePage/>}/><Route path="/onboarding" element={<OnboardingPage/>}/><Route path="/settings" element={<SettingsPage/>}/><Route path="/settings/profile" element={<ProfileSettingsPage/>}/><Route path="/settings/integrations" element={<IntegrationSettingsPage/>}/><Route path="/dashboard" element={<DashboardPage/>}/><Route path="/repositories" element={<RepositoriesPage/>}/><Route path="/repositories/:repositoryId" element={<RepositoryDetailPage/>}/><Route path="/skills" element={<SkillsPage/>}/><Route path="/skills/compare" element={<SkillMatrixComparisonPage/>}/><Route path="/skills/:skillId" element={<SkillDetailPage/>}/><Route path="/career-readiness" element={<CareerReadinessPage/>}/><Route path="/career-readiness/:careerReadinessId" element={<CareerReadinessDetailPage/>}/><Route path="/recommendations" element={<RecommendationsPage/>}/><Route path="/recommendations/:recommendationId" element={<RecommendationDetailPage/>}/><Route path="/roadmap" element={<LearningRoadmapPage/>}/><Route path="/analyses" element={<AnalysesPage/>}/><Route path="/analyses/compare" element={<AnalysisComparisonPage/>}/><Route path="/analyses/:analysisId" element={<AnalysisDetailPage/>}/><Route path="/careers" element={<CareersPage/>}/><Route path="/careers/:careerId" element={<CareerDetailPage/>}/><Route path="/companies" element={<CompaniesPage/>}/><Route path="/companies/:id" element={<CompanyDetailPage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></>}
 export function HomeLink(){return <Link to="/">DevPath 홈으로 돌아가기</Link>}

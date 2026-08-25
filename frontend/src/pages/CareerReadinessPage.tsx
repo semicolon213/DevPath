@@ -32,7 +32,7 @@ function GapCard({ gap }: { gap: SkillGap }) {
     <div><span>{categoryLabel(gap.category)}</span><strong>{gapStateLabel(gap.gapState)}</strong></div>
     <p><b>{formatScore(gap.actualScore)}</b> / 기대 최소 {formatScore(gap.expectedMinimum)}</p>
     <progress max="100" value={gap.actualScore}>{gap.actualScore}점</progress>
-    <small>직무 가중치 {formatScore(gap.careerWeight)}% · 근거 {gap.evidenceIds.length}개</small>
+    <small>직무 가중치 {formatScore(gap.careerWeight)}% · 근거 {gap.evidenceIds.length}개</small><Link to={`/skills/${gap.skillId}`}>기술 평가와 증거 보기</Link>
   </article>;
 }
 

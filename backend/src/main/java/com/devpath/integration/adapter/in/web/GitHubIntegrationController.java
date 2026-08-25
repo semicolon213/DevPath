@@ -124,7 +124,8 @@ public class GitHubIntegrationController {
     }
 
     private void redirect(HttpServletResponse response, String result) throws IOException {
-        response.sendRedirect(security.frontendOrigin().replaceAll("/$", "") + "/?githubConnection=" + result);
+        response.sendRedirect(security.frontendOrigin().replaceAll("/$", "")
+            + "/settings/integrations?githubConnection=" + result);
     }
 
     public record OAuthAuthorizationView(String authorizationUrl) {}

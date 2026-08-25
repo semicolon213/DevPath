@@ -52,6 +52,9 @@ export type RepositorySnapshot = {
   contentHash: string;
   branchCount: number;
   commitCount: number;
+  pullRequestCount: number;
+  issueCount: number;
+  documentCount: number;
 };
 
 export type DetectedTechnology = {
@@ -84,7 +87,7 @@ export type EvidenceSignal = {
 };
 
 export type EvidenceCategory = {
-  category: "ARCHITECTURE" | "DATABASE" | "TESTING" | "DEVOPS" | "DOCUMENTATION" | "ACTIVITY";
+  category: "ARCHITECTURE" | "DATABASE" | "TESTING" | "DEVOPS" | "DOCUMENTATION" | "COLLABORATION" | "ACTIVITY";
   label: string;
   signals: EvidenceSignal[];
 };

@@ -68,8 +68,17 @@ class AnalysisApplicationServiceTest {
         AnalysisHistoryView history = service.listHistory(userId, 20, null);
         assertThat(history.totalCount()).isEqualTo(1);
         assertThat(history.analyses()).extracting(AnalysisHistoryItemView::analysisId).containsExactly(analysisId);
+        UUID previousId=UUID.randomUUID();
+        persistence.results.add(new CompletedAnalysis(previousId,UUID.randomUUID(),userId,repositoryId,UUID.randomUUID(),
+            UUID.randomUUID(),UUID.randomUUID(),"REPOSITORY_BASELINE",NOW.minusSeconds(60)));
+        AnalysisComparisonView comparison=service.compare(userId,List.of(previousId,analysisId));
+        assertThat(comparison.analyses()).extracting(AnalysisHistoryItemView::analysisId)
+            .containsExactly(previousId,analysisId);
+        assertThatThrownBy(()->service.compare(userId,List.of(analysisId,analysisId)))
+            .isInstanceOf(IllegalArgumentException.class);
         assertThat(persistence.auditEvents).containsExactly(
-            AnalysisAuditEvent.ANALYSIS_RESULT_VIEWED, AnalysisAuditEvent.ANALYSIS_HISTORY_VIEWED
+            AnalysisAuditEvent.ANALYSIS_RESULT_VIEWED, AnalysisAuditEvent.ANALYSIS_HISTORY_VIEWED,
+            AnalysisAuditEvent.ANALYSES_COMPARED
         );
     }
 
@@ -114,6 +123,11 @@ class AnalysisApplicationServiceTest {
             return jobs.stream().filter(job -> job.status() == AnalysisJobStatus.QUEUED
                 && !job.nextAttemptAt().isAfter(now)).findFirst();
         }
+        public List<AnalysisJob> findRecentJobsByOwner(UUID userId, int limit) {
+            return jobs.stream().filter(job -> job.userId().equals(userId))
+                .sorted(java.util.Comparator.comparing(AnalysisJob::submittedAt).reversed())
+                .limit(limit).toList();
+        }
         public Optional<CompletedAnalysis> findReusableResult(UUID userId, UUID snapshotId, String scope) {
             return results.stream().filter(value -> value.userId().equals(userId) && value.snapshotId().equals(snapshotId)
                 && value.analysisScope().equals(scope)).findFirst();
@@ -138,6 +152,10 @@ class AnalysisApplicationServiceTest {
         ) {
             return results.stream().filter(value -> value.userId().equals(userId)
                 && value.repositoryId().equals(repositoryId)).map(this::history).toList();
+        }
+        public List<AnalysisHistoryItemView> findHistoryByOwnerAndIds(UUID userId,List<UUID> analysisIds) {
+            return results.stream().filter(value->value.userId().equals(userId)&&analysisIds.contains(value.id()))
+                .map(this::history).toList();
         }
         public long countHistoryByOwner(UUID userId) {
             return results.stream().filter(value -> value.userId().equals(userId)).count();

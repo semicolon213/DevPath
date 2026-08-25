@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.List;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -103,6 +104,21 @@ public class AnalysisApplicationService {
         AnalysisHistoryView history = history(analyses, page, total);
         audit.record(AnalysisAuditEvent.ANALYSIS_HISTORY_VIEWED, userId, repositoryId.toString(), clock.instant());
         return history;
+    }
+
+    @Transactional
+    public AnalysisComparisonView compare(UUID userId, List<UUID> analysisIds) {
+        if (analysisIds == null || analysisIds.size() != 2 || analysisIds.get(0).equals(analysisIds.get(1))) {
+            throw new IllegalArgumentException("Exactly two distinct analyses are required");
+        }
+        var owned = persistence.findHistoryByOwnerAndIds(userId, analysisIds);
+        if (owned.size() != 2) throw new AnalysisNotFoundException();
+        var byId = owned.stream().collect(java.util.stream.Collectors.toMap(AnalysisHistoryItemView::analysisId, item -> item));
+        var ordered = analysisIds.stream().map(byId::get).toList();
+        if (ordered.stream().anyMatch(java.util.Objects::isNull)) throw new AnalysisNotFoundException();
+        audit.record(AnalysisAuditEvent.ANALYSES_COMPARED, userId,
+            analysisIds.get(0) + ":" + analysisIds.get(1), clock.instant());
+        return new AnalysisComparisonView(ordered);
     }
 
     @Transactional

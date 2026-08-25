@@ -20,7 +20,7 @@ class ProviderConnectionApplicationServiceTest {
             UUID.randomUUID(), "GITHUB", "ACTIVE", List.of("repo"),
             Instant.parse("2026-08-11T00:00:00Z"), null
         );
-        when(port.findActiveByUserId(userId)).thenReturn(List.of(connection));
+        when(port.findByUserId(userId)).thenReturn(List.of(connection));
 
         var result = new ProviderConnectionApplicationService(
             port,
@@ -31,20 +31,41 @@ class ProviderConnectionApplicationServiceTest {
     }
 
     @Test
-    void hidesCredentialsThatHaveExpiredEvenBeforeStatusCleanupRuns() {
+    void exposesExpiredCredentialsAsRecoverableWithoutExposingScopes() {
         UUID userId = UUID.randomUUID();
         var port = mock(ProviderCredentialSummaryPort.class);
         var expired = new ConnectedAccountView(
             UUID.randomUUID(), "GITHUB", "ACTIVE", List.of("repo"),
             Instant.parse("2026-08-10T00:00:00Z"), Instant.parse("2026-08-11T00:00:00Z")
         );
-        when(port.findActiveByUserId(userId)).thenReturn(List.of(expired));
+        when(port.findByUserId(userId)).thenReturn(List.of(expired));
 
         var result = new ProviderConnectionApplicationService(
             port,
             Clock.fixed(Instant.parse("2026-08-11T01:00:00Z"), ZoneOffset.UTC)
         ).listFor(userId);
 
-        assertThat(result.connections()).isEmpty();
+        assertThat(result.connections()).singleElement().satisfies(connection -> {
+            assertThat(connection.status()).isEqualTo("EXPIRED");
+            assertThat(connection.scopes()).isEmpty();
+        });
+    }
+
+    @Test
+    void preservesARevokedConnectionAsRecoverableHistory() {
+        UUID userId = UUID.randomUUID();
+        var port = mock(ProviderCredentialSummaryPort.class);
+        var revoked = new ConnectedAccountView(
+            UUID.randomUUID(), "GITHUB", "REVOKED", List.of(),
+            Instant.parse("2026-08-10T00:00:00Z"), Instant.parse("2026-08-11T00:00:00Z")
+        );
+        when(port.findByUserId(userId)).thenReturn(List.of(revoked));
+
+        var result = new ProviderConnectionApplicationService(
+            port,
+            Clock.fixed(Instant.parse("2026-08-11T01:00:00Z"), ZoneOffset.UTC)
+        ).listFor(userId);
+
+        assertThat(result.connections()).containsExactly(revoked);
     }
 }

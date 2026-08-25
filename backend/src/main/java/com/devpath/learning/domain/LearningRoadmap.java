@@ -21,4 +21,9 @@ public record LearningRoadmap(
     public LearningRoadmap {
         milestones = List.copyOf(milestones); steps = List.copyOf(steps);
     }
+
+    public LearningRoadmap archive(Instant now) {
+        return new LearningRoadmap(roadmapId, userId, recommendationSetId, policyId, policyVersion, "ARCHIVED",
+            progressPercent, milestones, steps, generatedAt, now);
+    }
 }

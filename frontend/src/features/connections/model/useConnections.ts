@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { authorizeGitHub, disconnectGitHub, getConnections, getGitHubRepositories } from "../api/connectionApi";
+import { ApiError } from "../../../shared/api/apiClient";
 
 export const connectionsKey = ["identity", "connections"] as const;
 
@@ -15,7 +16,8 @@ export function useGitHubRepositories(enabled: boolean) {
   return useQuery({
     queryKey: ["integration", "github", "repositories"],
     queryFn: getGitHubRepositories,
-    enabled
+    enabled,
+    retry: (failureCount, error) => !(error instanceof ApiError && error.status === 429) && failureCount < 2
   });
 }
 

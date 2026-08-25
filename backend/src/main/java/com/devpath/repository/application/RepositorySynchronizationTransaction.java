@@ -8,6 +8,9 @@ import com.devpath.repository.domain.RepositoryDependency;
 import com.devpath.repository.domain.RepositoryFile;
 import com.devpath.repository.domain.RepositoryLifecycle;
 import com.devpath.repository.domain.RepositoryLanguage;
+import com.devpath.repository.domain.RepositoryPullRequest;
+import com.devpath.repository.domain.RepositoryIssue;
+import com.devpath.repository.domain.RepositoryDocument;
 import com.devpath.repository.domain.RepositorySnapshot;
 import com.devpath.repository.domain.RepositorySyncJob;
 import com.devpath.repository.domain.RepositorySyncJobStatus;
@@ -158,9 +161,19 @@ class RepositorySynchronizationTransaction {
         var files = collected.files().stream()
             .map(value -> RepositoryFile.normalized(value.path(), value.blobSha(), value.byteSize()))
             .toList();
+        var pullRequests = collected.pullRequests().stream().map(value -> new RepositoryPullRequest(
+            value.providerPullRequestId(), value.status(), value.openedAt(), value.closedAt(),
+            value.mergedAt(), value.reviewCount()
+        )).toList();
+        var issues = collected.issues().stream().map(value -> new RepositoryIssue(
+            value.providerIssueId(), value.status(), value.labels(), value.openedAt(), value.closedAt()
+        )).toList();
+        var documents = collected.documents().stream().map(value -> new RepositoryDocument(
+            value.documentType(), value.path(), value.contentHash(), value.byteSize(), value.qualitySignals()
+        )).toList();
         RepositorySnapshot snapshot = synchronization.saveSnapshot(RepositorySnapshot.ready(
             currentRepository.id(), currentRepository.userId(), collected.sourceRevision(), now,
-            branches, commits, languages, dependencies, files
+            branches, commits, languages, dependencies, files, pullRequests, issues, documents
         ));
         repositories.save(currentRepository.markSynchronized(snapshot.id(), now));
         synchronization.saveJob(current.succeed(snapshot.id(), now));
@@ -187,6 +200,17 @@ class RepositorySynchronizationTransaction {
                 "REPOSITORY", item.repository().id(), "RepositorySynchronizationFailed",
                 "{\"jobId\":\"" + item.job().id() + "\",\"errorCode\":\"" + errorCode + "\"}", now
             );
+            audit.record(RepositoryAuditEvent.REPOSITORY_SYNC_FAILED, item.job().userId(), item.repository().id(), now);
+        }
+    }
+
+    @Transactional
+    void rateLimited(RepositorySyncWorkItem item, Instant retryAt, Instant now) {
+        RepositorySyncJob current = synchronization.findByIdAndOwner(item.job().id(), item.job().userId())
+            .orElseThrow(RepositoryNotFoundException::new);
+        RepositorySyncJob waitingOrFailed = current.waitForRateLimit(retryAt, now);
+        synchronization.saveJob(waitingOrFailed);
+        if (waitingOrFailed.status() == RepositorySyncJobStatus.FAILED) {
             audit.record(RepositoryAuditEvent.REPOSITORY_SYNC_FAILED, item.job().userId(), item.repository().id(), now);
         }
     }

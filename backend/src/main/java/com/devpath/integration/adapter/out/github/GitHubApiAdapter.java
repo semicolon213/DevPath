@@ -8,6 +8,7 @@ import com.devpath.integration.application.GitHubConnectionNotFoundException;
 import com.devpath.integration.application.GitHubInstallationRequiredException;
 import com.devpath.integration.application.GitHubIntegrationUnavailableException;
 import com.devpath.integration.application.GitHubPermissionChangedException;
+import com.devpath.integration.application.GitHubRateLimitExceededException;
 import com.devpath.integration.application.GitHubRepositoryListView;
 import com.devpath.integration.application.GitHubBranchFact;
 import com.devpath.integration.application.GitHubCommitFact;
@@ -16,6 +17,9 @@ import com.devpath.integration.application.GitHubFileFact;
 import com.devpath.integration.application.GitHubLanguageFact;
 import com.devpath.integration.application.GitHubRepositorySnapshot;
 import com.devpath.integration.application.GitHubRepositoryView;
+import com.devpath.integration.application.GitHubPullRequestFact;
+import com.devpath.integration.application.GitHubIssueFact;
+import com.devpath.integration.application.GitHubDocumentFact;
 import com.devpath.integration.application.IntegrationAuditEvent;
 import com.devpath.integration.application.IntegrationAuditPort;
 import com.devpath.integration.config.GitHubIntegrationProperties;
@@ -36,6 +40,9 @@ import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.time.OffsetDateTime;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
@@ -52,6 +59,9 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
     private static final int MAX_PAGE_COUNT = 100;
     private static final int MAX_MANIFEST_COUNT = 50;
     private static final int MAX_FILE_COUNT = 20_000;
+    private static final int MAX_PULL_REQUEST_COUNT = 100;
+    private static final int MAX_ISSUE_COUNT = 1_000;
+    private static final int MAX_REVIEW_PAGE_COUNT = 10;
     private static final long MAX_MANIFEST_BYTES = 1_000_000;
     private static final Pattern GRADLE_DEPENDENCY = Pattern.compile(
         "(?m)^\\s*(implementation|api|runtimeOnly|testImplementation|testRuntimeOnly|classpath)\\s*(?:\\(|\\s)\\s*['\\\"]([^'\\\"]+)['\\\"]"
@@ -140,8 +150,17 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
                 .sorted(Comparator.comparing(GitHubRepositoryView::fullName, String.CASE_INSENSITIVE_ORDER))
                 .toList());
         } catch (GitHubPermissionChangedException exception) {
+            credentials.revokeActive(userId, now);
             audit.record(
                 IntegrationAuditEvent.GITHUB_PERMISSION_CHANGED,
+                userId,
+                credential.connectionId().toString(),
+                now
+            );
+            throw exception;
+        } catch (GitHubRateLimitExceededException exception) {
+            audit.record(
+                IntegrationAuditEvent.GITHUB_RATE_LIMITED,
                 userId,
                 credential.connectionId().toString(),
                 now
@@ -175,10 +194,24 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
                 .orElseGet(() -> commits.isEmpty() ? "0000000000000000000000000000000000000000" : commits.get(0).sha());
             List<GitHubFileFact> files = listFiles(providerRepositoryId, sourceRevision, credential.accessToken());
             List<GitHubDependencyFact> dependencies = listDependencies(providerRepositoryId, files, credential.accessToken());
-            return new GitHubRepositorySnapshot(sourceRevision, branches, commits, languages, dependencies, files);
+            List<GitHubPullRequestFact> pullRequests = listPullRequests(providerRepositoryId, credential.accessToken());
+            List<GitHubIssueFact> issues = listIssues(providerRepositoryId, credential.accessToken());
+            List<GitHubDocumentFact> documents = listDocuments(providerRepositoryId, files, credential.accessToken());
+            return new GitHubRepositorySnapshot(
+                sourceRevision, branches, commits, languages, dependencies, files, pullRequests, issues, documents
+            );
         } catch (GitHubPermissionChangedException exception) {
+            credentials.revokeActive(userId, now);
             audit.record(
                 IntegrationAuditEvent.GITHUB_PERMISSION_CHANGED,
+                userId,
+                credential.connectionId().toString(),
+                now
+            );
+            throw exception;
+        } catch (GitHubRateLimitExceededException exception) {
+            audit.record(
+                IntegrationAuditEvent.GITHUB_RATE_LIMITED,
                 userId,
                 credential.connectionId().toString(),
                 now
@@ -190,7 +223,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
     @Override
     public ConnectedAccountView disconnect(UUID userId, Instant now) {
         requireConfigured();
-        StoredProviderCredential credential = credentials.removeActive(userId)
+        StoredProviderCredential credential = credentials.revokeActive(userId, now)
             .orElseThrow(GitHubConnectionNotFoundException::new);
         revokeAccessToken(credential.accessToken());
         return new ConnectedAccountView(
@@ -205,6 +238,13 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
         }
         if (credential.refreshToken() == null
             || (credential.refreshTokenExpiresAt() != null && !credential.refreshTokenExpiresAt().isAfter(now))) {
+            credentials.expireActive(credential.userId(), now);
+            audit.record(
+                IntegrationAuditEvent.GITHUB_TOKEN_REFRESH_FAILED,
+                credential.userId(),
+                credential.connectionId().toString(),
+                now
+            );
             throw new GitHubIntegrationUnavailableException("GitHub repository access must be reconnected");
         }
         var form = new LinkedMultiValueMap<String, String>();
@@ -274,12 +314,12 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
             }
             return response;
         } catch (RestClientResponseException exception) {
-            boolean rateLimited = exception.getStatusCode().value() == 403
-                && "0".equals(exception.getResponseHeaders() == null
-                    ? null
-                    : exception.getResponseHeaders().getFirst("X-RateLimit-Remaining"));
+            boolean rateLimited = isRateLimited(exception);
+            if (rateLimited) {
+                throw rateLimit(exception);
+            }
             if (exception.getStatusCode().value() == 404
-                || (exception.getStatusCode().value() == 403 && !rateLimited)) {
+                || exception.getStatusCode().value() == 403) {
                 throw new GitHubPermissionChangedException("GitHub permissions no longer allow this request", exception);
             }
             throw new GitHubIntegrationUnavailableException("GitHub API is unavailable", exception);
@@ -409,6 +449,128 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
             .toList();
     }
 
+    private List<GitHubPullRequestFact> listPullRequests(String repositoryId, String token) {
+        var collected = new ArrayList<GitHubPullRequest>();
+        for (int page = 1; page <= 2; page++) {
+            GitHubPullRequest[] response = get(
+                "https://api.github.com/repositories/" + repositoryId
+                    + "/pulls?state=all&sort=created&direction=desc&per_page=" + PAGE_SIZE + "&page=" + page,
+                token, GitHubPullRequest[].class
+            );
+            List<GitHubPullRequest> values = Arrays.asList(response);
+            if (collected.size() + values.size() > MAX_PULL_REQUEST_COUNT) {
+                throw new GitHubIntegrationUnavailableException("GitHub pull request result exceeds the safe collection limit");
+            }
+            collected.addAll(values);
+            if (values.size() < PAGE_SIZE) return collected.stream().map(value -> {
+                int reviewCount = countReviews(repositoryId, value.number(), token);
+                String status = value.mergedAt() != null ? "MERGED" : value.state().toUpperCase(java.util.Locale.ROOT);
+                return new GitHubPullRequestFact(
+                    Long.toString(value.id()), status, value.createdAt().toInstant(),
+                    instant(value.closedAt()), instant(value.mergedAt()), reviewCount
+                );
+            }).toList();
+        }
+        throw new GitHubIntegrationUnavailableException("GitHub pull request result exceeds the safe collection limit");
+    }
+
+    private int countReviews(String repositoryId, long pullRequestNumber, String token) {
+        int count = 0;
+        for (int page = 1; page <= MAX_REVIEW_PAGE_COUNT; page++) {
+            GitHubReview[] response = get(
+                "https://api.github.com/repositories/" + repositoryId + "/pulls/" + pullRequestNumber
+                    + "/reviews?per_page=" + PAGE_SIZE + "&page=" + page,
+                token, GitHubReview[].class
+            );
+            count += response.length;
+            if (response.length < PAGE_SIZE) return count;
+        }
+        throw new GitHubIntegrationUnavailableException("GitHub pull request review result exceeds the safe collection limit");
+    }
+
+    private List<GitHubIssueFact> listIssues(String repositoryId, String token) {
+        var result = new ArrayList<GitHubIssueFact>();
+        for (int page = 1; page <= MAX_PAGE_COUNT; page++) {
+            GitHubIssue[] response = get(
+                "https://api.github.com/repositories/" + repositoryId
+                    + "/issues?state=all&sort=created&direction=desc&per_page=" + PAGE_SIZE + "&page=" + page,
+                token, GitHubIssue[].class
+            );
+            List<GitHubIssue> values = Arrays.stream(response).filter(value -> value.pullRequest() == null).toList();
+            if (result.size() + values.size() > MAX_ISSUE_COUNT) {
+                throw new GitHubIntegrationUnavailableException("GitHub issue result exceeds the safe collection limit");
+            }
+            values.stream().map(value -> new GitHubIssueFact(
+                Long.toString(value.id()), value.state().toUpperCase(java.util.Locale.ROOT),
+                safe(value.labels()).stream().map(GitHubLabel::name).filter(java.util.Objects::nonNull).toList(),
+                value.createdAt().toInstant(), instant(value.closedAt())
+            )).forEach(result::add);
+            if (response.length < PAGE_SIZE) return List.copyOf(result);
+        }
+        throw new GitHubIntegrationUnavailableException("GitHub issue result exceeds the safe pagination limit");
+    }
+
+    private List<GitHubDocumentFact> listDocuments(
+        String repositoryId, List<GitHubFileFact> files, String token
+    ) {
+        return files.stream()
+            .filter(value -> !value.path().contains("/")
+                && value.path().toLowerCase(java.util.Locale.ROOT).startsWith("readme."))
+            .sorted(Comparator.comparing(GitHubFileFact::path, String.CASE_INSENSITIVE_ORDER))
+            .limit(1)
+            .map(value -> readDocument(repositoryId, value, token))
+            .flatMap(java.util.Optional::stream)
+            .toList();
+    }
+
+    private java.util.Optional<GitHubDocumentFact> readDocument(
+        String repositoryId, GitHubFileFact file, String token
+    ) {
+        byte[] content = decodeBlob(repositoryId, file, token);
+        if (content == null) return java.util.Optional.empty();
+        String text = new String(content, StandardCharsets.UTF_8).toLowerCase(java.util.Locale.ROOT);
+        List<String> signals = new ArrayList<>();
+        if (text.lines().anyMatch(line -> line.matches("^#{1,6}\\s+.+"))) signals.add("OVERVIEW");
+        if (containsHeading(text, "install", "setup", "getting started", "quickstart")) signals.add("SETUP");
+        if (containsHeading(text, "usage", "example", "how to use")) signals.add("USAGE");
+        if (containsHeading(text, "architecture", "design")) signals.add("ARCHITECTURE");
+        if (containsHeading(text, "test", "testing")) signals.add("TESTING");
+        if (containsHeading(text, "license", "licence")) signals.add("LICENSE");
+        return java.util.Optional.of(new GitHubDocumentFact(
+            "README", file.path(), sha256(content), content.length, signals
+        ));
+    }
+
+    private boolean containsHeading(String text, String... terms) {
+        return text.lines().map(String::trim).filter(line -> line.startsWith("#"))
+            .anyMatch(line -> Arrays.stream(terms).anyMatch(line::contains));
+    }
+
+    private byte[] decodeBlob(String repositoryId, GitHubFileFact entry, String token) {
+        GitHubBlob blob = get(
+            "https://api.github.com/repositories/" + repositoryId + "/git/blobs/" + entry.blobSha(), token, GitHubBlob.class
+        );
+        if (!"base64".equalsIgnoreCase(blob.encoding()) || blob.content() == null) return null;
+        try {
+            byte[] decoded = Base64.getMimeDecoder().decode(blob.content());
+            return decoded.length <= MAX_MANIFEST_BYTES ? decoded : null;
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    private Instant instant(OffsetDateTime value) {
+        return value == null ? null : value.toInstant();
+    }
+
+    private String sha256(byte[] content) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(content));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 is unavailable", exception);
+        }
+    }
+
     private boolean isSafePath(String path) {
         return path != null && !path.isBlank() && path.length() <= 1000
             && !path.startsWith("/") && !path.contains("../");
@@ -422,17 +584,8 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
     }
 
     private List<GitHubDependencyFact> parseManifest(String repositoryId, GitHubFileFact entry, String token) {
-        GitHubBlob blob = get(
-            "https://api.github.com/repositories/" + repositoryId + "/git/blobs/" + entry.blobSha(), token, GitHubBlob.class
-        );
-        if (!"base64".equalsIgnoreCase(blob.encoding()) || blob.content() == null) return List.of();
-        byte[] decoded;
-        try {
-            decoded = Base64.getMimeDecoder().decode(blob.content());
-        } catch (IllegalArgumentException exception) {
-            return List.of();
-        }
-        if (decoded.length > MAX_MANIFEST_BYTES) return List.of();
+        byte[] decoded = decodeBlob(repositoryId, entry, token);
+        if (decoded == null) return List.of();
         String content = new String(decoded, StandardCharsets.UTF_8);
         return entry.path().endsWith("package.json")
             ? parsePackageJson(entry.path(), content)
@@ -496,12 +649,12 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
             if (exception.getStatusCode().value() == 409) {
                 return new GitHubCommit[0];
             }
-            boolean rateLimited = exception.getStatusCode().value() == 403
-                && "0".equals(exception.getResponseHeaders() == null
-                    ? null
-                    : exception.getResponseHeaders().getFirst("X-RateLimit-Remaining"));
+            boolean rateLimited = isRateLimited(exception);
+            if (rateLimited) {
+                throw rateLimit(exception);
+            }
             if (exception.getStatusCode().value() == 404
-                || (exception.getStatusCode().value() == 403 && !rateLimited)) {
+                || exception.getStatusCode().value() == 403) {
                 throw new GitHubPermissionChangedException("GitHub permissions no longer allow this request", exception);
             }
             throw new GitHubIntegrationUnavailableException("GitHub API is unavailable", exception);
@@ -519,6 +672,48 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
             value.sha(), value.author() == null ? null : value.author().login(),
             value.commit().author().date().toInstant(), message
         );
+    }
+
+    private boolean isRateLimited(RestClientResponseException exception) {
+        return exception.getStatusCode().value() == 429
+            || (exception.getStatusCode().value() == 403
+                && "0".equals(header(exception, "X-RateLimit-Remaining")));
+    }
+
+    private GitHubRateLimitExceededException rateLimit(RestClientResponseException exception) {
+        return new GitHubRateLimitExceededException(
+            parseResetAt(header(exception, "X-RateLimit-Reset")),
+            parsePositiveLong(header(exception, "Retry-After")),
+            exception
+        );
+    }
+
+    private String header(RestClientResponseException exception, String name) {
+        return exception.getResponseHeaders() == null ? null : exception.getResponseHeaders().getFirst(name);
+    }
+
+    private Instant parseResetAt(String value) {
+        Long epochSeconds = parsePositiveLong(value);
+        if (epochSeconds == null) {
+            return null;
+        }
+        try {
+            return Instant.ofEpochSecond(epochSeconds);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
+    }
+
+    private Long parsePositiveLong(String value) {
+        if (value == null) {
+            return null;
+        }
+        try {
+            long parsed = Long.parseLong(value);
+            return parsed >= 0 ? parsed : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private void revokeAccessToken(String accessToken) {
@@ -589,4 +784,18 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
     private record GitHubTreeResponse(boolean truncated, List<GitHubTreeEntry> tree) {}
     private record GitHubTreeEntry(String path, String type, String sha, Long size) {}
     private record GitHubBlob(String encoding, String content) {}
+    private record GitHubPullRequest(
+        long id, long number, String state,
+        @JsonProperty("created_at") OffsetDateTime createdAt,
+        @JsonProperty("closed_at") OffsetDateTime closedAt,
+        @JsonProperty("merged_at") OffsetDateTime mergedAt
+    ) {}
+    private record GitHubReview(long id) {}
+    private record GitHubLabel(String name) {}
+    private record GitHubIssue(
+        long id, String state, List<GitHubLabel> labels,
+        @JsonProperty("created_at") OffsetDateTime createdAt,
+        @JsonProperty("closed_at") OffsetDateTime closedAt,
+        @JsonProperty("pull_request") JsonNode pullRequest
+    ) {}
 }

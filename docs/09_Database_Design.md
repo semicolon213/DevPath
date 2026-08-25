@@ -217,6 +217,12 @@ Identity profile implementation rules for the FR-006~FR-009 slice:
 | repository_file_entries | Stores bounded normalized GitHub file-tree metadata captured in a snapshot. | file_entry_id | snapshot_id | repository-relative path, blob hash, byte size, extractor version | Many immutable file entries belong to one snapshot | Snapshot-local immutable |
 | repository_documents | Stores repository document metadata. | repository_document_id | snapshot_id | document type, path, content hash, object content reference | May become KnowledgeDocument source | Captured, excluded, deleted by policy |
 
+The implemented `V20__create_repository_collaboration_and_document_schema.sql` realizes the snapshot-local
+`repository_pull_requests`, `repository_issues`, and `repository_documents` tables for FR-031~FR-036. Pull requests
+store normalized lifecycle timestamps and measured review counts; issues store normalized state and labels; README
+documents store path, SHA-256, byte size, and deterministic section-presence signals. Raw README content and the
+nullable object-content reference are intentionally not populated until ADR-029 is accepted.
+
 ### 5.3 Analysis and Rule Tables
 
 | Table | Purpose | Primary Key | Foreign Keys | Important Columns | Relationships | Lifecycle |
