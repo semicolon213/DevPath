@@ -1,4 +1,2 @@
-/**
- * Application boundary for career path use case orchestration.
- */
+@org.springframework.lang.NonNullApi
 package com.devpath.career.application;

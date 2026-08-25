@@ -29,7 +29,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       return (
         <main className="shell">
           <h1>DevPath</h1>
-          <p role="alert">The local application shell could not render.</p>
+          <p role="alert">화면을 표시하지 못했습니다. 페이지를 새로고침해 주세요.</p>
         </main>
       );
     }
@@ -37,4 +37,3 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     return this.props.children;
   }
 }
-

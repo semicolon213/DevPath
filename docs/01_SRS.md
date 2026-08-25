@@ -5237,6 +5237,20 @@ Each functional requirement below is atomic, uniquely identified, measurable, an
 - **Validation Rules:** Required identifiers shall be valid UUIDs or provider IDs; numeric measurements shall use configured ranges; text outputs shall satisfy schema, length, and safety constraints.
 - **Acceptance Criteria:** Given valid inputs, when admin audit logging is requested, then the system completes the operation within the defined SLA, records an audit event, and returns deterministic identifiers or measurable results.
 
+### FR-361 — Repository Archive and Restore
+
+- **Description:** The system shall allow an authenticated repository owner to archive an imported repository from active workspace views and restore a locally archived repository without deleting canonical metadata or immutable historical snapshots.
+- **Actors:** Authenticated Developer
+- **Preconditions:** The repository is registered in DevPath and belongs to the authenticated user.
+- **Trigger:** The owner requests repository archive or restore.
+- **Main Flow:** 1. Verify authenticated ownership before retrieval. 2. Apply the requested lifecycle transition. 3. Persist the updated lifecycle with optimistic concurrency control. 4. Record a durable audit event. 5. Return the canonical repository resource.
+- **Alternative Flow:** Repeating archive for an archived repository or restore for a non-archived repository returns the current resource without another state-change audit event. Archived repositories are excluded from the default list and included only when `includeArchived=true`.
+- **Exception Flow:** A missing or non-owned repository returns the same non-disclosing not-found response. A repository archived or deleted at the provider cannot be restored locally. Concurrent state changes return a conflict response.
+- **Postconditions:** Repository metadata and historical references remain intact; only the mutable repository lifecycle and update timestamp change.
+- **Business Rules:** Local archive is reversible and is distinct from provider archive or deletion. Archive and restore never initiate provider synchronization, analysis, scoring, or AI behavior.
+- **Validation Rules:** Repository identifiers shall be valid UUIDs. Restore is valid only when provider archive is false and the repository is not deleted externally.
+- **Acceptance Criteria:** Given an owned imported repository, archive and restore are owner-scoped, CSRF-protected, idempotent, auditable on actual state change, reproducible, and reflected in filtered list and detail responses.
+
 
 ## 7. Dedicated Rule Engine Requirements
 
@@ -5263,6 +5277,27 @@ Each functional requirement below is atomic, uniquely identified, measurable, an
 | CR-004 | Company-specific Rules | The engine shall apply company-specific weights and recommendation mappings. | Company weight version is traceable in readiness output. |
 | CR-005 | Skill Gap Analysis | The engine shall compare current skill matrix with target career and company expectations. | Gap report includes missing, weak, sufficient, and strong categories. |
 | CR-006 | Learning Roadmap | The engine shall generate a measurable learning roadmap from deterministic gaps and configured templates. | Roadmap includes milestones, priority, rationale, and completion criteria. |
+
+The approved MVP Career Readiness policy evaluates Backend and Frontend careers only; company readiness remains
+post-MVP. `readiness-v1` uses the current immutable Skill Matrix, a versioned career profile, and an approved versioned
+readiness policy. Every evaluated category expects a minimum score of 60. Category states are Missing at 0, Weak from
+1 through 39.99, Partial from 40 through 59.99, Sufficient from 60 through 79.99, and Strong from 80 through 100.
+Readiness score and confidence are separate career-weighted averages. Unsupported required input produces
+`INSUFFICIENT_EVIDENCE` and no readiness score. Gap ordering is state severity, then approved career weight descending,
+then category key. Recommendation priority remains outside this policy and belongs to CR-009 and later work.
+
+The approved MVP recommendation policy `recommendation-v1` evaluates Backend and Frontend career gaps only and does
+not apply company modifiers. It generates one structured recommendation for each Missing, Weak, or Partial category;
+Sufficient and Strong categories do not generate recommendations. Missing maps to Critical, Weak to High, and Partial
+to Medium. Low is reserved for future optional competencies. Ordering uses priority, configured prerequisite order,
+career weight descending, effort ascending, and category key. Recommendation types are Study for Language, Project for
+Framework, Database, Testing, and DevOps, Architecture for Architecture, and Portfolio for Documentation.
+
+The approved `roadmap-v1` orders Backend categories Language, Framework, Database, Architecture, Testing, DevOps and
+Frontend categories Language, Framework, Testing, Documentation. Completion requires a later official category score
+of at least 60 and the configured measurable evidence. Recommendation and roadmap results are immutable by readiness
+and policy version; only explicit user lifecycle state may change. AI explanation, company modifiers, and external
+course, book, or certification selection are excluded from this MVP policy.
 
 ## 9. AI Requirements
 

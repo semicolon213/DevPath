@@ -52,6 +52,11 @@ public final class User {
         }
     }
 
+    public void updateDisplayName(String displayName, Instant now) {
+        this.displayName = requireDisplayName(displayName);
+        this.updatedAt = Objects.requireNonNull(now, "Update time is required");
+    }
+
     public UserId id() {
         return id;
     }

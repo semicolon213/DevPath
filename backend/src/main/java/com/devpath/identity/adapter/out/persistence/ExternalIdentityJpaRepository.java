@@ -12,4 +12,6 @@ interface ExternalIdentityJpaRepository extends JpaRepository<ExternalIdentityJp
         OAuthProvider provider,
         String providerSubject
     );
+
+    Optional<ExternalIdentityJpaEntity> findByUserIdAndProvider(UUID userId, OAuthProvider provider);
 }

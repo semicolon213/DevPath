@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.devpath.identity.domain.AccountStatus;
 import com.devpath.identity.domain.OAuthProvider;
+import com.devpath.identity.domain.CareerStage;
+import com.devpath.identity.domain.PreferenceType;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -48,6 +50,12 @@ class IdentityPersistenceIntegrationTest {
     @Autowired
     private ExternalIdentityJpaRepository identities;
 
+    @Autowired
+    private UserProfileJpaRepository profiles;
+
+    @Autowired
+    private UserPreferenceJpaRepository preferences;
+
     @Test
     void flywayCreatesIdentityAndJdbcSessionTables() {
         Integer tableCount = jdbcTemplate.queryForObject(
@@ -55,12 +63,25 @@ class IdentityPersistenceIntegrationTest {
             SELECT COUNT(*)
             FROM information_schema.tables
             WHERE table_schema = 'public'
-              AND table_name IN ('users', 'external_identities', 'spring_session', 'spring_session_attributes')
+              AND table_name IN ('users', 'external_identities', 'spring_session', 'spring_session_attributes', 'user_profiles', 'user_preferences', 'provider_credentials', 'audit_records', 'repositories')
             """,
             Integer.class
         );
 
-        assertThat(tableCount).isEqualTo(4);
+        assertThat(tableCount).isEqualTo(9);
+
+        Integer refreshTokenColumnCount = jdbcTemplate.queryForObject(
+            """
+            SELECT COUNT(*)
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'provider_credentials'
+              AND column_name IN ('encrypted_refresh_token', 'refresh_token_iv', 'refresh_token_expires_at')
+            """,
+            Integer.class
+        );
+
+        assertThat(refreshTokenColumnCount).isEqualTo(3);
     }
 
     @Test
@@ -99,6 +120,20 @@ class IdentityPersistenceIntegrationTest {
         assertThat(restored.id()).isEqualTo(userId);
         assertThat(restored.status()).isEqualTo(AccountStatus.ACTIVE);
         assertThat(restored.displayName()).isEqualTo("DevPath User");
+    }
+
+    @Test
+    void profileAndActiveTargetConstraintsProtectUserState() {
+        UUID userId = UUID.randomUUID();
+        users.saveAndFlush(new UserJpaEntity(userId, AccountStatus.ACTIVE, "DevPath User", null, NOW, NOW, 0));
+        profiles.saveAndFlush(new UserProfileJpaEntity(UUID.randomUUID(), userId, CareerStage.JUNIOR, "Building APIs", NOW, NOW, 0));
+
+        assertThat(profiles.findByUserId(userId)).get().extracting(UserProfileJpaEntity::careerStage).isEqualTo(CareerStage.JUNIOR);
+
+        preferences.saveAndFlush(new UserPreferenceJpaEntity(UUID.randomUUID(), userId, PreferenceType.CAREER, "backend", "v1", true, NOW, null, 0));
+        assertThatThrownBy(() -> preferences.saveAndFlush(new UserPreferenceJpaEntity(
+            UUID.randomUUID(), userId, PreferenceType.CAREER, "frontend", "v1", true, NOW, null, 0
+        ))).isInstanceOf(DataIntegrityViolationException.class);
     }
 
     private ExternalIdentityJpaEntity identity(UUID identityId, UUID userId) {

@@ -157,7 +157,7 @@ ADRs use qualitative criteria, not unsupported numerical scoring.
 | ADR-024 | Persistence and ORM Approach | Data | Accepted | Blocking | Difficult to Reverse | Data/Backend | 00,08,09,11,15,17,19 | Accepted | ADR-003, ADR-020 | ADR-025 |
 | ADR-025 | Database Migration Tool | Data/Deployment | Accepted | Blocking | Reversible with Migration | Data/Ops | 00,09,11,15,16,17,19 | Accepted | ADR-020, ADR-024 | ADR-003 |
 | ADR-026 | Authentication and Session Model | Security | Accepted | Blocking | Difficult to Reverse | Security/Backend | 00,08,09,10,11,12,13,15,16,17,19 | Accepted | ADR-020, ADR-021 | ADR-005, ADR-034 |
-| ADR-027 | Background Job Technology | Backend/Deployment | Proposed | Blocking | Difficult to Reverse | Backend/Ops | 11,16 | Before job implementation | ADR-010, ADR-020, ADR-003 | ADR-004 |
+| ADR-027 | Background Job Technology | Backend/Deployment | Accepted | Blocking | Difficult to Reverse | Backend/Ops | 11,16 | Accepted | ADR-010, ADR-020, ADR-003 | ADR-004 |
 | ADR-028 | Vector Database | Data/AI | Proposed | Blocking | Difficult to Reverse | Knowledge/Data | 06,09,11,16 | Before knowledge implementation | ADR-003, ADR-014 | ADR-029 |
 | ADR-029 | Object Storage | Data/Deployment | Proposed | Blocking | Reversible with Migration | Ops/Data | 09,13,16 | Before artifact implementation | ADR-016 | ADR-014 |
 | ADR-030 | AI Provider SDK Strategy | AI/Integration | Proposed | Required Before MVP | Reversible with Migration | AI | 04,05,17 | Before AI adapter implementation | ADR-007, ADR-015 | ADR-006 |
@@ -834,14 +834,19 @@ ADRs use qualitative criteria, not unsupported numerical scoring.
 
 | Field | Entry |
 |---|---|
-| Status | Proposed |
+| Status | Accepted |
+| Decision Date / Last Review Date | 2026-08-11 / 2026-08-11 |
 | Owners / Reviewers | Backend/Ops / QA |
 | Problem Statement | Select persistent job technology. |
 | Considered Options | Database-backed job system; Redis-backed queue; dedicated broker; in-process executor; external workflow engine. |
 | Evaluation Criteria | Persistence, retries, idempotency, scheduling, local dev, operations, MVP fit, future scaling. |
 | Recommendation | DB-backed jobs/outbox first unless workload evidence justifies broker; in-memory-only not acceptable for critical work. |
+| Decision / Rationale | Use PostgreSQL-backed durable jobs and transactional outbox records first. Use the shared Spring Boot artifact with explicit worker enablement for MVP while preserving API/worker runtime separation from ADR-011. Do not add Redis, a broker, or an in-memory-only critical queue. |
+| Positive Consequences | Jobs survive API restarts, state transitions remain queryable, and local development uses the authoritative PostgreSQL store. |
+| Negative Consequences | PostgreSQL receives polling load and the worker requires careful claiming, retry, and cleanup behavior. |
+| Risks / Mitigations | Duplicate execution is controlled by owner-scoped idempotency keys, active-job uniqueness, pessimistic claiming, immutable snapshot writes, and terminal-state checks. |
 | Dependencies | ADR-010, ADR-020, ADR-003. |
-| Implementation May Proceed? | Job abstractions can be designed; concrete processing waits. |
+| Implementation May Proceed? | Yes. Repository synchronization is the first adopted job type. |
 
 ### 11.9 ADR-028: Vector Database
 
@@ -1094,7 +1099,7 @@ A decision is not fully adopted until affected documents are synchronized.
 | ADR-026 | Identity/API/frontend | OAuth login and application session | Blocking decision accepted; implementation pending | Authentication, session, CSRF, and isolation tests |
 | ADR-005 | API/frontend | Contract workflow | Accepted | Contract tests |
 | ADR-006/019 | Rule/Career | Deterministic tests | Accepted | Golden datasets |
-| ADR-010/027 | Workers/jobs | Queue/job technology | Blocking proposed | Job lifecycle tests |
+| ADR-010/027 | Workers/jobs | PostgreSQL-backed durable jobs and transactional outbox | Blocking accepted | Job lifecycle tests |
 | ADR-014/028 | Knowledge | Vector store/filtering | Blocking proposed | Retrieval auth tests |
 | ADR-015/030 | AI | Provider adapters/validators | MVP proposed | AI validation tests |
 | ADR-016/033/034 | Deployment | Platform/secrets | MVP proposed | Deployment smoke |
@@ -1134,7 +1139,7 @@ A decision is not fully adopted until affected documents are synchronized.
 | ADR-OI-003 | ADR-022 | Repo build/permission needs | Architecture | Before scaffolding | Layout churn | Monorepo accepted | Resolved |
 | ADR-OI-004 | ADR-024 | ORM/query complexity proof | Data | Before persistence | Mapping rework | JPA/Hibernate with explicit domain mapping accepted | Resolved |
 | ADR-OI-005 | ADR-026 | Session/token security tradeoff | Security | Before auth | Security rework | GitHub OAuth2 Login plus opaque server session accepted | Resolved |
-| ADR-OI-006 | ADR-027 | Queue persistence and retry needs | Backend/Ops | Before workers | Job migration | Persistent job abstraction | Open |
+| ADR-OI-006 | ADR-027 | Queue persistence and retry needs | Backend/Ops | Before workers | Job migration | PostgreSQL-backed durable jobs and transactional outbox | Resolved |
 | ADR-OI-007 | ADR-028 | Vector metadata filter proof | Knowledge | Before RAG | Re-index migration | Authorization metadata required | Open |
 | ADR-OI-008 | ADR-029 | Storage provider/cost | Ops | Before artifacts | Object migration | S3-compatible abstraction | Open |
 | ADR-OI-009 | ADR-031 | Telemetry backend budget | Ops | Before staging | Observability gaps | Open-standard signal model | Open |

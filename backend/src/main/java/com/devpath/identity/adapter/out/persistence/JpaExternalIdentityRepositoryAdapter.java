@@ -5,6 +5,7 @@ import com.devpath.identity.application.ExternalIdentityRepositoryPort;
 import com.devpath.identity.domain.ExternalIdentity;
 import com.devpath.identity.domain.OAuthProvider;
 import com.devpath.identity.domain.ProviderSubject;
+import com.devpath.identity.domain.UserId;
 
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Repository;
@@ -17,6 +18,12 @@ class JpaExternalIdentityRepositoryAdapter implements ExternalIdentityRepository
 
     JpaExternalIdentityRepositoryAdapter(ExternalIdentityJpaRepository repository) {
         this.repository = repository;
+    }
+
+    @Override
+    public Optional<ExternalIdentity> findByUserIdAndProvider(UserId userId, OAuthProvider provider) {
+        return repository.findByUserIdAndProvider(userId.value(), provider)
+            .map(IdentityPersistenceMapper::toDomain);
     }
 
     @Override

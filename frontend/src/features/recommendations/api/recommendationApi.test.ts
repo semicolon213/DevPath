@@ -1,0 +1,3 @@
+import {afterEach,describe,expect,it,vi} from "vitest";
+import {getActiveRoadmap,getCurrentRecommendations} from "./recommendationApi";
+describe("recommendationApi",()=>{afterEach(()=>vi.unstubAllGlobals());it("loads owner-scoped recommendation and roadmap resources",async()=>{const fetchMock=vi.fn((input:string|URL|Request)=>Promise.resolve(Response.json({data:String(input).includes("learning-roadmaps")?{roadmapId:"rm1"}:{recommendationSetId:"rs1"},metadata:{requestId:"r",apiVersion:"v1",timestamp:"2026-08-25T00:00:00Z"}})));vi.stubGlobal("fetch",fetchMock);expect((await getCurrentRecommendations()).recommendationSetId).toBe("rs1");expect((await getActiveRoadmap()).roadmapId).toBe("rm1");expect(fetchMock).toHaveBeenCalledTimes(2);});});

@@ -1,4 +1,2 @@
-/**
- * Domain boundary for repository analysis and analysis result concepts.
- */
+/** Deterministic analysis workflow state without framework dependencies. */
 package com.devpath.analysis.domain;

@@ -551,6 +551,45 @@ Overrides shall be explicit and traceable. An override may change:
 
 An override shall not change the identity of the underlying score without creating a new rule version.
 
+### 12.5 Implemented Repository Baselines
+
+The first implemented catalog is the immutable `REPOSITORY_BASELINE` rule set version `baseline-v1`.
+It requires extractor version `engineering-evidence-extractor-v1` and formula library `formula-v1`.
+The catalog is stored in PostgreSQL and loaded through the Rule Engine application port; the executor does not
+hardcode rule weights or thresholds.
+
+`formula-v1` provides three deterministic formulas:
+
+| Formula | Calculation |
+|---|---|
+| `PRESENCE` | `100` when normalized evidence is present, otherwise `0`. |
+| `COUNT_CAP` | `min(observed count / configured target, 1) * 100`. |
+| `PERCENTAGE` | The normalized input percentage, clamped to `0..100`. |
+
+The initial category weights are Language `0.25`, Framework `0.15`, Testing `0.25`, Documentation `0.20`, and
+Activity `0.15`. Rule-level weights and targets are defined by Flyway migration
+`V12__create_versioned_rule_catalog_schema.sql` and mirrored by the immutable golden fixture
+`fixtures/rule-engine/baseline-v1.json`. A value change requires a new rule-set version and regression fixture.
+
+This baseline scores only evidence currently available from immutable repository snapshots. It does not claim code
+coverage, README content completeness, collaboration maturity, career readiness, company readiness, or recommendation
+priority. Confidence is calculated separately as the weighted availability of required normalized evidence; a known
+absence may score zero without being treated as inaccessible evidence.
+
+The repository evidence read model may evolve independently when it adds non-scoring facts. `baseline-v1` remains
+immutable and reproducible with the exact `engineering-evidence-extractor-v1` fact set. The approved `baseline-v2`
+policy consumes `engineering-evidence-extractor-v2`, adds Database, Architecture, and DevOps, and uses category weights
+Language 15%, Framework 15%, Database 15%, Architecture 15%, Testing 15%, DevOps 10%, Documentation 10%, and Activity
+5%. Database rules weight technology declaration 20%, data-access dependency 20%, migrations 35%, and persistence
+configuration 25%. Architecture weights structured boundaries 50%, module layout 25%, and architecture documentation
+25%; hexagonal and layered boundaries are alternatives for the structured-boundary signal. DevOps weights container
+configuration 30%, CI 30%, infrastructure-as-code 20%, and deployment configuration 20%. Every v2 result records its
+extractor, mapper, formula-library, rule-set, and Skill Matrix policy versions.
+
+`baseline-v2` is the active catalog. Flyway migration `V18__create_baseline_v2_and_career_readiness_schema.sql`
+persists its exact weights and rules, while `fixtures/rule-engine/baseline-v2.json` provides the deterministic golden
+regression fixture. `baseline-v1` remains immutable with `SUPERSEDED` status for historical result reproduction.
+
 ## 13. Rule Versioning
 
 ### 13.1 Versioning Goals
@@ -688,6 +727,27 @@ The Skill Matrix is the Rule Engine output that translates measurable evidence i
 ### 16.4 Strength and Weakness Flags
 
 Strengths and weaknesses shall be derived from rule-configured thresholds. The Rule Engine shall not produce natural-language recommendations; it may produce structured flags and inputs.
+
+### 16.5 Implemented Skill Matrix Policies
+
+The first implemented policy is `skill-matrix-v1`, bound immutably to RuleSetVersion `baseline-v1`. It maps the
+Language, Framework, Testing, Documentation, and Activity category scores one-to-one to stable skill definitions.
+It copies the authoritative category score and confidence without recalculation. Level thresholds are persisted as
+`NONE = 0`, `BEGINNER = 1..39.99`, `DEVELOPING = 40..59.99`, `COMPETENT = 60..79.99`, and
+`STRONG = 80..100`. The configured strength threshold is `80` and weakness maximum is `39.99`.
+
+Every assessment references its aggregate evaluation/category result and includes available normalized Evidence IDs
+and contributing Repository IDs. Until multiple comparable historical matrices exist, growth trend is explicitly
+`UNAVAILABLE`. Recommendation inputs are bounded structured facts only; this policy does not calculate recommendation
+priority or produce coaching text. Any mapping or threshold change requires a new Skill Matrix policy version.
+
+After a completed RuleEvaluation is persisted, the application orchestration invokes Skill Matrix generation in the
+same deterministic workflow. Both Evaluation persistence and Skill Matrix generation are idempotent by their immutable
+input basis, so repeating the same evaluation reuses the existing result and matrix. This connection does not introduce
+an analysis job runtime or imply that repository synchronization itself is an analysis request.
+
+The active `skill-matrix-v2` policy is bound to `baseline-v2` and adds one-to-one Database, Architecture, and DevOps
+skills without changing the approved level thresholds. Historical `skill-matrix-v1` matrices remain reproducible.
 
 ## 17. Output Models
 

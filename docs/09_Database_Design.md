@@ -185,12 +185,22 @@ Logical schemas group tables by ownership and access patterns. Schema names are 
 | Table | Purpose | Primary Key | Foreign Keys | Important Columns | Relationships | Lifecycle |
 |---|---|---|---|---|---|---|
 | users | Stores DevPath account identity. | user_id | None | account status, role, registration time, deletion state | One user owns external accounts, settings, profiles, and user-owned records | Registered to deleted/anonymized |
+| user_profiles | Stores the one-to-one editable developer profile. | profile_id | user_id | career_stage, bio, created_at, updated_at, version | One profile belongs to one user; user_id is unique | Created with user, updated, deleted with user |
 | external_accounts | Stores provider account linkage metadata. | external_account_id | user_id | provider, provider subject/account reference, connection status, scope summary | Many external accounts may belong to one user; provider plus provider subject is unique under supported policy | Connected, revoked, disconnected |
 | provider_credentials | Stores encrypted provider API authorization material and rotation metadata. | provider_credential_id | user_id, external_account_id or workspace reference | provider, encrypted credential reference/material, scopes, expiry, key version, revocation state | One active credential set belongs to one authorized provider connection | Active, expired, revoked, deleted |
 | application_sessions | Stores JDBC-backed opaque application-session state for MVP. | session identifier | user_id through authenticated principal relationship | creation, last activity, idle/absolute expiry, revocation and security metadata | Many active sessions may belong to one user; sessions do not own identity | Active, expired, revoked, deleted |
 | user_consents | Stores user consent decisions. | consent_id | user_id | consent type, consent version, granted time, revoked time | Many consent records belong to one user | Granted, revoked, expired |
 | user_settings | Stores configurable user preferences. | setting_id | user_id | setting type, setting value, updated time | Many settings belong to one user | Active, updated, deleted |
 | user_preferences | Stores target career and company selections. | preference_id | user_id, career_id, company_id where applicable | preference type, selected value, active flag, selected time | User has active career preference and optional company preference | Active, superseded |
+
+Identity profile implementation rules for the FR-006~FR-009 slice:
+
+- `career_stage` is nullable and accepts `STUDENT`, `ENTRY_LEVEL`, `JUNIOR`, `MID_LEVEL`, or `SENIOR`.
+- `bio` is nullable and limited to 1,000 characters; blank input is normalized to null.
+- `user_preferences.preference_type` is `CAREER` or `COMPANY`; `selected_value` is a lowercase stable catalog slug limited to 64 characters and `catalog_version` records the exact target catalog used for validation.
+- A partial unique index enforces at most one active preference per `(user_id, preference_type)` while superseded rows remain immutable history except for supersession metadata.
+- Active v1 career slugs are `backend`, `frontend`, `ai-engineer`, `devops`, `security`, `game`, `embedded`, `mobile`, and `data-engineer`.
+- Active v1 company slugs are `google`, `amazon`, `naver`, `kakao`, `toss`, and `coupang`.
 
 ### 5.2 Repository Tables
 
@@ -203,6 +213,8 @@ Logical schemas group tables by ownership and access patterns. Schema names are 
 | repository_pull_requests | Stores PR facts captured in a snapshot. | pull_request_record_id | snapshot_id | provider PR reference, status, opened time, merged time, review count | Many PRs belong to one snapshot | Snapshot-local immutable |
 | repository_issues | Stores issue facts captured in a snapshot. | issue_record_id | snapshot_id | provider issue reference, status, labels, opened time, closed time | Many issues belong to one snapshot | Snapshot-local immutable |
 | repository_dependencies | Stores dependency declarations captured in a snapshot. | dependency_record_id | snapshot_id | ecosystem, package name, version, manifest path, source reference | Many dependencies belong to one snapshot | Snapshot-local immutable |
+| repository_language_statistics | Stores normalized GitHub language-byte evidence captured in a snapshot. | language_record_id | snapshot_id | provider label, canonical name, byte count, percentage, taxonomy/extractor versions | Many immutable language facts belong to one snapshot | Snapshot-local immutable |
+| repository_file_entries | Stores bounded normalized GitHub file-tree metadata captured in a snapshot. | file_entry_id | snapshot_id | repository-relative path, blob hash, byte size, extractor version | Many immutable file entries belong to one snapshot | Snapshot-local immutable |
 | repository_documents | Stores repository document metadata. | repository_document_id | snapshot_id | document type, path, content hash, object content reference | May become KnowledgeDocument source | Captured, excluded, deleted by policy |
 
 ### 5.3 Analysis and Rule Tables
@@ -211,15 +223,22 @@ Logical schemas group tables by ownership and access patterns. Schema names are 
 |---|---|---|---|---|---|---|
 | rule_sets | Stores rule-set stable identity. | rule_set_id | None | name, scope, active version reference, status | One rule set has many versions | Draft, active, deprecated |
 | rule_set_versions | Stores immutable rule-set versions. | rule_set_version_id | rule_set_id | version label, effective time, status, weight model, validation status | Referenced by evaluations | Draft, active, superseded, deprecated |
+| rule_category_weights | Stores category weights for one immutable rule-set version. | rule_set_version_id, category | rule_set_version_id | category, normalized weight | Many weights belong to one rule-set version | Immutable after version activation |
 | rules | Stores rule definitions within versioned rule sets. | rule_id | rule_set_version_id | rule category, condition definition reference, outcome definition, severity | Many rules belong to one rule-set version | Draft before activation; immutable after activation |
 | evaluations | Stores evaluation execution records. | evaluation_id | user_id, snapshot_id, rule_set_version_id | status, started time, completed time, deterministic input hash | One evaluation has category results and skill matrix | Requested, running, completed, failed, superseded |
+| evaluation_warnings | Stores ordered non-sensitive warnings emitted by one evaluation. | evaluation_warning_id | evaluation_id | warning order, bounded warning message | Many warnings belong to one evaluation | Immutable with completed evaluation |
 | category_evaluations | Stores category-level scores. | category_evaluation_id | evaluation_id | category, score, confidence, weight, evidence count | Many category evaluations belong to one evaluation | Immutable after evaluation completion |
+| category_missing_evidence | Stores explicit unavailable evidence keys for a category result. | category_missing_evidence_id | category_evaluation_id | missing order, evidence key | Many missing-evidence entries belong to one category | Immutable after evaluation completion |
 | rule_execution_results | Stores per-rule execution outcomes. | rule_execution_result_id | evaluation_id, rule_id | outcome status, score contribution, evidence reference count | Many rule results belong to one evaluation | Immutable after evaluation completion |
 | evidence_records | Stores accepted evidence metadata. | evidence_id | user_id, snapshot_id or knowledge_document_version_id | evidence type, source reference, observed fact summary, confidence, freshness | Evidence links to scores, skills, recommendations | Extracted, accepted, rejected, superseded, deleted by policy |
 | score_evidence_links | Links scores and rule results to evidence. | score_evidence_link_id | evidence_id, evaluation_id | target score type, contribution role, rule reference | Many links per evaluation | Immutable after evaluation completion |
+| skill_matrix_policies | Stores immutable level, strength, and weakness thresholds bound to a rule-set version. | skill_matrix_policy_id | rule_set_version_id | version label, thresholds, status | One policy maps categories to skills | Active, superseded, deprecated |
+| skill_policy_mappings | Maps one policy category to one canonical skill. | skill_policy_mapping_id | skill_matrix_policy_id, skill_id | source category, enabled flag | Many mappings belong to one policy | Immutable after policy activation |
 | skill_matrices | Stores Skill Matrix headers and generation basis. | skill_matrix_id | user_id, evaluation_id | generated time, status, overall summary reference | One matrix has many skill assessments | Generated, published, superseded, archived |
 | skill_assessments | Stores per-skill assessment records. | skill_assessment_id | skill_matrix_id, skill_id | level, confidence, strength/weakness flag, evidence summary | Many assessments belong to one Skill Matrix | Immutable after matrix publication |
 | skill_evidence_links | Links skill assessments to evidence. | skill_evidence_link_id | skill_assessment_id, evidence_id | evidence strength, source role | Many links per skill assessment | Immutable after matrix publication |
+| skill_repository_links | Links skill assessments to contributing repositories. | skill_repository_link_id | skill_assessment_id, repository_id | repository contribution | Many repositories may support one assessment | Immutable with assessment |
+| skill_assessment_facts | Stores ordered structured downstream facts without recommendation priority. | skill_assessment_fact_id | skill_assessment_id | fact order, bounded fact value | Many facts belong to one assessment | Immutable with assessment |
 | technologies | Stores canonical technology reference data. | technology_id | None | name, category, aliases reference, status | Referenced by dependencies and assessments | Active, deprecated, merged |
 | skills | Stores canonical skill reference data. | skill_id | None | name, category, level scale, status | Referenced by skill assessments and career profiles | Active, deprecated, merged |
 
@@ -232,6 +251,8 @@ Logical schemas group tables by ownership and access patterns. Schema names are 
 | companies | Stores supported company identities. | company_id | None | company name, supported status, active profile version reference | One company has many profile versions | Supported, deprecated, future candidate |
 | company_profile_versions | Stores immutable company profile versions. | company_profile_version_id | company_id | expectations, company weights, interview focus, effective time | Referenced by company readiness assessments | Draft, active, superseded, deprecated |
 | career_readiness_assessments | Stores career readiness results. | career_readiness_id | user_id, skill_matrix_id, career_profile_version_id | readiness level, status, assessed time, summary reference | One assessment has many skill gaps | Requested, completed, failed, superseded |
+| career_readiness_policies | Stores immutable approved readiness policies. | career_readiness_policy_id | version_label | expected minimum, band thresholds, status, effective time | One policy has many career weights and assessments | Active, superseded, deprecated |
+| career_readiness_weights | Stores normalized category weights by policy and career. | career_readiness_policy_id + career_id + category | career profile version | weight | Composes one policy | Immutable with policy |
 | company_readiness_assessments | Stores company readiness results. | company_readiness_id | user_id, skill_matrix_id, company_profile_version_id | readiness level, status, assessed time, summary reference | May support recommendations and interview questions | Requested, completed, failed, superseded |
 | skill_gaps | Stores identified gaps against career/company expectations. | skill_gap_id | career_readiness_id, skill_id | expected level, actual level, gap magnitude, priority basis | Many gaps belong to one readiness assessment | Identified, addressed, superseded |
 
@@ -239,12 +260,15 @@ Logical schemas group tables by ownership and access patterns. Schema names are 
 
 | Table | Purpose | Primary Key | Foreign Keys | Important Columns | Relationships | Lifecycle |
 |---|---|---|---|---|---|---|
+| recommendation_policies | Stores immutable approved recommendation policy versions. | recommendation_policy_id | None | version label, status, effective time | One policy has career/category templates and sets | Active, superseded, deprecated |
+| recommendation_policy_templates | Stores Backend/Frontend category recommendation templates. | policy + career profile + category | recommendation policy, career profile version | type, prerequisite order, effort, criteria, expected evidence | Drives deterministic recommendations | Immutable with policy |
 | recommendation_sets | Stores recommendation set generation basis. | recommendation_set_id | user_id, career_readiness_id, company_readiness_id optional | generated time, policy version, status | One set contains many recommendations | Draft, published, superseded |
-| recommendations | Stores individual recommendations. | recommendation_id | recommendation_set_id | recommendation type, deterministic priority, reason code, status | May link to gaps/evidence and roadmap steps | Proposed, accepted, dismissed, completed, superseded |
-| recommendation_evidence_links | Links recommendations to evidence or skill gaps. | recommendation_evidence_link_id | recommendation_id, evidence_id or skill_gap_id | reason role, strength, explanation reference | Many links per recommendation | Immutable after recommendation publication |
+| recommendations | Stores individual recommendations. | recommendation_id | recommendation_set_id, skill_gap_id | recommendation type, deterministic priority, reason code, completion criteria, expected evidence, status | Links one source gap to evidence and roadmap steps | Proposed, accepted, dismissed, completed |
+| recommendation_evidence_links | Links recommendations to observed evidence. | recommendation_id + evidence_id | recommendation_id, evidence_id | Composite immutable link | Many links per recommendation | Immutable after recommendation publication |
+| roadmap_policies | Stores immutable roadmap policy versions bound to recommendation policy. | roadmap_policy_id | recommendation_policy_id | version label, status, effective time | One policy produces many roadmaps | Active, superseded, deprecated |
 | learning_roadmaps | Stores learning roadmap header. | roadmap_id | user_id, recommendation_set_id | status, generated time, progress summary | One roadmap contains many steps | Created, in progress, completed, archived |
-| roadmap_steps | Stores roadmap actions. | roadmap_step_id | roadmap_id | order, target skill, difficulty, expected duration, completion criteria, status | Many steps belong to one roadmap | Not started, in progress, completed, skipped |
-| roadmap_milestones | Stores measurable roadmap milestones. | milestone_id | roadmap_id | milestone title, target date, completion state | Milestones group roadmap steps | Planned, achieved, skipped |
+| roadmap_steps | Stores roadmap actions. | roadmap_step_id | roadmap_id, milestone_id, recommendation_id | order, category, difficulty, effort hours, prerequisite step IDs, completion criteria, expected evidence, status | Many steps belong to one roadmap | Not started, in progress, completed, skipped |
+| roadmap_milestones | Stores measurable roadmap milestones. | milestone_id | roadmap_id | position, category, title, completion state | Milestones group roadmap steps | Planned, achieved, skipped |
 | learning_resources | Stores learning resource metadata. | learning_resource_id | roadmap_step_id optional | resource type, title, reference, difficulty | Resources support roadmap steps | Suggested, used, archived |
 
 ### 5.6 Knowledge Tables
@@ -467,6 +491,23 @@ Logical schemas group tables by ownership and access patterns. Schema names are 
 
 Flyway migration files use `V<version>__<lower_snake_case_description>.sql`. Repeatable migrations are limited to approved replaceable database objects or reference views. Production rollback is forward-fix by default; application rollback is allowed only while schema compatibility is preserved.
 
+Migration `V12__create_versioned_rule_catalog_schema.sql` creates the first PostgreSQL-authoritative Rule Engine
+catalog tables and seeds validated immutable `REPOSITORY_BASELINE/baseline-v1`. Its five category weights total
+`1.000000`; each category's enabled rule weights also total `1.000000`. New formulas, thresholds, weights, or enabled
+rules require a new immutable rule-set version rather than an update to this applied migration.
+
+Migration `V13__create_rule_evaluation_result_schema.sql` adds completed Evaluation storage, ordered warnings,
+category scores, per-rule execution traces, explicit missing-evidence entries, normalized evidence records, and score
+evidence links. `(snapshot_id, user_id)` composite foreign keys enforce owner alignment in addition to application-level
+authorization. `(user_id, snapshot_id, rule_set_version_id, input_hash)` prevents duplicate completed results for an
+identical deterministic basis. Evidence records store bounded snapshot references and measured summaries, never raw
+repository file content.
+
+Migration `V14__create_skill_matrix_schema.sql` adds the canonical five-skill baseline, the versioned
+`skill-matrix-v1` policy, category-to-skill mappings, immutable matrix/assessment content, evidence and repository
+links, and bounded structured input facts. A partial unique index permits at most one `CURRENT` matrix per user;
+publishing a newer matrix changes only the prior header lifecycle to `SUPERSEDED`. Assessment content is never updated.
+
 ## 10. Audit Strategy
 
 ### 10.1 Audit Tables
@@ -477,6 +518,39 @@ Flyway migration files use `V<version>__<lower_snake_case_description>.sql`. Rep
 | configuration_changes | Administrative configuration history. | Rule activation, career profile activation, company profile activation, prompt template activation. |
 | deletion_requests | User deletion and data removal workflow trace. | UserDeletionRequested, deletion completed, deletion failed. |
 | access_audit_records | Access-sensitive read/write trace where required by policy. | Private repository access, Notion document retrieval, artifact export. |
+
+The implemented identity/integration subset creates `audit_records` through immutable migration
+`V6__create_audit_record_schema.sql`. It stores an opaque audit identifier, nullable actor user,
+action and resource references, restricted privacy classification, outcome, and occurrence time.
+Provider credentials and private source content are never copied into audit rows.
+
+The implemented repository-registration subset creates `repositories` through immutable migration
+`V7__create_repository_schema.sql`. Owner and external-identity foreign keys, provider reference
+uniqueness, lifecycle/synchronization checks, and owner-scoped list indexes protect canonical metadata.
+Registration stores no repository content and creates no snapshot or analysis result.
+
+The implemented repository-synchronization subset uses immutable migration
+`V8__create_repository_sync_and_snapshot_schema.sql`. It adds PostgreSQL-backed sync jobs,
+transactional outbox records, immutable snapshot metadata, snapshot-local branch and commit facts,
+and the repository current-snapshot reference. Owner indexes, an active-job uniqueness constraint,
+owner-scoped idempotency keys, lifecycle checks, and optimistic versions protect job execution and
+historical reproducibility. Provider calls occur outside database transactions; snapshot facts and
+their result references are committed atomically by the repository application service.
+
+The RR-001 feature-extraction subset uses immutable migration
+`V9__create_repository_language_statistics_schema.sql`. It stores provider language-byte facts,
+normalized percentages, taxonomy support state, and exact extractor/taxonomy versions under the
+owning snapshot. No official score is calculated in this table or by the repository module.
+
+The RR-002/RR-003 feature-extraction subset uses immutable migration
+`V10__create_repository_dependency_schema.sql`. It stores only normalized npm and Gradle dependency
+declarations, scopes, versions, manifest paths, and extractor versions. Manifest content is parsed
+transiently outside the database transaction and is not persisted or logged.
+
+The RR-004~RR-007 feature-extraction subset uses immutable migration
+`V11__create_repository_file_entry_schema.sql`. It stores a bounded normalized file tree with blob
+hashes and sizes, never raw file content. Architecture, database, testing, DevOps, documentation, and activity
+signals are reproducibly derived from the immutable snapshot and exposed without official scores.
 
 ### 10.2 History Strategy
 
@@ -794,4 +868,6 @@ No storage component grants the LLM authority to calculate scores, execute busin
 | Persistence model | `identity/adapter/out/persistence` | Separate JPA entities and explicit domain mappings |
 | Schema ownership | Flyway migration with `ddl-auto=validate` and OSIV disabled | Configuration compiled; PostgreSQL runtime validation remains pending |
 
-Provider credentials are not part of this migration. Initial authentication does not require durable provider-token storage, and the OAuth authorized-client repository is intentionally non-persisting.
+Provider credentials remain excluded from the initial authentication migration because login does not require durable provider-token storage and the login OAuth authorized-client repository is intentionally non-persisting. Migration `V4__create_provider_credential_schema.sql` adds the separate Integration-owned encrypted credential record used to determine active repository-access connections; it does not persist or expose the login token.
+
+Migration `V5__add_provider_refresh_token.sql` adds encrypted GitHub App refresh-token material and refresh expiry. Access and refresh tokens use separate AES-GCM nonces and owner/provider/token-type associated-data contexts; only the Integration outbound adapter decrypts them. GitHub App user tokens are refreshed outside long database transactions.

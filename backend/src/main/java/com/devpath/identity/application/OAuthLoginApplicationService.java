@@ -15,6 +15,7 @@ import java.util.Objects;
 public class OAuthLoginApplicationService implements ProcessOAuthLoginUseCase {
     private final UserRepositoryPort userRepository;
     private final ExternalIdentityRepositoryPort externalIdentityRepository;
+    private final UserProfileRepositoryPort profileRepository;
     private final AuthenticationAuditPort auditPort;
     private final TransactionOperations transactions;
     private final Clock clock;
@@ -22,12 +23,14 @@ public class OAuthLoginApplicationService implements ProcessOAuthLoginUseCase {
     public OAuthLoginApplicationService(
         UserRepositoryPort userRepository,
         ExternalIdentityRepositoryPort externalIdentityRepository,
+        UserProfileRepositoryPort profileRepository,
         AuthenticationAuditPort auditPort,
         TransactionOperations transactions,
         Clock clock
     ) {
         this.userRepository = userRepository;
         this.externalIdentityRepository = externalIdentityRepository;
+        this.profileRepository = profileRepository;
         this.auditPort = auditPort;
         this.transactions = transactions;
         this.clock = clock;
@@ -52,6 +55,7 @@ public class OAuthLoginApplicationService implements ProcessOAuthLoginUseCase {
 
                 Instant now = clock.instant();
                 User user = userRepository.save(User.register(command.displayName(), command.avatarUrl(), now));
+                profileRepository.save(com.devpath.identity.domain.UserProfile.create(user.id(), now));
                 ExternalIdentity identity = ExternalIdentity.link(
                     user.id(),
                     command.provider(),

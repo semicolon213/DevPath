@@ -1,10 +1,11 @@
 openapi: 3.0.3
 info:
-  title: DevPath Identity Slice API
-  version: 0.2.0
+  title: DevPath Implemented API
+  version: 0.11.0
   description: >
-    Implemented contract for the first authenticated Identity and Persistence vertical slice.
-    Provider access tokens and unimplemented product APIs are intentionally excluded.
+    Implemented contract for authenticated identity, repository synchronization, deterministic analysis,
+    rule evaluation, Skill Matrix, career catalog, career readiness, deterministic recommendation,
+    learning roadmap, and company catalog slices. Provider access tokens and unimplemented APIs are excluded.
 servers:
   - url: http://localhost:8080
     description: Local backend
@@ -95,6 +96,872 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /api/v1/users/me/profile:
+    get:
+      x-api-id: API-ID-002
+      summary: Retrieve the current user's profile
+      operationId: getUserProfile
+      tags: [Identity]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Current user's profile.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/UserProfileEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+    patch:
+      x-api-id: API-ID-003
+      summary: Update the current user's profile
+      operationId: updateUserProfile
+      tags: [Identity]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/UpdateUserProfileRequest"}
+      responses:
+        "200":
+          description: Updated profile.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/UserProfileEnvelope"}
+        "400":
+          description: Invalid profile input.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "403":
+          description: Missing or invalid CSRF token.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/users/me/connections:
+    get:
+      x-api-id: API-ID-004
+      summary: List the current user's active provider connections
+      description: Login identity alone does not imply repository-access authorization.
+      operationId: listUserConnections
+      tags: [Identity, Integration]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Active provider connections owned by the current user.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ConnectedAccountListEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/users/me/preferences:
+    get:
+      x-api-id: API-ID-005
+      summary: Retrieve current target preferences
+      operationId: getUserPreferences
+      tags: [Identity]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Current career and company targets.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/UserPreferenceEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/users/me/preferences/career:
+    put:
+      x-api-id: API-ID-006
+      summary: Set the current user's career target
+      operationId: setCareerTarget
+      tags: [Identity]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/SetCareerTargetRequest"}
+      responses:
+        "200":
+          description: Updated target preferences.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/UserPreferenceEnvelope"}
+        "400":
+          description: Unsupported career target.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "403":
+          description: Missing or invalid CSRF token.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/users/me/preferences/company:
+    put:
+      x-api-id: API-ID-007
+      summary: Set the current user's company target
+      operationId: setCompanyTarget
+      tags: [Identity]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/SetCompanyTargetRequest"}
+      responses:
+        "200":
+          description: Updated target preferences.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/UserPreferenceEnvelope"}
+        "400":
+          description: Unsupported company target.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "403":
+          description: Missing or invalid CSRF token.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/integrations/github:
+    delete:
+      x-api-id: API-INT-003
+      summary: Disconnect GitHub repository access
+      operationId: disconnectGitHubIntegration
+      tags: [Integration]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200":
+          description: GitHub access was removed locally and remote token revocation was attempted.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ConnectedAccountEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "403":
+          description: Missing or invalid CSRF token.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: No active GitHub connection exists for the current user.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "503":
+          description: Local credential removal could not be completed safely.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/integrations/github/authorize:
+    post:
+      x-api-id: API-INT-001
+      summary: Start GitHub App user authorization
+      operationId: initiateGitHubIntegration
+      tags: [Integration]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/InitiateOAuthRequest"}
+      responses:
+        "200":
+          description: Short-lived, session-bound authorization URL.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/OAuthAuthorizationEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "403":
+          description: Missing or invalid CSRF token.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "503":
+          description: GitHub integration configuration is unavailable.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/integrations/github/callback:
+    get:
+      x-api-id: API-INT-002
+      summary: Complete GitHub App user authorization
+      operationId: completeGitHubIntegration
+      tags: [Integration]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: state, in: query, required: true, schema: {type: string}}
+        - {name: code, in: query, required: false, schema: {type: string}}
+        - {name: error, in: query, required: false, schema: {type: string}}
+      responses:
+        "302":
+          description: Redirect to the configured frontend with a safe connection result.
+        "401":
+          description: The account-linking session is unavailable.
+  /api/v1/integrations/github/repositories:
+    get:
+      x-api-id: API-INT-004
+      summary: List repositories accessible through installed GitHub Apps
+      operationId: listGitHubRepositories
+      tags: [Integration]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Provider-normalized repositories accessible to the current user and app installation.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/GitHubRepositoryListEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "503":
+          description: GitHub is unavailable or reconnection is required.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories/imports:
+    post:
+      x-api-id: API-INT-005
+      summary: Import an accessible GitHub repository into DevPath
+      operationId: importGitHubRepository
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ImportRepositoryRequest"}
+      responses:
+        "201":
+          description: Canonical imported repository metadata. Duplicate imports return the existing owner-scoped resource.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RepositoryEnvelope"}
+        "400":
+          description: Invalid or inaccessible provider repository reference.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "403":
+          description: Missing or invalid CSRF token.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "409":
+          description: A concurrent repository registration changed the resource state.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "503":
+          description: GitHub repository verification is unavailable.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories:
+    get:
+      x-api-id: API-REP-001
+      summary: List imported repositories owned by the current user
+      operationId: listRepositories
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+        - {name: includeArchived, in: query, required: false, schema: {type: boolean, default: false}}
+      responses:
+        "200":
+          description: Bounded owner-scoped repository page.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RepositoryListEnvelope"}
+        "400":
+          description: Invalid limit or cursor.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories/{repositoryId}:
+    get:
+      x-api-id: API-REP-002
+      summary: Retrieve an imported repository owned by the current user
+      operationId: getRepository
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: repositoryId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Owner-scoped repository metadata and current synchronization state.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RepositoryEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Repository not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories/{repositoryId}/archive:
+    post:
+      x-api-id: API-REP-004
+      summary: Archive an imported repository locally
+      operationId: archiveRepository
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - {name: repositoryId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Canonical repository metadata in the archived lifecycle state.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RepositoryEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Repository not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "409":
+          description: A concurrent repository lifecycle change caused a conflict.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories/{repositoryId}/restore:
+    post:
+      x-api-id: API-REP-005
+      summary: Restore a locally archived repository
+      operationId: restoreRepository
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - {name: repositoryId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Canonical repository metadata in its restored lifecycle state.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RepositoryEnvelope"}
+        "400":
+          description: Provider-archived repository cannot be restored locally.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Repository not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "409":
+          description: A concurrent repository lifecycle change caused a conflict.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories/{repositoryId}/sync:
+    post:
+      x-api-id: API-REP-006
+      summary: Queue a durable full repository synchronization
+      operationId: synchronizeRepository
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+        - {name: repositoryId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "202":
+          description: Existing or newly queued owner-scoped synchronization job.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RepositorySyncJobEnvelope"}
+        "400":
+          description: Invalid idempotency key or repository lifecycle.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Repository not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "503":
+          description: GitHub permission re-verification is unavailable.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repository-sync-jobs/{jobId}:
+    get:
+      x-api-id: API-INT-007
+      summary: Retrieve an owner-scoped repository synchronization job
+      operationId: getRepositorySyncJob
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: jobId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Current durable job state and safe failure detail.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RepositorySyncJobEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Job not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories/{repositoryId}/snapshots:
+    get:
+      x-api-id: API-REP-007
+      summary: List immutable snapshots for an owned repository
+      operationId: listRepositorySnapshots
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: repositoryId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Newest-first immutable snapshot metadata.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RepositorySnapshotListEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Repository not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories/{repositoryId}/snapshots/{snapshotId}:
+    get:
+      x-api-id: API-REP-008
+      summary: Retrieve immutable snapshot metadata for an owned repository
+      operationId: getRepositorySnapshot
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: repositoryId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: snapshotId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Immutable snapshot metadata and deterministic content hash.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RepositorySnapshotEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Snapshot not found within the owned repository.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories/{repositoryId}/technologies:
+    get:
+      x-api-id: API-REP-009
+      summary: Retrieve normalized technologies from the current owned snapshot
+      operationId: getRepositoryTechnologies
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: repositoryId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Deterministic language, framework, and database evidence; no official score is calculated.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/TechnologySummaryEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Repository or synchronized snapshot not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories/{repositoryId}/evidence:
+    get:
+      x-api-id: API-REP-011
+      summary: Retrieve deterministic engineering evidence from the current owned snapshot
+      operationId: getRepositoryEvidence
+      tags: [Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: repositoryId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Measurable evidence signals without official scores.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RepositoryEvidenceSummaryEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Repository or synchronized snapshot not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/analyses:
+    get:
+      x-api-id: API-ANA-007
+      summary: List completed deterministic analyses owned by the current user
+      operationId: listAnalysisHistory
+      tags: [Analysis]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        "200":
+          description: Newest-first owner-scoped immutable analysis history.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AnalysisHistoryEnvelope"}
+        "400":
+          description: Invalid limit or cursor.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+    post:
+      x-api-id: API-ANA-001
+      summary: Queue deterministic analysis for an owned repository snapshot
+      operationId: requestAnalysis
+      tags: [Analysis]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreateAnalysisRequest"}
+      responses:
+        "202":
+          description: Existing or newly queued owner-scoped analysis job.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AnalysisJobEnvelope"}
+        "400":
+          description: Invalid scope, unsupported target, or repository without a ready snapshot.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Repository or snapshot not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "409":
+          description: Concurrent analysis request conflict.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/analysis-jobs/{jobId}:
+    get:
+      x-api-id: API-ANA-002
+      summary: Retrieve an owner-scoped deterministic analysis job
+      operationId: getAnalysisJob
+      tags: [Analysis]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: jobId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Current durable analysis job state and safe failure detail.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AnalysisJobEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Job not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/analyses/{analysisId}:
+    get:
+      x-api-id: API-ANA-003
+      summary: Retrieve an immutable completed analysis owned by the current user
+      operationId: getAnalysisResult
+      tags: [Analysis]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: analysisId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Immutable analysis result references.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AnalysisResultEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Analysis not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/repositories/{repositoryId}/analyses:
+    get:
+      x-api-id: API-REP-012
+      summary: List completed deterministic analyses for an owned repository
+      operationId: listRepositoryAnalysisHistory
+      tags: [Analysis, Repository]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: repositoryId, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: limit, in: query, required: false, schema: {type: integer, minimum: 1, maximum: 100, default: 20}}
+        - {name: cursor, in: query, required: false, schema: {type: string}}
+      responses:
+        "200":
+          description: Newest-first immutable analysis history for the owned repository.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/AnalysisHistoryEnvelope"}
+        "400":
+          description: Invalid limit or cursor.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Repository not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/rule-evaluations/{evaluationId}:
+    get:
+      x-api-id: API-ANA-004
+      summary: Retrieve an immutable deterministic rule evaluation owned by the current user
+      operationId: getRuleEvaluation
+      tags: [Rule]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: evaluationId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Completed deterministic evaluation.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RuleEvaluationEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Evaluation not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/rule-evaluations/{evaluationId}/score-breakdown:
+    get:
+      x-api-id: API-ANA-005
+      summary: Retrieve the authoritative category and rule score breakdown
+      operationId: getRuleEvaluationScoreBreakdown
+      tags: [Rule]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: evaluationId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Deterministic score breakdown with calculation trace.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RuleScoreBreakdownEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Evaluation not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/rule-evaluations/{evaluationId}/evidence:
+    get:
+      x-api-id: API-ANA-006
+      summary: Retrieve owner-authorized evidence linked to an immutable evaluation
+      operationId: getRuleEvaluationEvidence
+      tags: [Rule]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: evaluationId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Evidence records and their contributing rules.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/RuleEvidenceListEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Evaluation not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/skill-matrices/current:
+    get:
+      x-api-id: API-SKL-001
+      summary: Retrieve the current immutable Skill Matrix for the authenticated owner
+      operationId: getCurrentSkillMatrix
+      tags: [Skill]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Current deterministic Skill Matrix.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SkillMatrixEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: No current Skill Matrix exists for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/skill-matrices/{skillMatrixId}:
+    get:
+      x-api-id: API-SKL-002
+      summary: Retrieve an immutable historical Skill Matrix owned by the current user
+      operationId: getSkillMatrix
+      tags: [Skill]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: skillMatrixId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Historical deterministic Skill Matrix.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/SkillMatrixEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Skill Matrix not found for the current owner.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
   /api/v1/session/logout:
     post:
       summary: End the current DevPath session
@@ -119,6 +986,198 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorEnvelope"
+  /api/v1/careers:
+    get:
+      x-api-id: API-CAR-001
+      summary: List supported versioned career profiles
+      operationId: listCareers
+      tags: [Career]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Supported careers with their active profile summaries.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/CareerCatalogEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/careers/{careerId}:
+    get:
+      x-api-id: API-CAR-002
+      summary: Retrieve a supported active career profile
+      operationId: getCareerProfile
+      tags: [Career]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: careerId, in: path, required: true, schema: {type: string, pattern: "^[a-z][a-z0-9-]{1,63}$"}}
+      responses:
+        "200":
+          description: Immutable active career profile metadata and expectations.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/CareerProfileEnvelope"}
+        "400":
+          description: Invalid career identifier.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: Supported active career profile not found.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/career-readiness/current:
+    get:
+      x-api-id: API-CAR-004
+      summary: Retrieve current deterministic career readiness
+      operationId: getCurrentCareerReadiness
+      tags: [Career]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Current immutable readiness for the selected supported career and current Skill Matrix.
+          content: {application/json: {schema: {$ref: "#/components/schemas/CareerReadinessEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: No current readiness exists for the selected career and Skill Matrix.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/career-readiness/{careerReadinessId}:
+    get:
+      x-api-id: API-CAR-005
+      summary: Retrieve owner-scoped historical career readiness
+      operationId: getCareerReadiness
+      tags: [Career]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: careerReadinessId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Immutable deterministic readiness result.
+          content: {application/json: {schema: {$ref: "#/components/schemas/CareerReadinessEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: Owner-scoped readiness result not found.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/career-readiness/{careerReadinessId}/skill-gaps:
+    get:
+      x-api-id: API-CAR-006
+      summary: Retrieve ordered deterministic skill gaps
+      operationId: getCareerReadinessSkillGaps
+      tags: [Career]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: careerReadinessId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: All category comparisons ordered by gap severity, career weight, and category.
+          content: {application/json: {schema: {$ref: "#/components/schemas/SkillGapListEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: Owner-scoped readiness result not found.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/companies:
+    get:
+      x-api-id: API-CMP-001
+      summary: List supported versioned company profiles
+      operationId: listCompanies
+      tags: [Company]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Supported companies with active generic competency profile summaries.
+          content: {application/json: {schema: {$ref: "#/components/schemas/CompanyCatalogEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/companies/{companyId}:
+    get:
+      x-api-id: API-CMP-002
+      summary: Retrieve a supported active company profile
+      operationId: getCompanyProfile
+      tags: [Company]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: companyId, in: path, required: true, schema: {type: string, pattern: "^[a-z][a-z0-9-]{1,63}$"}}
+      responses:
+        "200":
+          description: Versioned generic company competency emphasis; not hiring criteria or readiness.
+          content: {application/json: {schema: {$ref: "#/components/schemas/CompanyProfileEnvelope"}}}
+        "400":
+          description: Invalid company identifier.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: Supported active company profile not found.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/recommendations/current:
+    get:
+      x-api-id: API-REC-002
+      summary: Retrieve current deterministic recommendations
+      operationId: getCurrentRecommendations
+      tags: [Recommendation]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Current immutable recommendation set ordered by the approved policy.
+          content: {application/json: {schema: {$ref: "#/components/schemas/RecommendationSetEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: No current recommendation set exists.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/learning-roadmaps/active:
+    get:
+      x-api-id: API-LRN-002
+      summary: Retrieve active deterministic learning roadmap
+      operationId: getActiveLearningRoadmap
+      tags: [Learning]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Active roadmap generated from the current recommendation set.
+          content: {application/json: {schema: {$ref: "#/components/schemas/LearningRoadmapEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: No active roadmap exists.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/learning-roadmaps/{roadmapId}:
+    get:
+      x-api-id: API-LRN-004
+      summary: Retrieve owner-scoped learning roadmap detail
+      operationId: getLearningRoadmap
+      tags: [Learning]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: roadmapId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200":
+          description: Historical or active deterministic roadmap detail.
+          content: {application/json: {schema: {$ref: "#/components/schemas/LearningRoadmapEnvelope"}}}
+        "401":
+          description: No valid session.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+        "404":
+          description: Owner-scoped roadmap not found.
+          content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
 components:
   securitySchemes:
     sessionCookie:
@@ -134,6 +1193,16 @@ components:
       description: Server-issued CSRF token. This is not an authentication credential.
       schema:
         type: string
+    IdempotencyKeyHeader:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: Owner-scoped stable key for one repository synchronization command.
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 128
+        pattern: "^[A-Za-z0-9._:-]+$"
   schemas:
     ApiMetadata:
       type: object
@@ -195,6 +1264,835 @@ components:
           $ref: "#/components/schemas/CurrentUser"
         metadata:
           $ref: "#/components/schemas/ApiMetadata"
+    CareerStage:
+      type: string
+      nullable: true
+      enum: [STUDENT, ENTRY_LEVEL, JUNIOR, MID_LEVEL, SENIOR]
+    UserProfile:
+      type: object
+      additionalProperties: false
+      required: [profileId, displayName, careerStage, bio, updatedAt]
+      properties:
+        profileId: {type: string, format: uuid}
+        displayName: {type: string, minLength: 1, maxLength: 120}
+        careerStage: {$ref: "#/components/schemas/CareerStage"}
+        bio: {type: string, maxLength: 1000, nullable: true}
+        updatedAt: {type: string, format: date-time}
+    UpdateUserProfileRequest:
+      type: object
+      additionalProperties: false
+      required: [displayName, careerStage, bio]
+      properties:
+        displayName: {type: string, minLength: 1, maxLength: 120}
+        careerStage: {$ref: "#/components/schemas/CareerStage"}
+        bio: {type: string, maxLength: 1000, nullable: true}
+    UserProfileEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/UserProfile"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    UserPreference:
+      type: object
+      additionalProperties: false
+      required: [careerId, companyId, updatedAt]
+      properties:
+        careerId: {type: string, maxLength: 64, nullable: true}
+        companyId: {type: string, maxLength: 64, nullable: true}
+        updatedAt: {type: string, format: date-time, nullable: true}
+    SetCareerTargetRequest:
+      type: object
+      additionalProperties: false
+      required: [careerId]
+      properties:
+        careerId: {type: string, minLength: 1, maxLength: 64}
+    SetCompanyTargetRequest:
+      type: object
+      additionalProperties: false
+      required: [companyId]
+      properties:
+        companyId: {type: string, minLength: 1, maxLength: 64}
+    UserPreferenceEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/UserPreference"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    ConnectedAccount:
+      type: object
+      additionalProperties: false
+      required: [connectionId, provider, status, scopes, connectedAt, expiresAt]
+      properties:
+        connectionId: {type: string, format: uuid}
+        provider: {type: string, enum: [GITHUB]}
+        status: {type: string, enum: [ACTIVE, REVOKED]}
+        scopes:
+          type: array
+          items: {type: string}
+        connectedAt: {type: string, format: date-time}
+        expiresAt: {type: string, format: date-time, nullable: true}
+    ConnectedAccountList:
+      type: object
+      additionalProperties: false
+      required: [connections]
+      properties:
+        connections:
+          type: array
+          items: {$ref: "#/components/schemas/ConnectedAccount"}
+    ConnectedAccountEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/ConnectedAccount"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    ConnectedAccountListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/ConnectedAccountList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    InitiateOAuthRequest:
+      type: object
+      additionalProperties: false
+    OAuthAuthorization:
+      type: object
+      additionalProperties: false
+      required: [authorizationUrl]
+      properties:
+        authorizationUrl: {type: string, format: uri}
+    OAuthAuthorizationEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/OAuthAuthorization"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    GitHubRepository:
+      type: object
+      additionalProperties: false
+      required: [providerRepositoryId, name, fullName, owner, privateRepository, archived, defaultBranch, htmlUrl]
+      properties:
+        providerRepositoryId: {type: string}
+        name: {type: string}
+        fullName: {type: string}
+        owner: {type: string}
+        privateRepository: {type: boolean}
+        archived: {type: boolean}
+        defaultBranch: {type: string}
+        htmlUrl: {type: string, format: uri}
+    GitHubRepositoryList:
+      type: object
+      additionalProperties: false
+      required: [repositories]
+      properties:
+        repositories:
+          type: array
+          items: {$ref: "#/components/schemas/GitHubRepository"}
+    GitHubRepositoryListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/GitHubRepositoryList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    ImportRepositoryRequest:
+      type: object
+      additionalProperties: false
+      required: [providerRepositoryId]
+      properties:
+        providerRepositoryId: {type: string, pattern: "^[1-9][0-9]{0,63}$"}
+    Repository:
+      type: object
+      additionalProperties: false
+      required: [repositoryId, providerRepositoryId, name, fullName, owner, visibility, defaultBranch, providerArchived, lifecycle, syncStatus, htmlUrl, discoveredAt, lastSyncedAt, currentSnapshotId]
+      properties:
+        repositoryId: {type: string, format: uuid}
+        providerRepositoryId: {type: string}
+        name: {type: string, maxLength: 100}
+        fullName: {type: string, maxLength: 255}
+        owner: {type: string, maxLength: 255}
+        visibility: {type: string, enum: [PUBLIC, PRIVATE]}
+        defaultBranch: {type: string, maxLength: 255}
+        providerArchived: {type: boolean}
+        lifecycle: {type: string, enum: [DISCOVERED, ACTIVE, ARCHIVED, DELETED_EXTERNALLY]}
+        syncStatus: {type: string, enum: [NOT_SYNCED, SYNCHRONIZED, FAILED]}
+        htmlUrl: {type: string, format: uri}
+        discoveredAt: {type: string, format: date-time}
+        lastSyncedAt: {type: string, format: date-time, nullable: true}
+        currentSnapshotId: {type: string, format: uuid, nullable: true}
+    RepositoryEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/Repository"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RepositoryList:
+      type: object
+      additionalProperties: false
+      required: [repositories, limit, nextCursor, totalCount]
+      properties:
+        repositories:
+          type: array
+          items: {$ref: "#/components/schemas/Repository"}
+        limit: {type: integer, minimum: 1, maximum: 100}
+        nextCursor: {type: string, nullable: true}
+        totalCount: {type: integer, format: int64, minimum: 0}
+    RepositoryListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RepositoryList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RepositorySyncJob:
+      type: object
+      additionalProperties: false
+      required: [jobId, jobType, status, phase, progressPercent, attemptCount, maxAttempts, submittedAt, startedAt, completedAt, pollingUrl, resultResourceUrl, errorCode, errorMessage, retryable]
+      properties:
+        jobId: {type: string, format: uuid}
+        jobType: {type: string, enum: [REPOSITORY_SYNC]}
+        status: {type: string, enum: [queued, running, succeeded, failed, cancelled, expired]}
+        phase: {type: string, enum: [QUEUED, COLLECTING, RETRY_WAIT, COMPLETED, FAILED]}
+        progressPercent: {type: integer, minimum: 0, maximum: 100}
+        attemptCount: {type: integer, minimum: 0}
+        maxAttempts: {type: integer, minimum: 1}
+        submittedAt: {type: string, format: date-time}
+        startedAt: {type: string, format: date-time, nullable: true}
+        completedAt: {type: string, format: date-time, nullable: true}
+        pollingUrl: {type: string}
+        resultResourceUrl: {type: string, nullable: true}
+        errorCode: {type: string, nullable: true}
+        errorMessage: {type: string, nullable: true}
+        retryable: {type: boolean}
+    RepositorySyncJobEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RepositorySyncJob"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    CreateAnalysisRequest:
+      type: object
+      additionalProperties: false
+      required: [repositoryId]
+      properties:
+        repositoryId: {type: string, format: uuid}
+        snapshotId: {type: string, format: uuid, nullable: true}
+        analysisScope: {type: string, enum: [REPOSITORY_BASELINE], default: REPOSITORY_BASELINE}
+        targetCareerId:
+          type: string
+          nullable: true
+          description: Reserved contract field; non-null values are rejected until career policies are implemented.
+    AnalysisJob:
+      type: object
+      additionalProperties: false
+      required: [jobId, jobType, status, phase, progressPercent, attemptCount, maxAttempts, submittedAt, startedAt, completedAt, pollingUrl, resultResourceUrl, errorCode, errorMessage, retryable]
+      properties:
+        jobId: {type: string, format: uuid}
+        jobType: {type: string, enum: [REPOSITORY_ANALYSIS]}
+        status: {type: string, enum: [queued, running, succeeded, failed, cancelled, expired]}
+        phase: {type: string, enum: [QUEUED, EVALUATING_RULES, RETRY_WAIT, COMPLETED, FAILED]}
+        progressPercent: {type: integer, minimum: 0, maximum: 100}
+        attemptCount: {type: integer, minimum: 0}
+        maxAttempts: {type: integer, minimum: 1}
+        submittedAt: {type: string, format: date-time}
+        startedAt: {type: string, format: date-time, nullable: true}
+        completedAt: {type: string, format: date-time, nullable: true}
+        pollingUrl: {type: string}
+        resultResourceUrl: {type: string, nullable: true}
+        errorCode: {type: string, nullable: true}
+        errorMessage: {type: string, nullable: true}
+        retryable: {type: boolean}
+    AnalysisJobEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/AnalysisJob"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    AnalysisResult:
+      type: object
+      additionalProperties: false
+      required: [analysisId, repositoryId, snapshotId, evaluationId, skillMatrixId, analysisScope, currentForRepository, completedAt]
+      properties:
+        analysisId: {type: string, format: uuid}
+        repositoryId: {type: string, format: uuid}
+        snapshotId: {type: string, format: uuid}
+        evaluationId: {type: string, format: uuid}
+        skillMatrixId: {type: string, format: uuid}
+        analysisScope: {type: string, enum: [REPOSITORY_BASELINE]}
+        currentForRepository:
+          type: boolean
+          description: True when this is the newest completed immutable analysis for the repository.
+        completedAt: {type: string, format: date-time}
+    AnalysisResultEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/AnalysisResult"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    AnalysisHistoryItem:
+      allOf:
+        - $ref: "#/components/schemas/AnalysisResult"
+        - type: object
+          additionalProperties: false
+          required: [repositoryFullName, overallScore, confidence, ruleSetVersion, policyVersion]
+          properties:
+            repositoryFullName: {type: string, minLength: 1, maxLength: 255}
+            overallScore: {type: number, format: double, minimum: 0, maximum: 100}
+            confidence: {type: number, format: double, minimum: 0, maximum: 100}
+            ruleSetVersion: {type: string, minLength: 1, maxLength: 32}
+            policyVersion: {type: string, minLength: 1, maxLength: 32}
+    AnalysisHistory:
+      type: object
+      additionalProperties: false
+      required: [analyses, limit, nextCursor, totalCount]
+      properties:
+        analyses:
+          type: array
+          items: {$ref: "#/components/schemas/AnalysisHistoryItem"}
+        limit: {type: integer, minimum: 1, maximum: 100}
+        nextCursor: {type: string, nullable: true}
+        totalCount: {type: integer, format: int64, minimum: 0}
+    AnalysisHistoryEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/AnalysisHistory"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    CareerSummary:
+      type: object
+      additionalProperties: false
+      required: [careerId, name, localizedName, status, profileVersion, purpose]
+      properties:
+        careerId: {type: string, pattern: "^[a-z][a-z0-9-]{1,63}$"}
+        name: {type: string, minLength: 1, maxLength: 120}
+        localizedName: {type: string, minLength: 1, maxLength: 120}
+        status: {type: string, enum: [SUPPORTED]}
+        profileVersion: {type: string, minLength: 1, maxLength: 32}
+        purpose: {type: string, minLength: 1, maxLength: 500}
+    CareerCatalog:
+      type: object
+      additionalProperties: false
+      required: [catalogVersion, careers]
+      properties:
+        catalogVersion: {type: string, minLength: 1}
+        careers:
+          type: array
+          items: {$ref: "#/components/schemas/CareerSummary"}
+    CareerCatalogEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/CareerCatalog"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    CareerProfile:
+      allOf:
+        - $ref: "#/components/schemas/CareerSummary"
+        - type: object
+          additionalProperties: false
+          required: [careerProfileVersionId, coreTechnologies, requiredCompetencies, preferredCompetencies, evaluationCategories, priorityWeights, roadmapTemplate, effectiveAt]
+          properties:
+            careerProfileVersionId: {type: string, format: uuid}
+            coreTechnologies: {type: array, items: {type: string}}
+            requiredCompetencies: {type: array, items: {type: string}}
+            preferredCompetencies: {type: array, items: {type: string}}
+            evaluationCategories: {type: array, items: {type: string}}
+            priorityWeights:
+              type: object
+              additionalProperties: {type: string, enum: [HIGH, MEDIUM, LOW]}
+            roadmapTemplate: {type: array, items: {type: string}}
+            effectiveAt: {type: string, format: date-time}
+    CareerProfileEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/CareerProfile"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    CompanySummary:
+      type: object
+      additionalProperties: false
+      required: [companyId, name, localizedName, status, profileVersion, engineeringCulture]
+      properties:
+        companyId: {type: string, pattern: "^[a-z][a-z0-9-]{1,63}$"}
+        name: {type: string, minLength: 1, maxLength: 120}
+        localizedName: {type: string, minLength: 1, maxLength: 120}
+        status: {type: string, enum: [SUPPORTED]}
+        profileVersion: {type: string, minLength: 1, maxLength: 32}
+        engineeringCulture: {type: string, minLength: 1, maxLength: 500}
+    CompanyCatalog:
+      type: object
+      additionalProperties: false
+      required: [catalogVersion, companies]
+      properties:
+        catalogVersion: {type: string, minLength: 1}
+        companies: {type: array, items: {$ref: "#/components/schemas/CompanySummary"}}
+    CompanyCatalogEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/CompanyCatalog"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    CompanyProfile:
+      allOf:
+        - $ref: "#/components/schemas/CompanySummary"
+        - type: object
+          additionalProperties: false
+          required: [companyProfileVersionId, technologyFocus, preferredCompetencies, recommendationPriorities, skillEmphasis, weightOverrides, effectiveAt]
+          properties:
+            companyProfileVersionId: {type: string, format: uuid}
+            technologyFocus: {type: array, items: {type: string}}
+            preferredCompetencies: {type: array, items: {type: string}}
+            recommendationPriorities: {type: array, items: {type: string}}
+            skillEmphasis: {type: array, items: {type: string}}
+            weightOverrides:
+              type: object
+              additionalProperties: {type: string, enum: [INCREASE]}
+            effectiveAt: {type: string, format: date-time}
+    CompanyProfileEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/CompanyProfile"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RepositorySnapshot:
+      type: object
+      additionalProperties: false
+      required: [snapshotId, repositoryId, capturedAt, sourceRevision, status, immutable, contentHash, branchCount, commitCount]
+      properties:
+        snapshotId: {type: string, format: uuid}
+        repositoryId: {type: string, format: uuid}
+        capturedAt: {type: string, format: date-time}
+        sourceRevision: {type: string, minLength: 40, maxLength: 64}
+        status: {type: string, enum: [READY, FAILED, SUPERSEDED, DELETED_BY_POLICY]}
+        immutable: {type: boolean}
+        contentHash: {type: string, pattern: "^[a-f0-9]{64}$"}
+        branchCount: {type: integer, minimum: 0}
+        commitCount: {type: integer, minimum: 0}
+    RepositorySnapshotList:
+      type: object
+      additionalProperties: false
+      required: [snapshots]
+      properties:
+        snapshots:
+          type: array
+          items: {$ref: "#/components/schemas/RepositorySnapshot"}
+    RepositorySnapshotEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RepositorySnapshot"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RepositorySnapshotListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RepositorySnapshotList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    DetectedTechnology:
+      type: object
+      additionalProperties: false
+      required: [name, category, evidenceLabel, byteCount, percentage, taxonomyStatus, evidenceType, evidencePaths]
+      properties:
+        name: {type: string, minLength: 1, maxLength: 128}
+        category: {type: string, enum: [LANGUAGE, FRAMEWORK, DATABASE]}
+        evidenceLabel: {type: string, minLength: 1, maxLength: 255}
+        byteCount: {type: integer, format: int64, minimum: 0, nullable: true}
+        percentage: {type: number, format: double, minimum: 0, maximum: 100, nullable: true}
+        taxonomyStatus: {type: string, enum: [SUPPORTED, UNSUPPORTED]}
+        evidenceType: {type: string, enum: [PROVIDER_LANGUAGE_STATISTICS, DEPENDENCY_DECLARATION]}
+        evidencePaths:
+          type: array
+          items: {type: string, minLength: 1, maxLength: 500}
+    TechnologySummary:
+      type: object
+      additionalProperties: false
+      required: [repositoryId, snapshotId, extractorVersion, taxonomyVersion, primaryLanguage, technologies]
+      properties:
+        repositoryId: {type: string, format: uuid}
+        snapshotId: {type: string, format: uuid}
+        extractorVersion: {type: string}
+        taxonomyVersion: {type: string}
+        primaryLanguage: {type: string, nullable: true}
+        technologies:
+          type: array
+          items: {$ref: "#/components/schemas/DetectedTechnology"}
+    TechnologySummaryEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/TechnologySummary"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    EvidenceSignal:
+      type: object
+      additionalProperties: false
+      required: [signalKey, label, present, count, observedValue, evidencePaths]
+      properties:
+        signalKey: {type: string, pattern: "^[A-Z0-9_]+$"}
+        label: {type: string, minLength: 1, maxLength: 128}
+        present: {type: boolean}
+        count: {type: integer, minimum: 0}
+        observedValue: {type: string, nullable: true, maxLength: 255}
+        evidencePaths:
+          type: array
+          maxItems: 20
+          items: {type: string, minLength: 1, maxLength: 1000}
+    EvidenceCategory:
+      type: object
+      additionalProperties: false
+      required: [category, label, signals]
+      properties:
+        category: {type: string, enum: [ARCHITECTURE, DATABASE, TESTING, DEVOPS, DOCUMENTATION, ACTIVITY]}
+        label: {type: string}
+        signals:
+          type: array
+          items: {$ref: "#/components/schemas/EvidenceSignal"}
+    RepositoryEvidenceSummary:
+      type: object
+      additionalProperties: false
+      required: [repositoryId, snapshotId, extractorVersion, categories]
+      properties:
+        repositoryId: {type: string, format: uuid}
+        snapshotId: {type: string, format: uuid}
+        extractorVersion: {type: string}
+        categories:
+          type: array
+          items: {$ref: "#/components/schemas/EvidenceCategory"}
+    RepositoryEvidenceSummaryEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RepositoryEvidenceSummary"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RuleResult:
+      type: object
+      additionalProperties: false
+      required: [ruleId, ruleVersion, status, rawValue, score, weight, formulaId, trace, evidenceReferences]
+      properties:
+        ruleId: {type: string}
+        ruleVersion: {type: string}
+        status: {type: string, enum: [PASSED, FAILED, PARTIAL, SKIPPED, ERROR]}
+        rawValue: {type: number, format: double, minimum: 0}
+        score: {type: number, format: double, minimum: 0, maximum: 100}
+        weight: {type: number, format: double, minimum: 0, exclusiveMinimum: true, maximum: 1}
+        formulaId: {type: string}
+        trace: {type: string, maxLength: 1000}
+        evidenceReferences:
+          type: array
+          items: {type: string}
+    RuleCategoryScore:
+      type: object
+      additionalProperties: false
+      required: [category, score, weight, confidence, ruleResults, missingEvidence]
+      properties:
+        category: {type: string, enum: [LANGUAGE, FRAMEWORK, DATABASE, ARCHITECTURE, TESTING, DEVOPS, DOCUMENTATION, ACTIVITY]}
+        score: {type: number, format: double, minimum: 0, maximum: 100}
+        weight: {type: number, format: double, minimum: 0, exclusiveMinimum: true, maximum: 1}
+        confidence: {type: number, format: double, minimum: 0, maximum: 100}
+        ruleResults:
+          type: array
+          items: {$ref: "#/components/schemas/RuleResult"}
+        missingEvidence:
+          type: array
+          items: {type: string}
+    RuleEvidenceSummary:
+      type: object
+      additionalProperties: false
+      required: [evidenceCount, rulesWithEvidence, missingEvidenceCount]
+      properties:
+        evidenceCount: {type: integer, format: int32, minimum: 0}
+        rulesWithEvidence: {type: integer, format: int32, minimum: 0}
+        missingEvidenceCount: {type: integer, format: int32, minimum: 0}
+    RuleEvaluation:
+      type: object
+      additionalProperties: false
+      required: [evaluationId, snapshotId, ruleSetVersionId, ruleSetVersion, formulaLibraryVersion, extractorVersion, overallScore, confidence, evidenceSummary, categoryScores, warnings, completedAt]
+      properties:
+        evaluationId: {type: string, format: uuid}
+        snapshotId: {type: string, format: uuid}
+        ruleSetVersionId: {type: string, format: uuid}
+        ruleSetVersion: {type: string}
+        formulaLibraryVersion: {type: string}
+        extractorVersion: {type: string}
+        overallScore: {type: number, format: double, minimum: 0, maximum: 100}
+        confidence: {type: number, format: double, minimum: 0, maximum: 100}
+        evidenceSummary: {$ref: "#/components/schemas/RuleEvidenceSummary"}
+        categoryScores:
+          type: array
+          items: {$ref: "#/components/schemas/RuleCategoryScore"}
+        warnings:
+          type: array
+          items: {type: string}
+        completedAt: {type: string, format: date-time}
+    RuleEvaluationEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RuleEvaluation"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RuleScoreBreakdown:
+      type: object
+      additionalProperties: false
+      required: [evaluationId, overallScore, confidence, categories]
+      properties:
+        evaluationId: {type: string, format: uuid}
+        overallScore: {type: number, format: double, minimum: 0, maximum: 100}
+        confidence: {type: number, format: double, minimum: 0, maximum: 100}
+        categories:
+          type: array
+          items: {$ref: "#/components/schemas/RuleCategoryScore"}
+    RuleScoreBreakdownEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RuleScoreBreakdown"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RuleEvidence:
+      type: object
+      additionalProperties: false
+      required: [evidenceId, ruleId, contributionRole, evidenceType, sourceReference, observedFactSummary, confidence]
+      properties:
+        evidenceId: {type: string, format: uuid}
+        ruleId: {type: string}
+        contributionRole: {type: string, enum: [DIRECT, SUPPORTING, MISSING]}
+        evidenceType: {type: string, enum: [REPOSITORY_PATH, LANGUAGE_STATISTIC, SNAPSHOT_SIGNAL]}
+        sourceReference: {type: string, maxLength: 1200}
+        observedFactSummary: {type: string, maxLength: 500}
+        confidence: {type: number, format: double, minimum: 0, maximum: 100}
+    RuleEvidenceList:
+      type: object
+      additionalProperties: false
+      required: [evaluationId, evidence]
+      properties:
+        evaluationId: {type: string, format: uuid}
+        evidence:
+          type: array
+          items: {$ref: "#/components/schemas/RuleEvidence"}
+    RuleEvidenceListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RuleEvidenceList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    SkillAssessment:
+      type: object
+      additionalProperties: false
+      required: [assessmentId, skillId, skillKey, skillName, category, score, level, confidence, strength, weakness, growthTrend, aggregateRuleResultReference, evidenceIds, repositoryIds, recommendationInputFacts, ruleSetVersion]
+      properties:
+        assessmentId: {type: string, format: uuid}
+        skillId: {type: string, format: uuid}
+        skillKey: {type: string, pattern: "^[a-z0-9-]{2,64}$"}
+        skillName: {type: string, maxLength: 120}
+        category: {type: string, enum: [LANGUAGE, FRAMEWORK, DATABASE, ARCHITECTURE, TESTING, DEVOPS, DOCUMENTATION, ACTIVITY]}
+        score: {type: number, format: double, minimum: 0, maximum: 100}
+        level: {type: string, enum: [NONE, BEGINNER, DEVELOPING, COMPETENT, STRONG]}
+        confidence: {type: number, format: double, minimum: 0, maximum: 100}
+        strength: {type: boolean}
+        weakness: {type: boolean}
+        growthTrend: {type: string, enum: [UNAVAILABLE, IMPROVING, STABLE, DECLINING]}
+        aggregateRuleResultReference: {type: string, maxLength: 160}
+        evidenceIds:
+          type: array
+          items: {type: string, format: uuid}
+        repositoryIds:
+          type: array
+          items: {type: string, format: uuid}
+        recommendationInputFacts:
+          type: array
+          items: {type: string, maxLength: 160}
+        ruleSetVersion: {type: string}
+    SkillMatrix:
+      type: object
+      additionalProperties: false
+      required: [skillMatrixId, evaluationId, policyVersion, ruleSetVersion, status, skills, strengths, weaknesses, generatedAt]
+      properties:
+        skillMatrixId: {type: string, format: uuid}
+        evaluationId: {type: string, format: uuid}
+        policyVersion: {type: string}
+        ruleSetVersion: {type: string}
+        status: {type: string, enum: [CURRENT, SUPERSEDED, ARCHIVED]}
+        skills:
+          type: array
+          items: {$ref: "#/components/schemas/SkillAssessment"}
+        strengths:
+          type: array
+          items: {type: string}
+        weaknesses:
+          type: array
+          items: {type: string}
+        generatedAt: {type: string, format: date-time}
+    SkillMatrixEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/SkillMatrix"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    SkillGap:
+      type: object
+      additionalProperties: false
+      required: [skillGapId, skillId, skillKey, category, actualScore, actualLevel, expectedMinimum, gapState, careerWeight, evidenceIds]
+      properties:
+        skillGapId: {type: string, format: uuid}
+        skillId: {type: string, format: uuid}
+        skillKey: {type: string, pattern: "^[a-z0-9-]{2,64}$"}
+        category: {type: string, enum: [LANGUAGE, FRAMEWORK, DATABASE, ARCHITECTURE, TESTING, DEVOPS, DOCUMENTATION, ACTIVITY]}
+        actualScore: {type: number, format: double, minimum: 0, maximum: 100}
+        actualLevel: {type: string, enum: [NONE, BEGINNER, DEVELOPING, COMPETENT, STRONG]}
+        expectedMinimum: {type: number, format: double, minimum: 60, maximum: 60}
+        gapState: {type: string, enum: [MISSING, WEAK, PARTIAL, SUFFICIENT, STRONG]}
+        careerWeight: {type: number, format: double, exclusiveMinimum: true, minimum: 0, maximum: 100}
+        evidenceIds:
+          type: array
+          items: {type: string, format: uuid}
+    CareerReadiness:
+      type: object
+      additionalProperties: false
+      required: [careerReadinessId, skillMatrixId, careerId, careerProfileVersionId, careerProfileVersion, readinessPolicyVersion, ruleSetVersion, status, readinessScore, readinessLevel, confidence, unavailableCategories, skillGaps, assessedAt]
+      properties:
+        careerReadinessId: {type: string, format: uuid}
+        skillMatrixId: {type: string, format: uuid}
+        careerId: {type: string, pattern: "^[a-z][a-z0-9-]{1,63}$"}
+        careerProfileVersionId: {type: string, format: uuid}
+        careerProfileVersion: {type: string}
+        readinessPolicyVersion: {type: string}
+        ruleSetVersion: {type: string}
+        status: {type: string, enum: [COMPLETED, INSUFFICIENT_EVIDENCE]}
+        readinessScore: {type: number, format: double, minimum: 0, maximum: 100, nullable: true}
+        readinessLevel: {type: string, enum: [NONE, BEGINNER, DEVELOPING, COMPETENT, STRONG], nullable: true}
+        confidence: {type: number, format: double, minimum: 0, maximum: 100}
+        unavailableCategories:
+          type: array
+          items: {type: string, enum: [LANGUAGE, FRAMEWORK, DATABASE, ARCHITECTURE, TESTING, DEVOPS, DOCUMENTATION, ACTIVITY]}
+        skillGaps:
+          type: array
+          items: {$ref: "#/components/schemas/SkillGap"}
+        assessedAt: {type: string, format: date-time}
+    CareerReadinessEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/CareerReadiness"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    SkillGapList:
+      type: object
+      additionalProperties: false
+      required: [careerReadinessId, skillGaps]
+      properties:
+        careerReadinessId: {type: string, format: uuid}
+        skillGaps:
+          type: array
+          items: {$ref: "#/components/schemas/SkillGap"}
+    SkillGapListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/SkillGapList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    Recommendation:
+      type: object
+      additionalProperties: false
+      required: [recommendationId, skillGapId, category, type, priority, rationaleCode, title, completionCriteria, expectedEvidence, evidenceIds, effortHours, position, status]
+      properties:
+        recommendationId: {type: string, format: uuid}
+        skillGapId: {type: string, format: uuid}
+        category: {type: string, enum: [LANGUAGE, FRAMEWORK, DATABASE, ARCHITECTURE, TESTING, DEVOPS, DOCUMENTATION, ACTIVITY]}
+        type: {type: string, enum: [STUDY, PROJECT, ARCHITECTURE, PORTFOLIO]}
+        priority: {type: string, enum: [CRITICAL, HIGH, MEDIUM, LOW]}
+        rationaleCode: {type: string}
+        title: {type: string, maxLength: 160}
+        completionCriteria: {type: string, maxLength: 500}
+        expectedEvidence: {type: array, items: {type: string}}
+        evidenceIds: {type: array, items: {type: string, format: uuid}}
+        effortHours: {type: integer, minimum: 1}
+        position: {type: integer, minimum: 0}
+        status: {type: string, enum: [PROPOSED, ACCEPTED, DISMISSED, COMPLETED]}
+    RecommendationSet:
+      type: object
+      additionalProperties: false
+      required: [recommendationSetId, careerReadinessId, policyVersion, status, recommendations, generatedAt]
+      properties:
+        recommendationSetId: {type: string, format: uuid}
+        careerReadinessId: {type: string, format: uuid}
+        policyVersion: {type: string}
+        status: {type: string, enum: [PUBLISHED, SUPERSEDED]}
+        recommendations: {type: array, items: {$ref: "#/components/schemas/Recommendation"}}
+        generatedAt: {type: string, format: date-time}
+    RecommendationSetEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/RecommendationSet"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    RoadmapMilestone:
+      type: object
+      additionalProperties: false
+      required: [milestoneId, position, category, title, status]
+      properties:
+        milestoneId: {type: string, format: uuid}
+        position: {type: integer, minimum: 0}
+        category: {type: string}
+        title: {type: string, maxLength: 160}
+        status: {type: string, enum: [PLANNED, ACHIEVED, SKIPPED]}
+    RoadmapStep:
+      type: object
+      additionalProperties: false
+      required: [roadmapStepId, milestoneId, recommendationId, position, category, title, difficulty, effortHours, prerequisiteStepIds, completionCriteria, expectedEvidence, status]
+      properties:
+        roadmapStepId: {type: string, format: uuid}
+        milestoneId: {type: string, format: uuid}
+        recommendationId: {type: string, format: uuid}
+        position: {type: integer, minimum: 0}
+        category: {type: string}
+        title: {type: string, maxLength: 160}
+        difficulty: {type: string, enum: [BEGINNER, INTERMEDIATE, ADVANCED]}
+        effortHours: {type: integer, minimum: 1}
+        prerequisiteStepIds: {type: array, items: {type: string, format: uuid}}
+        completionCriteria: {type: string, maxLength: 500}
+        expectedEvidence: {type: array, items: {type: string}}
+        status: {type: string, enum: [NOT_STARTED, IN_PROGRESS, COMPLETED, SKIPPED]}
+    LearningRoadmap:
+      type: object
+      additionalProperties: false
+      required: [roadmapId, recommendationSetId, policyVersion, status, progressPercent, milestones, steps, generatedAt, updatedAt]
+      properties:
+        roadmapId: {type: string, format: uuid}
+        recommendationSetId: {type: string, format: uuid}
+        policyVersion: {type: string}
+        status: {type: string, enum: [CREATED, IN_PROGRESS, COMPLETED, ARCHIVED]}
+        progressPercent: {type: number, minimum: 0, maximum: 100}
+        milestones: {type: array, items: {$ref: "#/components/schemas/RoadmapMilestone"}}
+        steps: {type: array, items: {$ref: "#/components/schemas/RoadmapStep"}}
+        generatedAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    LearningRoadmapEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/LearningRoadmap"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
     CsrfToken:
       type: object
       additionalProperties: false

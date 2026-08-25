@@ -5,6 +5,8 @@ import com.devpath.identity.domain.ExternalIdentityId;
 import com.devpath.identity.domain.ProviderSubject;
 import com.devpath.identity.domain.User;
 import com.devpath.identity.domain.UserId;
+import com.devpath.identity.domain.UserPreference;
+import com.devpath.identity.domain.UserProfile;
 
 final class IdentityPersistenceMapper {
     private IdentityPersistenceMapper() {
@@ -62,5 +64,21 @@ final class IdentityPersistenceMapper {
             entity.updatedAt(),
             entity.version()
         );
+    }
+
+    static UserProfileJpaEntity toEntity(UserProfile profile) {
+        return new UserProfileJpaEntity(profile.id(), profile.userId().value(), profile.careerStage(), profile.bio(), profile.createdAt(), profile.updatedAt(), profile.version());
+    }
+
+    static UserProfile toDomain(UserProfileJpaEntity entity) {
+        return UserProfile.rehydrate(entity.id(), new UserId(entity.userId()), entity.careerStage(), entity.bio(), entity.createdAt(), entity.updatedAt(), entity.version());
+    }
+
+    static UserPreferenceJpaEntity toEntity(UserPreference preference) {
+        return new UserPreferenceJpaEntity(preference.id(), preference.userId().value(), preference.type(), preference.selectedValue(), preference.catalogVersion(), preference.active(), preference.selectedAt(), preference.supersededAt(), preference.version());
+    }
+
+    static UserPreference toDomain(UserPreferenceJpaEntity entity) {
+        return UserPreference.rehydrate(entity.id(), new UserId(entity.userId()), entity.type(), entity.selectedValue(), entity.catalogVersion(), entity.active(), entity.selectedAt(), entity.supersededAt(), entity.version());
     }
 }

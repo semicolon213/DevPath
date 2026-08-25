@@ -1,0 +1,8 @@
+package com.devpath.company.adapter.out.persistence;
+import jakarta.persistence.*;
+import java.time.Instant;
+import java.util.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+@Entity @Table(name="companies") class CompanyJpaEntity { @Id @Column(name="company_id") String id; String name; @Column(name="localized_name") String localizedName; String status; @OneToOne(fetch=FetchType.LAZY) @JoinColumn(name="active_profile_version_id") CompanyProfileVersionJpaEntity activeProfile; @Column(name="created_at") Instant createdAt; protected CompanyJpaEntity(){} }
+@Entity @Table(name="company_profile_versions") class CompanyProfileVersionJpaEntity { @Id @Column(name="company_profile_version_id") UUID id; @Column(name="company_id") String companyId; @Column(name="version_label") String versionLabel; String status; @JdbcTypeCode(SqlTypes.JSON) @Column(name="technology_focus",columnDefinition="jsonb") List<String> technologyFocus=new ArrayList<>(); @Column(name="engineering_culture") String engineeringCulture; @JdbcTypeCode(SqlTypes.JSON) @Column(name="preferred_competencies",columnDefinition="jsonb") List<String> preferredCompetencies=new ArrayList<>(); @JdbcTypeCode(SqlTypes.JSON) @Column(name="recommendation_priorities",columnDefinition="jsonb") List<String> recommendationPriorities=new ArrayList<>(); @JdbcTypeCode(SqlTypes.JSON) @Column(name="skill_emphasis",columnDefinition="jsonb") List<String> skillEmphasis=new ArrayList<>(); @JdbcTypeCode(SqlTypes.JSON) @Column(name="weight_overrides",columnDefinition="jsonb") Map<String,String> weightOverrides=new LinkedHashMap<>(); @Column(name="effective_at") Instant effectiveAt; protected CompanyProfileVersionJpaEntity(){} }

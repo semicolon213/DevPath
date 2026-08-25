@@ -414,6 +414,39 @@ Recommendations shall not be generated from:
 | Sufficient | Evidence meets expected threshold. |
 | Strong | Evidence exceeds expected threshold and confidence is adequate. |
 
+### 11.1.1 Approved MVP Readiness Policy
+
+`readiness-v1` evaluates Backend and Frontend only. Company weights are not applied. The expected minimum for every
+evaluated category is 60. The category bands are Missing = 0, Weak = 1-39.99, Partial = 40-59.99, Sufficient = 60-79.99,
+and Strong = 80-100. Backend weights are Language 15%, Framework 20%, Database 20%, Architecture 15%, Testing 20%, and
+DevOps 10%. Frontend weights are Language 30%, Framework 30%, Testing 20%, and Documentation 20%.
+
+Readiness score and confidence are calculated independently as career-weighted averages and rounded to two decimal
+places using half-up rounding. If a required category is unsupported or unavailable, the result status is
+`INSUFFICIENT_EVIDENCE`, readiness score and level are absent, and the unavailable inputs are reported. Gap ordering is
+Missing, Weak, Partial, Sufficient, Strong; ties use career weight descending and then category key. Recommendation
+priority is not calculated by `readiness-v1`.
+
+Completed assessments are immutable and identified by Skill Matrix, career profile version, and readiness policy
+version. Analysis completion creates the assessment after Skill Matrix creation when the user has a supported target
+career. The same version tuple is idempotently reused. Read APIs never create or mutate an assessment.
+
+### 11.1.2 Approved MVP Recommendation and Roadmap Policy
+
+`recommendation-v1` consumes immutable `readiness-v1` comparisons for Backend and Frontend only. It emits one
+machine-readable recommendation for each Missing, Weak, or Partial category and none for Sufficient or Strong.
+Missing is Critical, Weak is High, Partial is Medium, and Low is reserved for future optional competencies. Type
+mapping is Language to Study; Framework, Database, Testing, and DevOps to Project; Architecture to Architecture; and
+Documentation to Portfolio. Ordering is priority, configured prerequisite order, career weight descending, configured
+effort ascending, then category key. Company modifiers and AI prose are not applied.
+
+`roadmap-v1` creates one measurable milestone and step per recommendation. Backend order is Language, Framework,
+Database, Architecture, Testing, DevOps; Frontend order is Language, Framework, Testing, Documentation. A step's
+completion criteria require a later official category score of at least 60 and its configured evidence outputs.
+Recommendation sets are immutable by CareerReadiness and policy version; roadmap structure is immutable, while user
+accept/dismiss/complete and step progress states are explicit mutable lifecycle fields.
+An `INSUFFICIENT_EVIDENCE` readiness result does not produce recommendations or a roadmap.
+
 ### 11.2 Gap Analysis Inputs
 
 - Skill Matrix entries

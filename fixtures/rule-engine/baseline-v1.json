@@ -1,0 +1,57 @@
+{
+  "ruleSetId": "10000000-0000-0000-0000-000000000001",
+  "versionId": "11000000-0000-0000-0000-000000000001",
+  "versionLabel": "baseline-v1",
+  "formulaLibraryVersion": "formula-v1",
+  "extractorVersion": "engineering-evidence-extractor-v1",
+  "categoryWeights": {
+    "LANGUAGE": 0.25,
+    "FRAMEWORK": 0.15,
+    "TESTING": 0.25,
+    "DOCUMENTATION": 0.20,
+    "ACTIVITY": 0.15
+  },
+  "rules": [
+    {"id":"LANGUAGE_PRIMARY_SHARE","category":"LANGUAGE","formula":"PERCENTAGE","parameter":0,"weight":0.70,"signal":"LANGUAGE_PRIMARY_SHARE"},
+    {"id":"LANGUAGE_DIVERSITY","category":"LANGUAGE","formula":"COUNT_CAP","parameter":3,"weight":0.30,"signal":"LANGUAGE_DIVERSITY"},
+    {"id":"FRAMEWORK_COUNT","category":"FRAMEWORK","formula":"COUNT_CAP","parameter":2,"weight":1.00,"signal":"FRAMEWORK_COUNT"},
+    {"id":"TEST_FILES","category":"TESTING","formula":"COUNT_CAP","parameter":10,"weight":0.50,"signal":"TEST_FILES"},
+    {"id":"TEST_FRAMEWORKS","category":"TESTING","formula":"COUNT_CAP","parameter":2,"weight":0.30,"signal":"TEST_FRAMEWORKS"},
+    {"id":"CI_WORKFLOW_METADATA","category":"TESTING","formula":"PRESENCE","parameter":0,"weight":0.20,"signal":"CI_WORKFLOW_METADATA"},
+    {"id":"README_PRESENT","category":"DOCUMENTATION","formula":"PRESENCE","parameter":0,"weight":0.20,"signal":"README_PRESENT"},
+    {"id":"API_DOCUMENTATION","category":"DOCUMENTATION","formula":"PRESENCE","parameter":0,"weight":0.20,"signal":"API_DOCUMENTATION"},
+    {"id":"ARCHITECTURE_DOCUMENTATION","category":"DOCUMENTATION","formula":"PRESENCE","parameter":0,"weight":0.20,"signal":"ARCHITECTURE_DOCUMENTATION"},
+    {"id":"CONTRIBUTING_GUIDE","category":"DOCUMENTATION","formula":"PRESENCE","parameter":0,"weight":0.20,"signal":"CONTRIBUTING_GUIDE"},
+    {"id":"LICENSE_PRESENT","category":"DOCUMENTATION","formula":"PRESENCE","parameter":0,"weight":0.20,"signal":"LICENSE_PRESENT"},
+    {"id":"COMMIT_COUNT","category":"ACTIVITY","formula":"COUNT_CAP","parameter":50,"weight":0.60,"signal":"COMMIT_COUNT"},
+    {"id":"CONTRIBUTOR_COUNT","category":"ACTIVITY","formula":"COUNT_CAP","parameter":3,"weight":0.20,"signal":"CONTRIBUTOR_COUNT"},
+    {"id":"BRANCH_COUNT","category":"ACTIVITY","formula":"COUNT_CAP","parameter":3,"weight":0.20,"signal":"BRANCH_COUNT"}
+  ],
+  "facts": {
+    "LANGUAGE_PRIMARY_SHARE": 70,
+    "LANGUAGE_DIVERSITY": 2,
+    "FRAMEWORK_COUNT": 2,
+    "TEST_FILES": 8,
+    "TEST_FRAMEWORKS": 1,
+    "CI_WORKFLOW_METADATA": 1,
+    "README_PRESENT": 1,
+    "API_DOCUMENTATION": 1,
+    "ARCHITECTURE_DOCUMENTATION": 1,
+    "CONTRIBUTING_GUIDE": 0,
+    "LICENSE_PRESENT": 1,
+    "COMMIT_COUNT": 25,
+    "CONTRIBUTOR_COUNT": 2,
+    "BRANCH_COUNT": 2
+  },
+  "expected": {
+    "overallScore": 75.50,
+    "confidence": 100.00,
+    "categoryScores": {
+      "LANGUAGE": 69.00,
+      "FRAMEWORK": 100.00,
+      "TESTING": 75.00,
+      "DOCUMENTATION": 80.00,
+      "ACTIVITY": 56.67
+    }
+  }
+}

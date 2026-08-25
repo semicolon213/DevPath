@@ -37,6 +37,7 @@ class OAuthLoginApplicationServiceTest {
         var service = new OAuthLoginApplicationService(
             users,
             identities,
+            new InMemoryProfileRepository(),
             audit,
             transactions,
             Clock.fixed(NOW, ZoneOffset.UTC)
@@ -87,6 +88,7 @@ class OAuthLoginApplicationServiceTest {
         var service = new OAuthLoginApplicationService(
             users,
             identities,
+            new InMemoryProfileRepository(),
             new RecordingAudit(),
             immediateTransactions(),
             Clock.fixed(NOW, ZoneOffset.UTC)
@@ -138,6 +140,13 @@ class OAuthLoginApplicationServiceTest {
         }
 
         @Override
+        public Optional<ExternalIdentity> findByUserIdAndProvider(UserId userId, OAuthProvider provider) {
+            return values.values().stream()
+                .filter(identity -> identity.userId().equals(userId) && identity.provider() == provider)
+                .findFirst();
+        }
+
+        @Override
         public ExternalIdentity save(ExternalIdentity identity) {
             values.put(identity.provider().name() + ":" + identity.providerSubject().value(), identity);
             return identity;
@@ -150,6 +159,21 @@ class OAuthLoginApplicationServiceTest {
         @Override
         public void record(AuthenticationAuditEvent event, java.util.UUID userId, OAuthProvider provider, Instant occurredAt) {
             events.add(event);
+        }
+    }
+
+    private static final class InMemoryProfileRepository implements UserProfileRepositoryPort {
+        private final Map<UserId, com.devpath.identity.domain.UserProfile> values = new HashMap<>();
+
+        @Override
+        public Optional<com.devpath.identity.domain.UserProfile> findByUserId(UserId userId) {
+            return Optional.ofNullable(values.get(userId));
+        }
+
+        @Override
+        public com.devpath.identity.domain.UserProfile save(com.devpath.identity.domain.UserProfile profile) {
+            values.put(profile.userId(), profile);
+            return profile;
         }
     }
 }

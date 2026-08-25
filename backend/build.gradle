@@ -33,4 +33,52 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    providers.environmentVariable('DOCKER_API_VERSION').orNull?.with { dockerApiVersion ->
+        systemProperty 'api.version', dockerApiVersion
+    }
+}
+
+tasks.named('bootRun') {
+    doFirst {
+        def envFile = project.file('.env')
+        if (!envFile.isFile()) {
+            logger.lifecycle('No backend/.env file found; using process environment variables only.')
+            return
+        }
+
+        envFile.eachLine('UTF-8') { rawLine, lineNumber ->
+            def line = rawLine.trim()
+            if (line.isEmpty() || line.startsWith('#')) {
+                return
+            }
+            if (line.startsWith('export ')) {
+                line = line.substring('export '.length()).trim()
+            }
+
+            int separator = line.indexOf('=')
+            if (separator <= 0) {
+                throw new GradleException("Invalid backend/.env entry at line ${lineNumber}: expected KEY=VALUE")
+            }
+
+            def key = line.substring(0, separator).trim()
+            if (!(key ==~ /[A-Za-z_][A-Za-z0-9_]*/)) {
+                throw new GradleException("Invalid backend/.env key at line ${lineNumber}")
+            }
+
+            def value = line.substring(separator + 1).trim()
+            if (value.length() >= 2) {
+                char first = value.charAt(0)
+                char last = value.charAt(value.length() - 1)
+                if ((first == '"' && last == '"') || (first == '\'' && last == '\'')) {
+                    value = value.substring(1, value.length() - 1)
+                }
+            }
+
+            if (!System.getenv().containsKey(key)) {
+                environment key, value
+            }
+        }
+
+        logger.lifecycle('Loaded local environment variables from backend/.env; process environment variables take precedence.')
+    }
 }

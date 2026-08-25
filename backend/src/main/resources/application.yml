@@ -58,9 +58,29 @@ logging:
     console: "%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] %logger{36} - %msg%n"
 
 devpath:
+  runtime:
+    worker-enabled: ${DEVPATH_WORKER_ENABLED:true}
+  jobs:
+    repository-sync:
+      poll-interval: ${DEVPATH_REPOSITORY_SYNC_POLL_INTERVAL:1000}
+      initial-delay: ${DEVPATH_REPOSITORY_SYNC_INITIAL_DELAY:1000}
+    analysis:
+      poll-interval: ${DEVPATH_ANALYSIS_POLL_INTERVAL:1000}
+      initial-delay: ${DEVPATH_ANALYSIS_INITIAL_DELAY:1500}
   security:
     frontend-origin: ${DEVPATH_FRONTEND_ORIGIN}
     session-absolute-timeout: ${DEVPATH_SESSION_ABSOLUTE_TIMEOUT:12h}
     post-login-redirect: ${DEVPATH_POST_LOGIN_REDIRECT:/}
   scaffold:
     health-status: ok
+  targets:
+    version: v1
+    careers: [backend, frontend, ai-engineer, devops, security, game, embedded, mobile, data-engineer]
+    companies: [google, amazon, naver, kakao, toss, coupang]
+  github:
+    integration:
+      client-id: ${GITHUB_INTEGRATION_CLIENT_ID:}
+      client-secret: ${GITHUB_INTEGRATION_CLIENT_SECRET:}
+      redirect-uri: ${GITHUB_INTEGRATION_REDIRECT_URI:http://localhost:8080/api/v1/integrations/github/callback}
+      credential-key: ${DEVPATH_PROVIDER_CREDENTIAL_KEY:}
+      credential-key-version: ${DEVPATH_PROVIDER_CREDENTIAL_KEY_VERSION:local-v1}

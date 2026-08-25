@@ -465,6 +465,31 @@ Unauthorized private resource access should return `404 RESOURCE_NOT_FOUND` when
 
 Provider adapters translate external provider models into canonical DevPath resources. User-facing APIs never return OAuth secrets, raw provider tokens, internal provider refresh data, or unsupported provider payload structures.
 
+The implemented GitHub repository discovery adapter follows provider pages at 100 items per request,
+de-duplicates repositories by provider repository ID, and rejects results beyond the safe provider-page
+ceiling rather than returning an unmarked partial list. Disconnect removes the local credential before
+best-effort remote token revocation and returns `REVOKED`.
+
+The implemented repository-registration subset includes API-INT-005 and API-REP-001 through API-REP-005.
+Import re-verifies the provider repository through the current user's server-side GitHub connection,
+persists canonical metadata idempotently for normal duplicate requests, and records an audit event.
+Repository list, detail, archive, and restore are owner-scoped; mutation endpoints are CSRF-protected and
+record durable audit events on actual lifecycle changes. The list uses a bounded opaque cursor, excludes
+locally archived repositories by default, and includes them when `includeArchived=true`.
+
+The implemented repository-synchronization subset includes API-INT-007 and API-REP-006 through
+API-REP-008. A CSRF-protected, idempotent sync command creates or reuses a PostgreSQL-backed durable
+job. The worker reuses the same build artifact under an explicit runtime flag, claims queued jobs with
+database locking, performs provider calls outside database transactions, retries bounded transient
+failures, and writes a new immutable snapshot for every successful execution. The first collection
+scope includes the default branch, complete bounded branch pagination, and complete bounded commit
+pagination. Results beyond the configured safe provider-page ceiling fail instead of becoming silent
+partial snapshots. Job and snapshot reads are owner-scoped and expose only safe failure details.
+
+For the implemented `API-ID-004` subset, `ConnectedAccountListResponse.data.connections` contains only active, owner-scoped provider API connections. Each item contains `connectionId`, `provider`, `status`, a non-secret `scopes` summary, `connectedAt`, and nullable `expiresAt`. A GitHub login identity without an active encrypted provider credential is not returned as a repository-access connection.
+
+The implemented GitHub App authorization slice uses `API-INT-001` to create a CSRF-protected, session/user-bound OAuth state with a ten-minute lifetime. `API-INT-002` consumes that state once, verifies the GitHub account matches the login identity, requires at least one accessible GitHub App installation, and stores access/refresh tokens encrypted server-side. `API-INT-004` returns normalized repository metadata across installations without exposing provider tokens or raw provider payloads.
+
 ## 12. Repository APIs
 
 | ID | Method | Path | Purpose | Auth | Authorization | Request Body | Response Body | Status Codes | Idempotency | Requirements |
@@ -472,8 +497,8 @@ Provider adapters translate external provider models into canonical DevPath reso
 | API-REP-001 | GET | `/api/v1/repositories` | List imported repositories. | Required | Owner | None | RepositoryListResponse | 200 | Safe | FR-024~FR-050 |
 | API-REP-002 | GET | `/api/v1/repositories/{repositoryId}` | Retrieve repository detail. | Required | Owner | None | RepositoryDetailResponse | 200 | Safe | FR-025 |
 | API-REP-003 | POST | `/api/v1/repositories` | Register repository by supported source reference. | Required | Owner/provider permission | RegisterRepositoryRequest | RepositoryResponse | 201 | Required | FR-025 |
-| API-REP-004 | POST | `/api/v1/repositories/{repositoryId}/archive` | Archive repository. | Required | Owner | ArchiveResourceRequest | RepositoryResponse | 200 | Required | FR-044 |
-| API-REP-005 | POST | `/api/v1/repositories/{repositoryId}/restore` | Restore archived repository. | Required | Owner | RestoreResourceRequest | RepositoryResponse | 200 | Required | FR-044 |
+| API-REP-004 | POST | `/api/v1/repositories/{repositoryId}/archive` | Archive repository locally. | Required | Owner | None | RepositoryResponse | 200 | Idempotent by repository state | FR-361 |
+| API-REP-005 | POST | `/api/v1/repositories/{repositoryId}/restore` | Restore a locally archived repository. | Required | Owner | None | RepositoryResponse | 200 | Idempotent by repository state | FR-361 |
 | API-REP-006 | POST | `/api/v1/repositories/{repositoryId}/sync` | Request sync. | Required | Owner/provider permission | SyncRepositoryRequest | JobStatusResponse | 202 | Required | FR-026~FR-050 |
 | API-REP-007 | GET | `/api/v1/repositories/{repositoryId}/snapshots` | List repository snapshots. | Required | Owner | None | RepositorySnapshotListResponse | 200 | Safe | FR-026~FR-047 |
 | API-REP-008 | GET | `/api/v1/repositories/{repositoryId}/snapshots/{snapshotId}` | Retrieve immutable snapshot metadata. | Required | Owner | None | RepositorySnapshotResponse | 200 | Safe | FR-026~FR-047 |
@@ -513,6 +538,11 @@ Clients may submit only supported references such as repository IDs, snapshot ID
 
 Skill scores must reference an analysis result and evidence. Historical SkillMatrix resources are immutable.
 
+The implemented read subset is API-SKL-001/002. The browser consumes API-SKL-001 through React Query on the Korean
+`/skills` view and treats `404` (no completed matrix), `401` (anonymous session), and transport failure as distinct
+states. A persisted RuleEvaluation invokes idempotent Skill Matrix generation internally; no public analysis-trigger
+endpoint or background job technology is implied by this subset.
+
 ## 15. Career and Company APIs
 
 | ID | Method | Path | Purpose | Auth | Authorization | Request Body | Response Body | Status Codes | Idempotency | Requirements |
@@ -531,6 +561,24 @@ Skill scores must reference an analysis result and evidence. Historical SkillMat
 
 Readiness responses expose calculated results and version references. Transport contracts do not perform readiness calculation.
 
+The implemented API-CAR-001/002 subset reads the nine SRS-supported careers and their immutable active profiles from
+PostgreSQL. Backend and Frontend use approved `career-v2`; the other supported catalogs retain `career-v1`. Profile responses expose localized names, purpose, configured technologies,
+required and preferred competencies, evaluation categories, priority labels, roadmap-template order, and exact
+profile version metadata. Catalog endpoints do not calculate readiness, gaps, technical scores, or recommendation priority.
+API-CAR-003 target validation resolves the same authoritative career catalog rather than a separate browser or
+configuration list. Extension candidates remain excluded.
+
+The implemented API-CAR-004/005/006 subset returns owner-scoped immutable `readiness-v1` results and ordered category
+comparisons for Backend and Frontend. A completed result exposes the separately weighted score and confidence; an
+unsupported required category produces `INSUFFICIENT_EVIDENCE` with null score and level. These endpoints never
+accept client-supplied weights, scores, levels, gaps, confidence, or recommendation priority.
+
+The implemented API-CMP-001/002 subset reads the six SRS-supported companies and immutable active `company-v1`
+profiles from PostgreSQL. It exposes only generic technology focus, engineering culture, competency emphasis,
+recommendation-type ordering, and configured increase-only policy labels. It does not expose or imply confidential
+hiring criteria, readiness, interview prediction, or guaranteed outcomes. API-CMP-003 target validation uses this
+same catalog; extension candidates remain unavailable.
+
 ## 16. Recommendation APIs
 
 | ID | Method | Path | Purpose | Auth | Authorization | Request Body | Response Body | Status Codes | Idempotency | Requirements |
@@ -545,6 +593,11 @@ Readiness responses expose calculated results and version references. Transport 
 | API-REC-008 | GET | `/api/v1/recommendations/{recommendationId}/evidence` | Retrieve recommendation evidence. | Required | Owner | None | EvidenceListResponse | 200 | Safe | CR-009 |
 
 Recommendation responses must distinguish deterministic recommendation data from optional AI-generated explanation fields.
+
+The implemented MVP API-REC-002 subset returns the current owner-scoped `recommendation-v1` set generated from an
+immutable Backend/Frontend CareerReadiness result. Each item exposes its source gap, category, configured type,
+deterministic priority, rationale code, effort, completion criteria, expected evidence, and observed evidence IDs.
+No AI prose or company modifier is included.
 
 ## 17. Learning Roadmap APIs
 
@@ -562,6 +615,10 @@ Recommendation responses must distinguish deterministic recommendation data from
 | API-LRN-010 | GET | `/api/v1/learning-resources` | Retrieve learning resources. | Required | Owner | None | LearningResourceListResponse | 200 | Safe | CR-006 |
 
 User-editable roadmap fields include display title, user notes, target dates, and progress state. Generated reasoning, source recommendation references, and deterministic ordering basis are immutable.
+
+The implemented MVP API-LRN-002/004 read subset returns `roadmap-v1` milestones and steps generated with the
+recommendation set. Steps expose deterministic order, prerequisite step IDs, configured effort and difficulty,
+completion criteria, expected evidence, and lifecycle status. Mutation APIs remain unimplemented.
 
 ## 18. Knowledge APIs
 
@@ -1008,15 +1065,59 @@ Internal stack traces and sensitive provider payloads must not be exposed.
 |---|---|---|---|---|
 | UserResponse | userId, email, status, roles, createdAt | Current user account summary. | User private | User |
 | UserProfileResponse | profileId, displayName, careerStage, bio, updatedAt | Developer profile. | User private | UserProfile |
+
+For API-ID-002/003, `careerStage` is nullable and one of `STUDENT`, `ENTRY_LEVEL`, `JUNIOR`, `MID_LEVEL`, or `SENIOR`; `bio` is nullable with a 1,000-character maximum. `UpdateUserProfileRequest` is a complete editable-profile payload: `displayName` is required, while `careerStage` and `bio` are required nullable properties so null explicitly clears them. For API-ID-005/006/007, `UserPreferenceResponse` contains nullable `careerId` and `companyId` stable slugs plus `updatedAt`. `SetCareerTargetRequest` and `SetCompanyTargetRequest` contain required `careerId` and `companyId` respectively. Unsupported and extension-candidate slugs return `VALIDATION_ERROR`.
 | RepositorySummaryResponse | repositoryId, fullName, visibility, syncStatus, lastSyncedAt | Repository list item. | Repository private if private | Repository |
 | RepositoryDetailResponse | repositoryId, fullName, defaultBranch, visibility, currentSnapshotId, lifecycle | Repository detail. | Repository private if private | Repository |
 | RepositorySnapshotResponse | snapshotId, repositoryId, capturedAt, sourceRevision, status, isImmutable | Snapshot metadata. | Repository private if private | RepositorySnapshot |
+| TechnologySummaryResponse | repositoryId, snapshotId, extractorVersion, taxonomyVersion, primaryLanguage, technologies | Current-snapshot deterministic technology evidence without an official score. | Repository private if private | RepositorySnapshot/Technology |
+| RepositoryEvidenceSummaryResponse | repositoryId, snapshotId, extractorVersion, categories | Current-snapshot architecture, database, testing, DevOps, documentation, and activity signals without official scores. | Repository private if private | RepositorySnapshot/Evidence |
+
+For the implemented API-REP-009 subset, each detected technology contains a category of `LANGUAGE`,
+`FRAMEWORK`, or `DATABASE`, a provider/dependency evidence label, nullable language byte/percentage
+statistics, taxonomy support state, evidence type, and repository-relative manifest evidence paths.
+Dependency declarations prove detection only; they do not produce an official score or prove meaningful usage.
+
+For the implemented API-REP-011 subset, evidence is grouped into `ARCHITECTURE`, `DATABASE`, `TESTING`,
+`DEVOPS`, `DOCUMENTATION`, and `ACTIVITY`. Database evidence reports normalized detected database technologies,
+data-access dependencies, migration assets, and explicit persistence-configuration paths. Each signal reports presence, count, an optional observed
+value, and at most 20 owner-authorized repository-relative evidence paths. Absence is explicit and no
+score, confidence, readiness, or recommendation priority is calculated by this endpoint.
+
+The API-REP-011 evidence view and active `baseline-v2` Rule Engine use `engineering-evidence-extractor-v2`.
+The immutable superseded `baseline-v1` remains bound to its original `engineering-evidence-extractor-v1` facts, so
+historical results remain reproducible.
+
+The implemented API-ANA-004/005/006 read subset exposes only completed, immutable, owner-scoped Rule Engine results.
+`RuleEvaluationResponse` includes the exact snapshot, rule-set version, formula-library version, extractor version,
+official overall/category/rule scores, confidence, evidence summary, warnings, and completion time.
+`ScoreBreakdownResponse` exposes deterministic raw values, weights, formula IDs, and bounded calculation traces.
+`EvidenceListResponse` exposes normalized evidence IDs and snapshot references linked to contributing rules; it does
+not expose raw repository content. A missing evaluation and an evaluation owned by another user both return `404`.
+API-ANA-001/002/003 now provide the owner-scoped PostgreSQL durable analysis-job subset for repository-baseline
+analysis. The worker invokes the versioned deterministic Rule Engine, persists immutable evaluation and Skill Matrix
+references, and returns only safe job state and result resource references. A request with the same owner, immutable
+snapshot, analysis scope, and active rule-set basis reuses its completed analysis job instead of creating another
+official result. Career-specific analysis remains excluded.
+API-ANA-007 and API-REP-012 expose cursor-paginated, newest-first completed analysis history. Each item contains
+owner-authorized immutable result references plus the official persisted score, confidence, rule-set version, Skill
+Matrix policy version, repository display name, and `currentForRepository`. The newest completed result per repository
+is derived as current; older results remain immutable history. The history read model never recalculates official results.
+Successful history and result-detail retrievals create durable `AUDIT_RESTRICTED` audit records; operational logs are
+not used as an audit substitute.
+
+The implemented API-SKL-001/002 subset returns the current or a historical owner-scoped immutable Skill Matrix.
+Each assessment includes its stable skill identity, source category, authoritative score, policy-derived level,
+confidence, strength/weakness flags, explicit growth state, aggregate rule-result reference, Evidence IDs,
+Repository IDs, structured downstream facts, and exact rule-set version. The browser displays these values without
+recalculation. A missing matrix and a matrix owned by another user both return `404`.
 | CreateAnalysisRequest | repositoryId, snapshotId, analysisScope, targetCareerId | Request analysis from supported references. | User private | Analysis |
 | AnalysisJobResponse | jobId, status, progress, resultResourceUrl | Analysis job status. | User private | AnalysisJob |
 | AnalysisResultResponse | analysisId, snapshotId, evaluationId, skillMatrixId, completedAt | Completed analysis. | User private | Analysis |
 | RuleEvaluationResponse | evaluationId, ruleSetVersionId, categoryScores, overallScore, evidenceSummary | Deterministic evaluation. | User private | Evaluation |
 | SkillMatrixResponse | skillMatrixId, evaluationId, skills, strengths, weaknesses, generatedAt | Skill Matrix. | User private | SkillMatrix |
-| CareerReadinessResponse | careerReadinessId, careerId, careerProfileVersionId, readinessLevel, skillGaps | Career readiness. | User private | CareerReadiness |
+| CareerReadinessResponse | careerReadinessId, skillMatrixId, careerId, careerProfileVersionId, careerProfileVersion, readinessPolicyVersion, ruleSetVersion, status, readinessScore, readinessLevel, confidence, unavailableCategories, skillGaps, assessedAt | Immutable versioned career readiness. Score and level are absent for insufficient evidence. | User private | CareerReadiness |
+| SkillGapResponse | skillGapId, skillId, skillKey, category, actualScore, actualLevel, expectedMinimum, gapState, careerWeight, evidenceIds | Deterministic category comparison ordered by severity, weight, and category. It does not contain recommendation priority. | User private | SkillGap |
 | CompanyReadinessResponse | companyReadinessId, companyId, companyProfileVersionId, readinessLevel, focusAreas | Company readiness. | User private | CompanyReadiness |
 | RecommendationResponse | recommendationId, type, priority, reason, status, evidenceRefs | Recommendation detail. | User private | Recommendation |
 | LearningRoadmapResponse | roadmapId, status, steps, milestones, progress | Roadmap detail. | User private | LearningRoadmap |
@@ -1114,6 +1215,7 @@ Internal stack traces and sensitive provider payloads must not be exposed.
 | FR-281~FR-320 | API-DSH-001~API-DSH-010 | Covered |
 | FR-321~FR-340 | API-KNW-004~API-KNW-011 | Covered |
 | FR-341~FR-360 | API-ADM-001~API-ADM-011 | Covered |
+| FR-361 | API-REP-001, API-REP-002, API-REP-004, API-REP-005 | Covered |
 
 ### 38.2 Architecture Requirement Mapping
 

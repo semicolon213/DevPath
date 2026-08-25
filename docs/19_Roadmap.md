@@ -28,8 +28,8 @@ This roadmap defines dependency and completion logic, not contractual delivery d
 | Testing | Specified | `15_Test_Architecture.md` exists |
 | Deployment | Specified | `16_Deployment_Guide.md` exists |
 | Coding standards | Specified | `17_Coding_Standards.md` exists |
-| ADR status | Identity and Persistence Decisions Accepted | ADR-024, ADR-025, and ADR-026 are accepted in addition to the scaffolding baseline; job, knowledge, artifact, AI, observability, deployment, and secrets ADRs remain phase-specific |
-| Implementation status | Initial Project Scaffold Created | Root, backend, frontend, contracts, fixtures, and foundation tests exist; backend execution remains locally blocked by missing Java 21 |
+| ADR status | Foundation and Job Decisions Accepted | ADR-024 through ADR-027 are accepted; knowledge, artifact, AI, observability, deployment, and secrets decisions remain phase-specific |
+| Implementation status | Deterministic MVP Core In Review | Identity, GitHub connection, repository synchronization/snapshots, baseline rule analysis, Skill Matrix, career/company catalogs, and composed frontend views exist; M05 readiness policy and response contracts remain unresolved |
 
 ## 3. Roadmap Assumptions and Constraints
 
@@ -356,6 +356,11 @@ Historical snapshots MUST NOT be overwritten.
 
 Feature extraction MUST NOT invoke an LLM.
 
+The current API-REP-011 extraction slice now includes a versioned `DATABASE` evidence category for normalized database
+technology declarations, data-access dependencies, migration assets, and persistence-configuration paths. It exposes
+measured presence/count/path facts only through `engineering-evidence-extractor-v2`. The active `baseline-v1` Rule Engine
+remains bound to its original v1 fact adapter, so no database score, weight, readiness, or recommendation is implied.
+
 ## 23. Rule Engine Foundation Milestone
 
 | Component | Exit Criteria |
@@ -369,6 +374,34 @@ Feature extraction MUST NOT invoke an LLM.
 | Historical reproducibility | Result identifies input/rule versions |
 
 First working subset SHOULD include Language, Framework, Documentation, Testing, and Activity where evidence is available.
+
+Implementation evidence now exists for the independent Rule Engine foundation subset: PostgreSQL-backed
+`REPOSITORY_BASELINE/baseline-v1`, catalog validation, deterministic `formula-v1` execution, category and overall
+weighted aggregation, confidence separation, per-rule trace metadata, repository-snapshot evidence mapping, and the
+`fixtures/rule-engine/baseline-v1.json` golden dataset. The later repository-baseline analysis slice now invokes this
+engine through durable jobs, but career/company-specific policies and the remaining analysis history/compare scope are
+not implied complete by this foundation.
+
+The completed-result persistence subset now stores immutable Evaluation headers, category scores, rule execution
+traces, warnings, missing-evidence states, normalized evidence records, and score-evidence links. Owner-aligned database
+foreign keys and owner-filtered API-ANA-004/005/006 reads protect private results. PostgreSQL-backed API-ANA-001/002
+jobs now invoke this persistence path, API-ANA-003 exposes immutable result references, and API-ANA-007/API-REP-012
+provide cursor-paginated owner-scoped history with official persisted score metadata. The Korean `/analyses` and
+`/analyses/:analysisId` routes expose history, rule traces, evidence, and the historical Skill Matrix without browser
+recalculation. Repeated requests with the same snapshot, scope, and active rule basis reuse the completed job/result;
+history and detail reads derive the newest completed result per repository as current while retaining older immutable
+results. The detail UI adds Korean rule labels and explanations of persisted observation, formula, weight, and score
+without calculating an official value. Comparison, career/company policy selection, and broader milestone evidence remain pending; this note
+does not mark the Rule Engine or AnalysisResult milestone complete.
+
+The Skill Matrix foundation now includes a PostgreSQL-authoritative `skill-matrix-v1` policy, stable category-to-skill
+mappings, deterministic level/strength/weakness classification, immutable assessments, evaluation/evidence/repository
+traceability, structured downstream facts, current/historical owner reads through API-SKL-001/002, and exact boundary
+tests. Completed RuleEvaluation persistence now invokes idempotent Skill Matrix generation, and the Korean `/skills`
+view presents current scores, levels, confidence, versions, evidence counts, responsive layout, and distinct loading,
+empty, anonymous, and transport-error states. Repository detail now requests and polls durable baseline analysis jobs,
+then refreshes the current matrix. Historical comparison, remaining Skill APIs, career readiness, and richer evidence
+navigation remain pending; this evidence does not mark the Skill Matrix milestone complete.
 
 ## 24. Rule Category Delivery Plan
 
@@ -415,6 +448,18 @@ Scoring rules are not invented here; `02_Rule_Engine.md` is authoritative.
 Frontend MUST display authoritative result without recalculation.
 
 ## 27. Career Path Engine Foundation
+
+The initial CR-001/CR-002 catalog slice now persists the nine SRS-supported career identities and immutable active
+`career-v1` profiles, exposes authenticated API-CAR-001/002 reads, and uses the same catalog to validate target-career
+selection. The Korean `/careers` and `/careers/:careerId` routes display configured technologies, competencies,
+priority labels, and roadmap-template order without calculating readiness or recommendations. Numeric competency
+thresholds and the `CareerReadinessResponse` detail contract remain unresolved, so readiness, gaps, company policy,
+recommendations, and roadmap generation are not implied complete by this slice.
+
+The CR-003/CR-004 catalog slice now similarly persists six SRS-supported companies and immutable active `company-v1`
+profiles, exposes API-CMP-001/002, validates target-company selection from the same catalog, and provides Korean
+`/companies` and `/companies/:companyId` views. These profiles are explicitly generic competency emphasis only;
+company readiness and confidential hiring knowledge are excluded.
 
 Pipeline: `Rule Results ??Skill Matrix ??Career Rules ??Company Rules ??Skill Gap ??Learning Roadmap ??Recommendation`
 
@@ -468,6 +513,12 @@ Only companies defined in `03_Career_Path_Engine.md` are MVP candidates.
 
 ## 30. Skill Gap and Readiness Slice
 
+The approved MVP scope evaluates Backend and Frontend careers first. Company readiness remains post-MVP. The approved
+`baseline-v2`, `skill-matrix-v2`, Backend/Frontend `career-v2`, and `readiness-v1` policies now cover the required
+categories. Unsupported required categories are represented as `INSUFFICIENT_EVIDENCE` with null readiness score and
+level; confidence remains separately weighted. The deterministic calculation, immutable PostgreSQL persistence,
+owner-scoped APIs, and frontend result view are implemented for owner/coordinator review.
+
 | Element | Exit Criteria |
 |---|---|
 | Selected targets | Career and optional company target validated |
@@ -481,6 +532,11 @@ Only companies defined in `03_Career_Path_Engine.md` are MVP candidates.
 AI explanation remains separate.
 
 ## 31. Recommendation and Learning Roadmap Slice
+
+The owner approved MVP `recommendation-v1` and `roadmap-v1` for Backend and Frontend. Missing, Weak, and Partial gaps
+map to Critical, High, and Medium respectively; one configured structured recommendation is produced per eligible
+gap. Company modifiers, AI prose, and external resource selection remain excluded. Roadmap steps use the approved
+career-specific prerequisite order and require a later official category score of at least 60 plus configured evidence.
 
 | Scope | Exit Criteria |
 |---|---|
@@ -519,6 +575,14 @@ AI prose is not required for completion.
 | Recent jobs | Async job state | Job API test |
 
 Placeholder analytics without reliable source MUST NOT be included.
+
+The current frontend MVP composition exposes a Korean `/dashboard` route backed only by the implemented owner-scoped
+preference, repository, analysis-history, career/company-catalog, and Skill Matrix APIs. It represents loading, empty,
+partial-source failure, authenticated success, and anonymous failure states. Repository sync counts and current-analysis
+cards explicitly describe their fetched-page scope, while readiness and recommendation cards remain marked as not yet
+calculated because the governing numeric thresholds and response contracts are unresolved. This slice does not implement
+or claim completion of API-DSH-001, a durable dashboard projection, readiness, recommendations, or the Dashboard MVP
+Milestone. Frontend tests and production build provide implementation evidence for this composition only.
 
 ## 34. MVP Completion Gate
 
@@ -1170,11 +1234,11 @@ Progress tracks milestone status, exit criteria, blocking defects, open ADRs, re
 | RM-OI-002 | Frontend framework baseline resolved for scaffolding | ADR | 0/1 | No | React/TypeScript SPA accepted | Frontend | Before M01 | ADR-021 | Resolved |
 | RM-OI-003 | Persistence and migration tools resolved | ADR | 1/4 | No decision blocker | JPA/Hibernate adapters plus Flyway | Data | Before implementation verification | ADR-024/025 | Resolved |
 | RM-OI-004 | Auth/session model resolved | ADR | 2 | No decision blocker | GitHub OAuth2 Login plus opaque JDBC-backed MVP session | Security | Before implementation verification | ADR-026 | Resolved |
-| RM-OI-005 | Job technology unresolved | ADR | 3/4 | Yes | Persistent job abstraction | Backend | Before M20 | ADR-027 | Open |
+| RM-OI-005 | Job technology resolved | ADR | 3/4 | No decision blocker | PostgreSQL-backed durable jobs and transactional outbox | Backend | Before M20 | ADR-027 | Resolved |
 | RM-OI-006 | Vector DB unresolved | ADR | 7 | Yes for knowledge | Metadata-filtered store | Knowledge | Before M35 | ADR-028 | Open |
 | RM-OI-007 | Object storage unresolved | ADR | 9/11 | Yes for artifacts | S3-compatible abstraction | Ops | Before M44/M53 | ADR-029 | Open |
 | RM-OI-008 | Deployment platform/secrets unresolved | ADR | 11 | Yes for release | Vendor-neutral units | Platform | Before M53 | ADR-033/034 | Open |
-| RM-OI-009 | MVP career/company subset needs approval | Career/Roadmap | 5 | No | Backend/Frontend careers first | Product | Before M27 | N/A | Open |
+| RM-OI-009 | MVP career/company subset approved | Career/Roadmap | 5 | No | Backend/Frontend careers first; company readiness remains post-MVP | Product | Before M30 | N/A | Resolved |
 | RM-OI-010 | Demonstration environment unknown | Roadmap | 12 | No | Local/staging fallback | Project Owner | Before M57 | ADR-033 | Open |
 
 ## 77. Final Consistency Review
@@ -1215,9 +1279,9 @@ Progress tracks milestone status, exit criteria, blocking defects, open ADRs, re
 | Quality-gate count | 5 |
 | Risk count | 20 |
 | Deferred-item count | 15 |
-| Unresolved issue count | 6 open, 4 resolved |
-| MVP readiness summary | Ready to implement the limited Identity and Persistence foundation; later MVP milestones remain gated by their own ADRs and executable verification |
-| Implementation-start checklist | Install/use Java 21, implement ADR-024/025/026 foundation, add migrations and security dependencies in that task, then pass persistence/auth/security tests |
+| Unresolved issue count | 4 open, 6 resolved |
+| MVP readiness summary | M02-M04 foundations are implemented and under owner review; Backend/Frontend-first M05 scope is approved, but M30 is not Ready until the deterministic readiness policy and detailed response contracts are approved |
+| Implementation-start checklist | Review current M02-M04 evidence, define versioned Backend/Frontend readiness/gap rules without AI, synchronize API/data contracts, then implement M30 with golden tests; company readiness remains post-MVP |
 
 ### 77.2 Final Completeness Checklist
 
@@ -1238,15 +1302,18 @@ Progress tracks milestone status, exit criteria, blocking defects, open ADRs, re
 
 | Roadmap Item | Status | Evidence or Blocker |
 |---|---|---|
-| PostgreSQL/Flyway foundation | Partial | Migration created; empty-database Testcontainers execution skipped because Docker/PostgreSQL is unavailable |
-| Internal user and external GitHub identity | Partial | Domain, application, JPA adapters, Java 21 compile, and non-container tests passed |
-| Opaque JDBC session | Partial | Security tests passed; PostgreSQL-backed session startup remains pending |
-| Current-user and logout APIs | Partial | Implemented and documented; MockMvc security tests passed, full PostgreSQL-backed startup remains pending |
+| PostgreSQL/Flyway foundation | Verified | Empty-database PostgreSQL Testcontainers migration and JPA integration tests passed under Java 21 with no skipped tests |
+| Internal user and external GitHub identity | Verified foundation | Domain, application, JPA adapters, Java 21 build, PostgreSQL integration tests, and local GitHub OAuth login passed |
+| Opaque JDBC session | Partial | Security tests and PostgreSQL-backed OAuth session startup passed; restart persistence and explicit revocation evidence remain pending |
+| Current-user and logout APIs | Partial | Implemented and documented; MockMvc security tests passed, while the complete live logout/revocation journey remains pending |
 | Frontend session bootstrap | Complete | Tests and production build passed |
+| GitHub connection slice | Partial | Session-bound GitHub App authorization/callback, owner-scoped encrypted tokens and refresh, bounded full provider pagination, reauthorization, disconnect/local discard with remote revocation attempt, and Korean UI states are implemented; live provider verification and organization permission edge cases remain pending |
+| Repository registration slice | Partial | GitHub selection, server-side permission re-verification, canonical metadata persistence, duplicate-safe registration, owner-scoped cursor list/detail/archive/restore APIs, lifecycle filtering, audit events, and Korean repository workspace/detail UI are implemented; live provider verification remains pending |
+| Repository synchronization and snapshot slice | Partial | PostgreSQL durable jobs/outbox, bounded retries, owner-scoped status APIs, GitHub branch/commit collection, immutable snapshot persistence, current-snapshot linking, audit events, and Korean progress/history UI are implemented; live provider verification, cancellation, incremental sync, and broader PR/issue/document/dependency collection remain pending |
 | OpenAPI subset | Complete | Redocly validation passed |
-| Durable security audit store | Deferred | Explicit port and operational adapter only |
+| Durable security audit store | Partial | Append-only PostgreSQL audit records cover existing authentication and GitHub connect/disconnect/refresh-failure/permission-change events; broader product and administration events remain pending |
 | Account-status session revocation | Deferred | Requires future suspension/deletion use case |
-| Identity module completion | Blocked | PostgreSQL migration, JPA integration, and full application startup verification required |
+| Identity module completion | Owner review pending | Foundation gate evidence is available; broader account lifecycle and deferred revocation capabilities remain outside this slice |
 
-The Java 21 compile/test/build blocker is resolved. The next repository vertical slice must not begin until PostgreSQL migration, JPA integration, and full application startup verification are complete. This foundation does not complete the broader Identity module.
+The Java 21 compile/test/build and PostgreSQL migration/JPA integration blockers are resolved. Local PostgreSQL-backed application startup and GitHub OAuth login have been observed. Owner review is still required before declaring the milestone complete, and this foundation does not complete the broader Identity module.
 

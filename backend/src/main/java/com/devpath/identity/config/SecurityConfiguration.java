@@ -53,6 +53,7 @@ public class SecurityConfiguration {
                     "/internal/health",
                     "/oauth2/authorization/github",
                     "/login/oauth2/code/github",
+                    "/api/v1/integrations/github/callback",
                     "/error"
                 ).permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/v1/csrf").permitAll()
@@ -109,10 +110,11 @@ public class SecurityConfiguration {
     CorsConfigurationSource corsConfigurationSource(DevPathSecurityProperties properties) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(properties.frontendOrigin()));
-        configuration.setAllowedMethods(List.of("GET", "POST", "OPTIONS"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of(
             "Accept",
             "Content-Type",
+            "Idempotency-Key",
             "X-CSRF-TOKEN",
             "X-Request-Id"
         ));
