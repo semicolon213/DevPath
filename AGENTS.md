@@ -201,6 +201,13 @@ Proposed ADR은 해당 결정이 실제로 필요한 작업만 차단한다. 그
 - API 작업은 계약을 먼저 확정하고 backend와 frontend를 그 계약에 맞춘다.
 - database 작업은 migration을 먼저 소유·확정한 다음 persistence adapter를 수정한다.
 
+구현·단순화 반복 주기:
+
+- 한 번의 기본 반복은 `하나의 응집된 수직 capability 구현 → 관련 targeted/broader test와 build → @ponytail-review` 순서로 진행한다.
+- `@ponytail-review`는 해당 capability의 diff만 검토한다. 적용할 지적이 있으면 현재 범위 안에서 수정하고 영향받은 test와 build를 다시 실행한다.
+- 저장소 전체를 검사하는 `@ponytail-audit`는 capability마다 실행하지 않는다. roadmap milestone gate, milestone 단위 정리 시점 또는 owner/coordinator의 명시적 요청에서만 실행한다.
+- `@ponytail-audit` 결과의 수정은 audit 실행과 분리해 우선순위와 범위를 확정한 뒤 별도의 capability 작업으로 처리한다.
+
 인계 전:
 
 1. targeted test를 먼저 실행하고 관련 범위의 broader suite를 실행한다.
