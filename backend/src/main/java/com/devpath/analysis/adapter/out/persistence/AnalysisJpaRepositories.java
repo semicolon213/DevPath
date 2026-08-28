@@ -21,7 +21,7 @@ interface AnalysisJobJpaRepository extends JpaRepository<AnalysisJobJpaEntity, U
     List<AnalysisJobJpaEntity> findAllByUserIdOrderBySubmittedAtDescIdDesc(UUID userId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("select job from AnalysisJobJpaEntity job where job.status = 'QUEUED' and job.nextAttemptAt <= :now order by job.submittedAt")
+    @Query("select job from AnalysisJobJpaEntity job where job.nextAttemptAt <= :now and job.status in ('QUEUED', 'RUNNING') order by job.submittedAt")
     List<AnalysisJobJpaEntity> findClaimable(@Param("now") Instant now, Pageable pageable);
 }
 

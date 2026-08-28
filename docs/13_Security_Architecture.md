@@ -1047,3 +1047,38 @@ DevPath security is based on server-side authority, user ownership, deterministi
 | Audit | `AuthenticationAuditPort` with append-only PostgreSQL adapter | Login, logout, and absolute-timeout records are durable; user-attributed idle-timeout audit remains open |
 
 Active-session bulk revocation on a future account status change remains deferred because this slice does not implement suspension or deletion commands.
+
+## 35. Repository Activity Timeline Implementation Evidence
+
+API-REP-011 resolves the repository and current immutable snapshot through owner-scoped PostgreSQL queries before
+building the FR-043 timeline. The response minimizes source data to normalized event type, provider source reference,
+and occurrence time; commit messages, issue/PR text, labels, private file content, and provider credentials are not
+returned. Successful reads append a durable `REPOSITORY_EVIDENCE_VIEWED` audit record. The snapshot capture time is the
+measurement boundary, and negative elapsed durations are clamped to zero. No authorization decision, official score,
+or FR-044 staleness judgment depends on the browser or this read model.
+
+## 36. Large Repository Collection-Limit Controls
+
+FR-045 collection ceilings bound provider pagination, recursive tree completeness, normalized file and manifest counts,
+pull-request/review collection, and issue collection before snapshot persistence. A ceiling breach is normalized to the
+non-retryable `COLLECTION_LIMIT_EXCEEDED` job result and creates no partial snapshot. The user response and durable
+failure audit/outbox contain only the repository/job identifiers and safe normalized code/message; raw provider payloads,
+private file content, credential data, and internal exception text are excluded. Owner checks and current provider
+permission verification remain unchanged.
+
+## 37. Synchronization Resume and Snapshot Detail Controls
+
+The browser may retain only opaque synchronization and analysis job identifiers in the repository route query to resume
+owner-scoped API-INT-007 or API-ANA-002 polling after refresh. Session IDs, provider tokens, credentials, and private
+repository content remain excluded from URLs and browser storage. A successful synchronization result link is accepted
+only when its repository segment matches the current route; an analysis result is accepted only as the canonical
+`/api/v1/analyses/{analysisId}` path. API-REP-008 and API-ANA-003 perform the authoritative owner checks. Missing and
+cross-owner resources use the same unavailable response so resource ownership cannot be inferred.
+
+## 38. Platform-neutral MVP Security Gate
+
+The repository-owned `security:check` command runs before `verify:mvp` builds and tests without selecting a CI vendor or
+production security platform. It rejects tracked sensitive environment/key containers, high-confidence GitHub/OpenAI/AWS
+credential formats, runtime-owned JPA schema mutation modes, browser credential persistence, and direct browser calls to
+GitHub, Notion, or OpenAI APIs. Its detector has executable positive and negative fixture tests. This lightweight gate
+does not replace dependency audit, provider secret rotation, external security review, or a future approved CI scanner.

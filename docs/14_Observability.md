@@ -837,3 +837,19 @@ No alert or dashboard MAY exist without an owner.
 ### 30.7 Final Architectural Assertion
 
 DevPath observability is designed to make user-visible outcomes, deterministic pipeline execution, asynchronous jobs, external dependencies, knowledge retrieval, AI generation, security events, and operational degradation diagnosable without exposing sensitive content or altering business authority. Logs provide detail, metrics provide trends, traces provide causality, audit records provide authoritative action history, and none of these telemetry signals replace the Rule Engine, Career Path Engine, Knowledge Architecture, Security Architecture, or AI validation boundaries.
+
+## 31. Repository Collection-Limit Implementation Evidence
+
+FR-045 ceiling breaches are expected domain failures, not provider outages. The durable repository-sync job records
+`COLLECTION_LIMIT_EXCEEDED`, first-attempt completion, `retryable=false`, and a bounded safe message. Existing
+`REPOSITORY_SYNC_FAILED` audit and failure-outbox records provide authoritative traceability. Operational telemetry may
+aggregate the stable error category but must not use repository identifiers, provider exception messages, paths, or
+content as metric labels. No retry-count increase or dead-letter alert is expected for this terminal condition.
+
+## 43. Worker Lease Recovery Signals
+
+The current durable repository-sync and analysis jobs use `WORKER_LEASE_RECOVERED` when an expired running lease is
+reclaimed and `WORKER_LEASE_EXPIRED` when the persisted maximum attempt count is exhausted. The same owner-scoped job
+status APIs expose attempt count, maximum attempts, phase, bounded safe message, completion time, and result reference.
+Repository terminal lease exhaustion also uses the existing durable failure outbox and audit paths. These job fields
+are diagnostic state, not official scoring or audit truth, and no external metrics/tracing product is selected here.

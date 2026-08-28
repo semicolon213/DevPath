@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.UUID;
 
 public interface AnalysisPersistencePort {
+    default void acquireRequestLocks(UUID userId, UUID snapshotId, String analysisScope, String idempotencyKey) {}
     Optional<AnalysisJob> findByOwnerAndIdempotencyKey(UUID userId, String idempotencyKey);
     Optional<AnalysisJob> findActiveByBasis(UUID userId, UUID snapshotId, String analysisScope);
     Optional<AnalysisJob> findByIdAndOwner(UUID jobId, UUID userId);

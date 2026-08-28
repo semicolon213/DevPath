@@ -1,5 +1,5 @@
 const DEFAULT_API_BASE_URL = "http://localhost:8080";
-const browserCorrelationId = createOpaqueId("journey");
+const browserCorrelationId = crypto.randomUUID();
 
 export function getApiBaseUrl() {
   return import.meta.env.VITE_DEVPATH_API_BASE_URL ?? DEFAULT_API_BASE_URL;
@@ -28,6 +28,8 @@ type ApiEnvelope<T> = {
     timestamp: string;
   };
 };
+
+type CsrfToken = { headerName: string; token: string };
 
 export async function apiRequest<T>(
   path: string,
@@ -59,6 +61,14 @@ export async function apiRequest<T>(
   return response.json() as Promise<ApiEnvelope<T>>;
 }
 
+export async function withCsrf(init: RequestInit = {}): Promise<RequestInit> {
+  const csrf = await apiRequest<CsrfToken>("/api/v1/csrf");
+  return {
+    ...init,
+    headers: { ...init.headers, [csrf.data.headerName]: csrf.data.token }
+  };
+}
+
 async function safeErrorBody(response: Response) {
   try {
     return await response.json() as { error?: { code?: string; message?: string } };
@@ -67,34 +77,27 @@ async function safeErrorBody(response: Response) {
   }
 }
 
-export function rateLimitMessage(error: unknown) {
+export function rateLimitMessage(error: unknown, provider = "GitHub") {
   if (!(error instanceof ApiError) || error.status !== 429) return null;
   const epochSeconds = error.rateLimitReset === null ? Number.NaN : Number(error.rateLimitReset);
   if (Number.isFinite(epochSeconds)) {
     const resetAt = new Date(epochSeconds * 1000);
     if (!Number.isNaN(resetAt.getTime())) {
-      return `GitHub 요청 한도를 모두 사용했습니다. ${new Intl.DateTimeFormat("ko-KR", {
+      return `${provider} 요청 한도를 모두 사용했습니다. ${new Intl.DateTimeFormat("ko-KR", {
         dateStyle: "medium",
         timeStyle: "short"
       }).format(resetAt)} 이후 다시 시도해 주세요.`;
     }
   }
   if (error.retryAfter && /^\d+$/.test(error.retryAfter)) {
-    return `GitHub 요청 한도를 모두 사용했습니다. 약 ${error.retryAfter}초 후 다시 시도해 주세요.`;
+    return `${provider} 요청 한도를 모두 사용했습니다. 약 ${error.retryAfter}초 후 다시 시도해 주세요.`;
   }
-  return "GitHub 요청 한도를 모두 사용했습니다. 잠시 후 다시 시도해 주세요.";
+  return `${provider} 요청 한도를 모두 사용했습니다. 잠시 후 다시 시도해 주세요.`;
 }
 
 export function requestContextHeaders() {
   return {
-    "X-Request-Id": createOpaqueId("request"),
+    "X-Request-Id": crypto.randomUUID(),
     "X-Correlation-Id": browserCorrelationId
   };
-}
-
-function createOpaqueId(prefix: string) {
-  const randomUUID = globalThis.crypto?.randomUUID;
-  return typeof randomUUID === "function"
-    ? randomUUID.call(globalThis.crypto)
-    : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

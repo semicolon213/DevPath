@@ -1,4 +1,4 @@
-import { apiRequest } from "../../../shared/api/apiClient";
+import { apiRequest, withCsrf } from "../../../shared/api/apiClient";
 import { getRepository, type ImportedRepository } from "../../repositories/api/repositoryApi";
 import { getSkillMatrix, type SkillMatrix } from "../../skills/api/skillMatrixApi";
 
@@ -102,19 +102,15 @@ export type AnalysisDetail = {
 export type AnalysisComparison = { analyses: AnalysisHistoryItem[] };
 export type AnalysisComparisonDetail = { analyses: Array<{ summary: AnalysisHistoryItem; evaluation: RuleEvaluation }> };
 
-type CsrfToken = { headerName: string; token: string };
-
 export async function requestAnalysis(repositoryId: string) {
-  const csrf = await apiRequest<CsrfToken>("/api/v1/csrf");
-  return (await apiRequest<AnalysisJob>("/api/v1/analyses", {
+  return (await apiRequest<AnalysisJob>("/api/v1/analyses", await withCsrf({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      [csrf.data.headerName]: csrf.data.token,
-      "Idempotency-Key": createIdempotencyKey()
+      "Idempotency-Key": crypto.randomUUID()
     },
     body: JSON.stringify({ repositoryId, analysisScope: "REPOSITORY_BASELINE" })
-  })).data;
+  }))).data;
 }
 
 export async function getAnalysisJob(jobId: string) {
@@ -155,10 +151,4 @@ export async function getAnalysisDetail(analysisId: string): Promise<AnalysisDet
     getSkillMatrix(result.skillMatrixId)
   ]);
   return { result, repository, evaluation: evaluationEnvelope.data, evidence: evidenceEnvelope.data.evidence, matrix };
-}
-
-function createIdempotencyKey() {
-  const randomUUID = globalThis.crypto?.randomUUID;
-  if (typeof randomUUID === "function") return randomUUID.call(globalThis.crypto);
-  return `analysis-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

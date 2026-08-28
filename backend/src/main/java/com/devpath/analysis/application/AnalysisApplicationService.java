@@ -39,6 +39,8 @@ public class AnalysisApplicationService {
     ) {
         String scope = analysisScope == null || analysisScope.isBlank() ? REPOSITORY_BASELINE : analysisScope;
         validate(idempotencyKey, scope);
+        var snapshot = sources.resolveOwnedSnapshot(userId, repositoryId, snapshotId);
+        persistence.acquireRequestLocks(userId, snapshot.id(), scope, idempotencyKey);
         Optional<AnalysisJob> repeated = persistence.findByOwnerAndIdempotencyKey(userId, idempotencyKey);
         if (repeated.isPresent()) {
             AnalysisJob existing = repeated.get();
@@ -49,7 +51,6 @@ public class AnalysisApplicationService {
             return AnalysisJobView.from(existing);
         }
 
-        var snapshot = sources.resolveOwnedSnapshot(userId, repositoryId, snapshotId);
         Optional<CompletedAnalysis> reusable = persistence.findReusableResult(userId, snapshot.id(), scope);
         if (reusable.isPresent()) {
             return persistence.findByIdAndOwner(reusable.get().jobId(), userId).map(AnalysisJobView::from)
@@ -123,11 +124,16 @@ public class AnalysisApplicationService {
 
     @Transactional
     Optional<AnalysisWorkItem> claim(Instant now) {
-        return persistence.findNextClaimable(now).map(job -> {
-            AnalysisJob running = persistence.saveJob(job.start(now));
-            return new AnalysisWorkItem(running,
-                sources.resolveOwnedSnapshot(running.userId(), running.repositoryId(), running.snapshotId()));
-        });
+        Optional<AnalysisJob> candidate = persistence.findNextClaimable(now);
+        if (candidate.isEmpty()) return Optional.empty();
+        AnalysisJob claimed = persistence.saveJob(candidate.get().start(now));
+        if (claimed.status() == AnalysisJobStatus.FAILED) {
+            persistence.appendOutbox("ANALYSIS_JOB", claimed.id(), "AnalysisFailed",
+                "{\"jobId\":\"" + claimed.id() + "\",\"errorCode\":\"WORKER_LEASE_EXPIRED\"}", now);
+            return Optional.empty();
+        }
+        return Optional.of(new AnalysisWorkItem(claimed,
+            sources.resolveOwnedSnapshot(claimed.userId(), claimed.repositoryId(), claimed.snapshotId())));
     }
 
     @Transactional

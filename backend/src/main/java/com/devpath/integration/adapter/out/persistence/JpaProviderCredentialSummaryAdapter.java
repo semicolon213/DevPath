@@ -10,14 +10,16 @@ import org.springframework.stereotype.Repository;
 @Repository
 class JpaProviderCredentialSummaryAdapter implements ProviderCredentialSummaryPort {
     private final ProviderCredentialJpaRepository repository;
+    private final EncryptedNotionCredentialStore notion;
 
-    JpaProviderCredentialSummaryAdapter(ProviderCredentialJpaRepository repository) {
+    JpaProviderCredentialSummaryAdapter(ProviderCredentialJpaRepository repository, EncryptedNotionCredentialStore notion) {
         this.repository = repository;
+        this.notion = notion;
     }
 
     @Override
     public List<ConnectedAccountView> findByUserId(UUID userId) {
-        return repository.findAllByUserIdOrderByConnectedAtAsc(userId).stream()
+        var github = repository.findAllByUserIdOrderByConnectedAtAsc(userId).stream()
             .map(entity -> new ConnectedAccountView(
                 entity.id(),
                 entity.provider(),
@@ -26,6 +28,9 @@ class JpaProviderCredentialSummaryAdapter implements ProviderCredentialSummaryPo
                 entity.connectedAt(),
                 entity.refreshTokenExpiresAt() == null ? entity.expiresAt() : entity.refreshTokenExpiresAt()
             ))
+            .toList();
+        return java.util.stream.Stream.concat(github.stream(), notion.findAllViews(userId).stream())
+            .sorted(java.util.Comparator.comparing(ConnectedAccountView::connectedAt))
             .toList();
     }
 

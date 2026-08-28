@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 
 @org.springframework.stereotype.Repository
 class JpaRepositorySynchronizationAdapter implements RepositorySynchronizationPersistencePort {
@@ -22,6 +24,7 @@ class JpaRepositorySynchronizationAdapter implements RepositorySynchronizationPe
     private final RepositoryIssueJpaRepository issues;
     private final RepositoryDocumentJpaRepository documents;
     private final OutboxEventJpaRepository outbox;
+    private final JdbcTemplate jdbc;
 
     JpaRepositorySynchronizationAdapter(
         RepositorySyncJobJpaRepository jobs,
@@ -34,12 +37,18 @@ class JpaRepositorySynchronizationAdapter implements RepositorySynchronizationPe
         RepositoryPullRequestJpaRepository pullRequests,
         RepositoryIssueJpaRepository issues,
         RepositoryDocumentJpaRepository documents,
-        OutboxEventJpaRepository outbox
+        OutboxEventJpaRepository outbox,
+        JdbcTemplate jdbc
     ) {
         this.jobs = jobs; this.snapshots = snapshots; this.branches = branches;
         this.commits = commits; this.languages = languages; this.dependencies = dependencies;
         this.files = files; this.pullRequests = pullRequests; this.issues = issues;
-        this.documents = documents; this.outbox = outbox;
+        this.documents = documents; this.outbox = outbox; this.jdbc = jdbc;
+    }
+
+    public void acquireRequestLocks(UUID userId, UUID repositoryId, String idempotencyKey) {
+        advisoryLock("repository-sync:key:" + userId + ":" + idempotencyKey);
+        advisoryLock("repository-sync:repository:" + repositoryId);
     }
 
     public Optional<RepositorySyncJob> findByOwnerAndIdempotencyKey(UUID userId, String key) {
@@ -85,6 +94,10 @@ class JpaRepositorySynchronizationAdapter implements RepositorySynchronizationPe
     }
     public void appendOutbox(String aggregateType, UUID aggregateId, String eventType, String payload, Instant occurredAt) {
         outbox.save(new OutboxEventJpaEntity(aggregateType, aggregateId, eventType, payload, occurredAt));
+    }
+    private void advisoryLock(String key) {
+        jdbc.query("select pg_advisory_xact_lock(hashtextextended(?, 0))",
+            (ResultSetExtractor<Void>) resultSet -> null, key);
     }
     private RepositorySnapshot hydrate(RepositorySnapshotJpaEntity value) {
         return value.toDomain(

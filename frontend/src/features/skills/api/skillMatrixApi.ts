@@ -44,6 +44,33 @@ export type SkillEvidenceList = {
   skillId: string; skillAssessmentId: string; skillMatrixId: string; evidence: SkillEvidence[];
 };
 export type SkillWorkspace = { detail: SkillDetail; evidence: SkillEvidenceList };
+export type SkillHistoryPoint = {
+  analysisId: string;
+  repositoryId: string;
+  repositoryFullName: string;
+  skillMatrixId: string;
+  matrixStatus: SkillMatrix["status"];
+  policyVersion: string;
+  ruleSetVersion: string;
+  generatedAt: string;
+  skill: SkillAssessment;
+};
+export type SkillHistoryPage = {
+  points: SkillHistoryPoint[];
+  nextCursor: string | null;
+  totalAnalysisCount: number;
+};
+
+type AnalysisHistoryPage = {
+  analyses: Array<{
+    analysisId: string;
+    repositoryId: string;
+    repositoryFullName: string;
+    skillMatrixId: string;
+  }>;
+  nextCursor: string | null;
+  totalCount: number;
+};
 
 export async function getCurrentSkillMatrix() {
   return (await apiRequest<SkillMatrix>("/api/v1/skill-matrices/current")).data;
@@ -70,4 +97,29 @@ export async function getSkillEvidence(skillId: string) {
 export async function getSkillWorkspace(skillId: string): Promise<SkillWorkspace> {
   const [detail, evidence] = await Promise.all([getSkillDetail(skillId), getSkillEvidence(skillId)]);
   return { detail, evidence };
+}
+
+export async function getSkillHistoryPage(skillId: string, cursor: string | null = null): Promise<SkillHistoryPage> {
+  const query = new URLSearchParams({ limit: "20" });
+  if (cursor) query.set("cursor", cursor);
+  const history = (await apiRequest<AnalysisHistoryPage>(`/api/v1/analyses?${query}`)).data;
+  const uniqueAnalyses = [...new Map(history.analyses.map(item => [item.skillMatrixId, item])).values()];
+  const points = (await Promise.all(uniqueAnalyses.map(async analysis => {
+    const matrix = await getSkillMatrix(analysis.skillMatrixId);
+    const skill = matrix.skills.find(item => item.skillId === skillId);
+    if (!skill) return null;
+    return {
+      analysisId: analysis.analysisId,
+      repositoryId: analysis.repositoryId,
+      repositoryFullName: analysis.repositoryFullName,
+      skillMatrixId: matrix.skillMatrixId,
+      matrixStatus: matrix.status,
+      policyVersion: matrix.policyVersion,
+      ruleSetVersion: matrix.ruleSetVersion,
+      generatedAt: matrix.generatedAt,
+      skill
+    } satisfies SkillHistoryPoint;
+  }))).filter((point): point is SkillHistoryPoint => point !== null);
+  points.sort((left, right) => Date.parse(right.generatedAt) - Date.parse(left.generatedAt));
+  return { points, nextCursor: history.nextCursor, totalAnalysisCount: history.totalCount };
 }

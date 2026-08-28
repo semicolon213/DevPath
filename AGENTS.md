@@ -50,9 +50,9 @@ DevPath는 AI 보조 개발자 커리어 인텔리전스 플랫폼이다. GitHub
 - 공급자 독립 내부 `User` identity와 GitHub `ExternalIdentity` 연결
 - 사용자 프로필과 Career/Company preference
 - GitHub 연결, 저장소 검색 및 가져오기
-- 저장소 동기화 작업, immutable snapshot, 언어·dependency·file·PR·review·issue·README 기반 기술 및 비점수 근거 추출
-- 분석 작업과 이력, 결정론 Rule Engine, 점수 상세, 근거 연결
-- Skill Matrix 생성과 조회
+- 저장소 등록·보관·복원 수명주기, URL 기반 보관 필터, 동기화 작업과 새로고침 복구, immutable snapshot 목록·상세 추적, 대형 저장소 수집 상한의 비재시도 안전 실패, 언어·dependency·file·PR·review·issue·README 기반 기술·비점수 근거 및 현재 스냅샷 활동 타임라인 추출
+- 분석 작업과 새로고침 복구, 완료 결과 직접 이동, 이력, 스냅샷별 공식 분석 추적, 결정론 Rule Engine, 점수 상세, 근거 연결
+- Skill Matrix 생성·조회·비교, 기술별 불변 평가 이력 탐색
 - Backend/Frontend Career catalog 및 Career Readiness/Skill Gap 계산
 - Company catalog 조회. 회사별 readiness와 추천 정책은 아직 포함하지 않음
 - `recommendation-v1` 결정론 추천과 `roadmap-v1` 학습 로드맵
@@ -75,10 +75,11 @@ DevPath는 AI 보조 개발자 커리어 인텔리전스 플랫폼이다. GitHub
 
 현재 검증 근거:
 
-- Docker와 `DOCKER_API_VERSION=1.44`를 사용한 백엔드 테스트: 124건 중 122건 PASS, 실패 0건, 외부 DB 환경변수 조건부 테스트 2건 SKIP
-- Testcontainers 기반 PostgreSQL 통합 테스트 11건 PASS
+- Docker와 `DOCKER_API_VERSION=1.44`를 사용한 백엔드 테스트: 146건 중 144건 PASS, 실패 0건, 외부 DB 환경변수 조건부 테스트 2건 SKIP
+- Testcontainers 기반 PostgreSQL 통합 테스트 14건 PASS
 - 백엔드 build PASS
-- 프론트엔드 Vitest 34개 파일 73건 PASS, Playwright Chromium 및 axe 사용자 여정 5건 PASS, production build와 전체 npm audit PASS
+- 프론트엔드 Vitest 35개 파일 83건 PASS, Playwright Chromium 및 axe 사용자 여정 6건 PASS, production build와 전체 npm audit PASS
+- 플랫폼 중립 `security:check`가 민감 파일·고신뢰 credential·위험한 JPA schema mode·브라우저 credential 저장·브라우저 provider 직접 호출을 차단
 - OpenAPI 유효성 검사 PASS. 기존 권고 경고 8건 존재
 
 계획된 모듈을 구현된 기능으로 표현하지 않는다. 이 기준선 이후의 변경은 실제 코드와 검증 결과에 근거해서만 갱신한다.
@@ -220,8 +221,11 @@ npm run frontend:test
 npm run frontend:e2e
 npm run frontend:quality
 npm run frontend:build
+npm run docker:check
+npm run security:check
 npm run test
 npm run verify
+npm run verify:mvp
 ```
 
 Docker Desktop 최신 버전과 Testcontainers 1.20.3 조합에서 Docker API 호환 설정이 필요한 경우 Windows PowerShell에서 다음과 같이 실행한다.

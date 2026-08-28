@@ -24,6 +24,8 @@ public record RepositorySyncJob(
     String errorMessage,
     long version
 ) {
+    private static final Duration DEFAULT_LEASE = Duration.ofMinutes(15);
+    private static final Duration MAX_RETRY_DELAY = Duration.ofMinutes(5);
     public RepositorySyncJob {
         Objects.requireNonNull(id);
         Objects.requireNonNull(userId);
@@ -46,11 +48,29 @@ public record RepositorySyncJob(
     }
 
     public RepositorySyncJob start(Instant now) {
-        if (status != RepositorySyncJobStatus.QUEUED) {
+        return claim(now, DEFAULT_LEASE);
+    }
+
+    public RepositorySyncJob claim(Instant now, Duration leaseDuration) {
+        Objects.requireNonNull(now);
+        Objects.requireNonNull(leaseDuration);
+        if (leaseDuration.isZero() || leaseDuration.isNegative()) {
+            throw new IllegalArgumentException("Repository sync job lease must be positive");
+        }
+        boolean queued = status == RepositorySyncJobStatus.QUEUED && !nextAttemptAt.isAfter(now);
+        boolean stale = status == RepositorySyncJobStatus.RUNNING && !nextAttemptAt.isAfter(now);
+        if (!queued && !stale) {
             return this;
         }
+        if (stale && attemptCount >= maxAttempts) {
+            return copy(RepositorySyncJobStatus.FAILED, "FAILED", progressPercent, attemptCount,
+                startedAt, now, nextAttemptAt, null, "WORKER_LEASE_EXPIRED",
+                "Repository synchronization stopped after its worker lease expired.");
+        }
         return copy(RepositorySyncJobStatus.RUNNING, "COLLECTING", 10, attemptCount + 1,
-            startedAt == null ? now : startedAt, null, nextAttemptAt, null, null, null);
+            startedAt == null ? now : startedAt, null, now.plus(leaseDuration), null,
+            stale ? "WORKER_LEASE_RECOVERED" : null,
+            stale ? "Repository synchronization resumed after a worker interruption." : null);
     }
 
     public RepositorySyncJob succeed(UUID snapshotId, Instant now) {
@@ -71,10 +91,18 @@ public record RepositorySyncJob(
         }
         if (attemptCount < maxAttempts) {
             return copy(RepositorySyncJobStatus.QUEUED, "RETRY_WAIT", 0, attemptCount,
-                startedAt, null, now.plus(Duration.ofSeconds(30)), null, code, safeMessage);
+                startedAt, null, now.plus(retryDelay()), null, code, safeMessage);
         }
         return copy(RepositorySyncJobStatus.FAILED, "FAILED", progressPercent, attemptCount,
             startedAt, now, nextAttemptAt, null, code, safeMessage);
+    }
+
+    private Duration retryDelay() {
+        long exponentialSeconds = 30L << Math.max(0, attemptCount - 1);
+        long boundedSeconds = Math.min(exponentialSeconds, MAX_RETRY_DELAY.toSeconds());
+        long jitterRange = Math.max(1, boundedSeconds / 4);
+        long jitterSeconds = Math.floorMod(Objects.hash(id, attemptCount), jitterRange);
+        return Duration.ofSeconds(Math.min(MAX_RETRY_DELAY.toSeconds(), boundedSeconds + jitterSeconds));
     }
 
     public RepositorySyncJob waitForRateLimit(Instant retryAt, Instant now) {

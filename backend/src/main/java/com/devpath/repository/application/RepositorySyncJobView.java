@@ -29,6 +29,7 @@ public record RepositorySyncJobView(
             job.resultSnapshotId() == null ? null : "/api/v1/repositories/" + job.repositoryId()
                 + "/snapshots/" + job.resultSnapshotId(),
             job.errorCode(), job.errorMessage(), job.status().name().equals("FAILED")
+                && !"COLLECTION_LIMIT_EXCEEDED".equals(job.errorCode())
         );
     }
 }

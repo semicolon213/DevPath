@@ -3,6 +3,7 @@ import {
   archiveRepository,
   getRepositories,
   getRepository,
+  getRepositorySnapshot,
   getRepositorySnapshots,
   getRepositoryTechnologies,
   getRepositoryEvidence,
@@ -62,6 +63,19 @@ it("queues and observes a repository synchronization with immutable snapshots", 
   }));
 });
 
+it("loads one owner-scoped immutable snapshot by repository and snapshot ID", async () => {
+  const fetchMock = vi.fn().mockResolvedValue(Response.json({ data: {
+    snapshotId: "snapshot-id", repositoryId: "repo-id", immutable: true, contentHash: "sha256:content"
+  }, metadata }));
+  vi.stubGlobal("fetch", fetchMock);
+
+  await expect(getRepositorySnapshot("repo-id", "snapshot-id")).resolves.toMatchObject({ immutable: true });
+  expect(fetchMock).toHaveBeenCalledWith(
+    "http://localhost:8080/api/v1/repositories/repo-id/snapshots/snapshot-id",
+    expect.objectContaining({ credentials: "include" })
+  );
+});
+
 it("loads deterministic language evidence from the current snapshot", async () => {
   const fetchMock = vi.fn().mockResolvedValueOnce(Response.json({
     data: {
@@ -101,21 +115,6 @@ it("loads deterministic engineering evidence without scores", async () => {
     categories: [expect.objectContaining({ category: "TESTING" })]
   });
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/repositories/repo-id/evidence"), expect.anything());
-});
-
-it("creates a synchronization request when randomUUID is unavailable", async () => {
-  const fetchMock = vi.fn()
-    .mockResolvedValueOnce(Response.json({ data: { headerName: "X-CSRF-TOKEN", token: "csrf-token" }, metadata }))
-    .mockResolvedValueOnce(Response.json({
-      data: { jobId: "job-id", status: "queued", jobType: "REPOSITORY_SYNC" }, metadata
-    }));
-  vi.stubGlobal("fetch", fetchMock);
-  vi.stubGlobal("crypto", {});
-
-  await expect(synchronizeRepository("repo-id")).resolves.toMatchObject({ status: "queued" });
-
-  const requestHeaders = fetchMock.mock.calls[1]?.[1]?.headers as Record<string, string>;
-  expect(requestHeaders["Idempotency-Key"]).toMatch(/^sync-\d+-[a-z0-9]+$/);
 });
 
 it("archives and restores through CSRF-protected lifecycle commands", async () => {

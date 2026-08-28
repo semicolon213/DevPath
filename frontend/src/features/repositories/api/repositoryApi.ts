@@ -1,4 +1,4 @@
-import { apiRequest } from "../../../shared/api/apiClient";
+import { apiRequest, withCsrf } from "../../../shared/api/apiClient";
 
 export type ImportedRepository = {
   repositoryId: string;
@@ -97,9 +97,25 @@ export type RepositoryEvidenceSummary = {
   snapshotId: string;
   extractorVersion: string;
   categories: EvidenceCategory[];
+  activityTimeline: RepositoryActivityTimeline;
 };
 
-type CsrfToken = { headerName: string; token: string };
+export type RepositoryActivityEvent = {
+  eventType: "COMMIT" | "PULL_REQUEST_OPENED" | "PULL_REQUEST_CLOSED" | "PULL_REQUEST_MERGED" | "ISSUE_OPENED" | "ISSUE_CLOSED";
+  sourceReference: string;
+  occurredAt: string;
+};
+
+export type RepositoryActivityTimeline = {
+  extractorVersion: "repository-activity-timeline-v1";
+  scope: "CURRENT_SNAPSHOT";
+  measuredAt: string;
+  latestActivityAt: string | null;
+  daysSinceLatestActivity: number | null;
+  totalEventCount: number;
+  truncated: boolean;
+  events: RepositoryActivityEvent[];
+};
 
 export async function getRepositories(cursor: string | null = null, includeArchived = false) {
   const query = new URLSearchParams({ limit: "20", includeArchived: String(includeArchived) });
@@ -112,15 +128,13 @@ export async function getRepository(repositoryId: string) {
 }
 
 export async function importRepository(providerRepositoryId: string) {
-  const csrf = await apiRequest<CsrfToken>("/api/v1/csrf");
-  return (await apiRequest<ImportedRepository>("/api/v1/repositories/imports", {
+  return (await apiRequest<ImportedRepository>("/api/v1/repositories/imports", await withCsrf({
     method: "POST",
     headers: {
-      "Content-Type": "application/json",
-      [csrf.data.headerName]: csrf.data.token
+      "Content-Type": "application/json"
     },
     body: JSON.stringify({ providerRepositoryId })
-  })).data;
+  }))).data;
 }
 
 export async function archiveRepository(repositoryId: string) {
@@ -132,22 +146,12 @@ export async function restoreRepository(repositoryId: string) {
 }
 
 export async function synchronizeRepository(repositoryId: string) {
-  const csrf = await apiRequest<CsrfToken>("/api/v1/csrf");
-  return (await apiRequest<RepositorySyncJob>(`/api/v1/repositories/${repositoryId}/sync`, {
+  return (await apiRequest<RepositorySyncJob>(`/api/v1/repositories/${repositoryId}/sync`, await withCsrf({
     method: "POST",
     headers: {
-      [csrf.data.headerName]: csrf.data.token,
-      "Idempotency-Key": createIdempotencyKey()
+      "Idempotency-Key": crypto.randomUUID()
     }
-  })).data;
-}
-
-function createIdempotencyKey() {
-  const randomUUID = globalThis.crypto?.randomUUID;
-  if (typeof randomUUID === "function") {
-    return randomUUID.call(globalThis.crypto);
-  }
-  return `sync-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }))).data;
 }
 
 export async function getRepositorySyncJob(jobId: string) {
@@ -158,6 +162,12 @@ export async function getRepositorySnapshots(repositoryId: string) {
   return (await apiRequest<{ snapshots: RepositorySnapshot[] }>(
     `/api/v1/repositories/${repositoryId}/snapshots`
   )).data.snapshots;
+}
+
+export async function getRepositorySnapshot(repositoryId: string, snapshotId: string) {
+  return (await apiRequest<RepositorySnapshot>(
+    `/api/v1/repositories/${repositoryId}/snapshots/${snapshotId}`
+  )).data;
 }
 
 export async function getRepositoryTechnologies(repositoryId: string) {
@@ -173,9 +183,6 @@ export async function getRepositoryEvidence(repositoryId: string) {
 }
 
 async function changeRepositoryLifecycle(repositoryId: string, action: "archive" | "restore") {
-  const csrf = await apiRequest<CsrfToken>("/api/v1/csrf");
-  return (await apiRequest<ImportedRepository>(`/api/v1/repositories/${repositoryId}/${action}`, {
-    method: "POST",
-    headers: { [csrf.data.headerName]: csrf.data.token }
-  })).data;
+  return (await apiRequest<ImportedRepository>(`/api/v1/repositories/${repositoryId}/${action}`,
+    await withCsrf({ method: "POST" }))).data;
 }

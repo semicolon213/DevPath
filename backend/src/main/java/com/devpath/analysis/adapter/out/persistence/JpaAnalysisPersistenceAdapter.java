@@ -9,17 +9,28 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.ResultSetExtractor;
 
 @org.springframework.stereotype.Repository
 class JpaAnalysisPersistenceAdapter implements AnalysisPersistencePort {
     private final AnalysisJobJpaRepository jobs;
     private final AnalysisResultJpaRepository results;
     private final AnalysisOutboxJpaRepository outbox;
+    private final JdbcTemplate jdbc;
 
     JpaAnalysisPersistenceAdapter(
-        AnalysisJobJpaRepository jobs, AnalysisResultJpaRepository results, AnalysisOutboxJpaRepository outbox
+        AnalysisJobJpaRepository jobs, AnalysisResultJpaRepository results, AnalysisOutboxJpaRepository outbox,
+        JdbcTemplate jdbc
     ) {
-        this.jobs = jobs; this.results = results; this.outbox = outbox;
+        this.jobs = jobs; this.results = results; this.outbox = outbox; this.jdbc = jdbc;
+    }
+
+    public void acquireRequestLocks(
+        UUID userId, UUID snapshotId, String analysisScope, String idempotencyKey
+    ) {
+        advisoryLock("analysis:key:" + userId + ":" + idempotencyKey);
+        advisoryLock("analysis:basis:" + userId + ":" + snapshotId + ":" + analysisScope);
     }
 
     public Optional<AnalysisJob> findByOwnerAndIdempotencyKey(UUID userId, String key) {
@@ -75,6 +86,10 @@ class JpaAnalysisPersistenceAdapter implements AnalysisPersistencePort {
     }
     public void appendOutbox(String type, UUID id, String eventType, String payload, Instant occurredAt) {
         outbox.save(new AnalysisOutboxJpaEntity(type, id, eventType, payload, occurredAt));
+    }
+    private void advisoryLock(String key) {
+        jdbc.query("select pg_advisory_xact_lock(hashtextextended(?, 0))",
+            (ResultSetExtractor<Void>) resultSet -> null, key);
     }
     private AnalysisHistoryItemView toView(AnalysisHistoryProjection value) {
         return new AnalysisHistoryItemView(value.getAnalysisId(), value.getRepositoryId(),

@@ -44,6 +44,9 @@ it("shows synchronization controls and immutable snapshot history separately fro
   expect(screen.getByRole("button", { name: "저장소 보관" })).toBeEnabled();
   expect(screen.getByRole("button", { name: "GitHub 동기화" })).toBeEnabled();
   expect(await screen.findByText("아직 완료된 동기화가 없습니다.")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "저장소 보관" }));
+  expect(screen.getByRole("heading", { name: "이 저장소를 DevPath에서 보관할까요?" })).toBeInTheDocument();
+  expect(screen.getByText(/불변 스냅샷, 공식 분석 결과는 삭제되지 않습니다/)).toBeInTheDocument();
 });
 
 it("shows normalized languages frameworks and databases with evidence paths", async () => {
@@ -98,7 +101,17 @@ it("shows normalized languages frameworks and databases with evidence paths", as
           { signalKey: "CLOSED_ISSUE_COUNT", label: "Closed issues", present: true,
             count: 5, observedValue: "5", evidencePaths: [] }
         ] }
-      ]
+      ],
+      activityTimeline: {
+        extractorVersion: "repository-activity-timeline-v1", scope: "CURRENT_SNAPSHOT",
+        measuredAt: "2026-08-11T01:00:00Z", latestActivityAt: "2026-08-10T00:00:00Z",
+        daysSinceLatestActivity: 1, totalEventCount: 3, truncated: false,
+        events: [
+          { eventType: "PULL_REQUEST_MERGED", sourceReference: "501", occurredAt: "2026-08-10T00:00:00Z" },
+          { eventType: "COMMIT", sourceReference: "abcdef1234567890abcdef", occurredAt: "2026-08-09T00:00:00Z" },
+          { eventType: "ISSUE_CLOSED", sourceReference: "601", occurredAt: "2026-08-08T00:00:00Z" }
+        ]
+      }
     }, metadata }));
     return Promise.resolve(Response.json({ data: repository, metadata }));
   }));
@@ -124,6 +137,11 @@ it("shows normalized languages frameworks and databases with evidence paths", as
   expect(screen.getByText("PR 리뷰")).toBeInTheDocument();
   expect(screen.getByText("종료된 이슈")).toBeInTheDocument();
   expect(screen.getByText("README 품질 섹션")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "저장소 활동 타임라인" })).toBeInTheDocument();
+  expect(screen.getByText("PR 병합")).toBeInTheDocument();
+  expect(screen.getByText("커밋")).toBeInTheDocument();
+  expect(screen.getByText("이슈 종료")).toBeInTheDocument();
+  expect(screen.getByText(/스냅샷 수집 시점 기준 1일 전/)).toBeInTheDocument();
 });
 
 it("shows automatic provider-reset recovery for a rate-limited synchronization job", async () => {
@@ -162,4 +180,85 @@ it("shows automatic provider-reset recovery for a rate-limited synchronization j
 
   expect(await screen.findByText("재시도 대기 중")).toBeInTheDocument();
   expect(screen.getByText(/요청 한도가 해제되면 서버가 자동으로/)).toBeInTheDocument();
+});
+
+it("restores a completed synchronization from the URL and links its immutable result", async () => {
+  const repositoryId = "3fd75d74-17d4-4dc5-bf3b-251f611633f2";
+  const snapshotId = "59cf3b41-73fb-4669-8c3f-a0d3c8053e89";
+  const jobId = "38393675-fd18-410d-9fb8-cff66200fa46";
+  const repository = { repositoryId, providerRepositoryId: "42", name: "devpath", fullName: "owner/devpath",
+    owner: "owner", visibility: "PUBLIC", defaultBranch: "main", providerArchived: false, lifecycle: "ACTIVE",
+    syncStatus: "SYNCHRONIZED", htmlUrl: "https://github.com/owner/devpath", discoveredAt: "2026-08-11T00:00:00Z",
+    lastSyncedAt: "2026-08-11T01:00:00Z", currentSnapshotId: snapshotId };
+  const metadata = { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T00:00:00Z" };
+  const snapshot = { snapshotId, repositoryId, capturedAt: metadata.timestamp, sourceRevision: "abcdef123456",
+    status: "READY", immutable: true, contentHash: "sha256:content", branchCount: 2, commitCount: 42,
+    pullRequestCount: 8, issueCount: 5, documentCount: 1 };
+  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/repository-sync-jobs/")) return Promise.resolve(Response.json({ data: {
+      jobId, jobType: "REPOSITORY_SYNC", status: "succeeded", phase: "COMPLETED", progressPercent: 100,
+      attemptCount: 1, maxAttempts: 3, submittedAt: metadata.timestamp, startedAt: metadata.timestamp,
+      completedAt: metadata.timestamp, pollingUrl: `/api/v1/repository-sync-jobs/${jobId}`,
+      resultResourceUrl: `/api/v1/repositories/${repositoryId}/snapshots/${snapshotId}`,
+      errorCode: null, errorMessage: null, retryable: false
+    }, metadata }));
+    if (url.endsWith("/snapshots")) return Promise.resolve(Response.json({ data: { snapshots: [snapshot] }, metadata }));
+    if (url.endsWith("/technologies")) return Promise.resolve(Response.json({ data: { repositoryId, snapshotId,
+      extractorVersion: "technology-v1", taxonomyVersion: "taxonomy-v1", primaryLanguage: null, technologies: [] }, metadata }));
+    if (url.endsWith("/evidence")) return Promise.resolve(Response.json({ data: { repositoryId, snapshotId,
+      extractorVersion: "evidence-v1", categories: [], activityTimeline: { extractorVersion: "repository-activity-timeline-v1",
+        scope: "CURRENT_SNAPSHOT", measuredAt: metadata.timestamp, latestActivityAt: null, daysSinceLatestActivity: null,
+        totalEventCount: 0, truncated: false, events: [] } }, metadata }));
+    return Promise.resolve(Response.json({ data: repository, metadata }));
+  });
+  vi.stubGlobal("fetch", fetchMock);
+
+  renderWithProviders(<Routes><Route path="/repositories/:repositoryId" element={<RepositoryDetailPage />} /></Routes>,
+    [`/repositories/${repositoryId}?syncJobId=${jobId}`]);
+
+  expect(await screen.findAllByText("동기화 완료")).toHaveLength(2);
+  expect(screen.getByRole("link", { name: "생성된 불변 스냅샷 보기" })).toHaveAttribute("href", `/repositories/${repositoryId}/snapshots/${snapshotId}`);
+  expect(screen.getByRole("link", { name: "스냅샷 상세 보기" })).toHaveAttribute("href", `/repositories/${repositoryId}/snapshots/${snapshotId}`);
+  expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining(`/repository-sync-jobs/${jobId}`), expect.anything());
+});
+
+it("explains a non-retryable large-repository failure without claiming a partial snapshot", async () => {
+  const repository = {
+    repositoryId: "3fd75d74-17d4-4dc5-bf3b-251f611633f2", providerRepositoryId: "42",
+    name: "devpath", fullName: "owner/devpath", owner: "owner", visibility: "PUBLIC",
+    defaultBranch: "main", providerArchived: false, lifecycle: "ACTIVE", syncStatus: "NOT_SYNCED",
+    htmlUrl: "https://github.com/owner/devpath", discoveredAt: "2026-08-11T00:00:00Z",
+    lastSyncedAt: null, currentSnapshotId: null
+  };
+  const metadata = { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T00:00:00Z" };
+  const failedJob = {
+    jobId: "38393675-fd18-410d-9fb8-cff66200fa46", jobType: "REPOSITORY_SYNC",
+    status: "failed", phase: "FAILED", progressPercent: 10, attemptCount: 1, maxAttempts: 3,
+    submittedAt: metadata.timestamp, startedAt: metadata.timestamp, completedAt: metadata.timestamp,
+    pollingUrl: "/api/v1/repository-sync-jobs/38393675-fd18-410d-9fb8-cff66200fa46",
+    resultResourceUrl: null, errorCode: "COLLECTION_LIMIT_EXCEEDED",
+    errorMessage: "Repository facts exceed the current safe collection limit; no partial snapshot was created.",
+    retryable: false
+  };
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+    const url = input.toString();
+    if (url.endsWith("/csrf")) return Promise.resolve(Response.json({ data: { headerName: "X-CSRF-TOKEN", token: "token" }, metadata }));
+    if (url.endsWith("/sync") || url.includes("/repository-sync-jobs/")) {
+      return Promise.resolve(Response.json({ data: failedJob, metadata }, { status: url.endsWith("/sync") ? 202 : 200 }));
+    }
+    if (url.endsWith("/snapshots")) return Promise.resolve(Response.json({ data: { snapshots: [] }, metadata }));
+    return Promise.resolve(Response.json({ data: repository, metadata }));
+  }));
+
+  renderWithProviders(
+    <Routes><Route path="/repositories/:repositoryId" element={<RepositoryDetailPage />} /></Routes>,
+    ["/repositories/3fd75d74-17d4-4dc5-bf3b-251f611633f2"]
+  );
+
+  fireEvent.click(await screen.findByRole("button", { name: "GitHub 동기화" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("안전 수집 범위를 초과");
+  expect(screen.getByRole("alert")).toHaveTextContent("부분 스냅샷은 생성되지 않았고");
+  expect(screen.getByRole("alert")).toHaveTextContent("자동으로 재시도하지 않습니다");
 });

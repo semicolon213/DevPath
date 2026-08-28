@@ -362,6 +362,15 @@ Workflow: `User Request ??Sync Command ??Async Job Creation ??GitHub Adapter ??M
 
 Historical snapshots MUST NOT be overwritten.
 
+The repository synchronization journey now retains its opaque owner-scoped job ID in the route query, resumes polling
+after refresh, and links a successful result to the matching immutable snapshot. API-REP-007 history cards and the job
+result both open an API-REP-008 detail route showing the full source revision, content hash, measured collection counts,
+status, and current-versus-historical context. The browser does not expose historical content or recalculate evidence,
+scores, or freshness. Missing and cross-owner resources share the same unavailable state.
+The detail route also traverses cursor-paginated API-REP-012 repository history to connect that immutable input to each
+completed official analysis and its evidence/Skill Matrix detail. Only stored score, confidence, version, and current
+labels are rendered; history loading, empty, pagination, and error states do not hide snapshot provenance.
+
 ## 22. Feature Extraction Milestone
 
 | Feature Area | Scope |
@@ -376,10 +385,23 @@ Historical snapshots MUST NOT be overwritten.
 
 Feature extraction MUST NOT invoke an LLM.
 
-The current API-REP-011 extraction slice now includes a versioned `DATABASE` evidence category for normalized database
-technology declarations, data-access dependencies, migration assets, and persistence-configuration paths. It exposes
-measured presence/count/path facts only through `engineering-evidence-extractor-v2`. The active `baseline-v1` Rule Engine
-remains bound to its original v1 fact adapter, so no database score, weight, readiness, or recommendation is implied.
+The current API-REP-011 extraction slice includes versioned database, collaboration, documentation, and activity read
+models. Engineering evidence exposes measured presence/count/path facts through `engineering-evidence-extractor-v3`,
+while the active `baseline-v2` Rule Engine remains deliberately bound to `engineering-evidence-extractor-v2`. Therefore,
+additive read-model signals cannot change an official score, weight, readiness result, or recommendation.
+
+FR-043 implementation evidence also includes an owner-scoped current-snapshot activity timeline in API-REP-011 and the
+repository-detail journey. Commit, pull-request, and issue lifecycle timestamps are normalized, sorted newest-first,
+bounded to 100 returned events, and accompanied by the total measured count and snapshot-relative elapsed days. The
+browser presents unsynchronized, empty, success, error, and truncation states without calculating a score. FR-044
+staleness classification remains pending because an approved threshold policy is not yet defined; measured days MUST
+NOT be presented as a policy judgment. This evidence does not mark the repository milestone complete.
+
+FR-045 implementation evidence now distinguishes deterministic collection-ceiling breaches from transient GitHub
+outages. Branch/commit pagination, recursive trees, files/manifests, pull requests/reviews, and issues fail as terminal
+`COLLECTION_LIMIT_EXCEEDED` jobs on the first attempt, create no partial snapshot, retain safe audit/outbox traceability,
+and present an actionable non-retryable state in the repository UI. This capability does not add partial synchronization
+or change the configured ceilings.
 
 ## 23. Rule Engine Foundation Milestone
 
@@ -427,8 +449,10 @@ then refreshes the current matrix. API-SKL-003 and the Korean `/skills/compare` 
 immutable matrices selected through analysis history, including stored scores, levels, confidence, evidence counts,
 policy/rule versions, strengths, and weaknesses. No delta, replacement level, or growth trend is calculated. API-SKL-004/005
 and `/skills/:skillId` now provide current owner-scoped skill drilldown, Matrix reproduction metadata, and normalized
-evidence navigation with durable read audits. Technology/framework proficiency APIs and historical per-skill timelines
-remain pending; this evidence does not mark the Skill Matrix milestone complete.
+evidence navigation with durable read audits. The same detail journey now composes cursor-paginated API-ANA-007 history
+with API-SKL-002 to show newest-first stored assessments for that stable skill, with isolated loading/error/retry states
+and links back to each analysis and repository. No browser delta or trend is derived. Technology/framework proficiency
+APIs remain pending; this evidence does not mark the Skill Matrix milestone complete.
 
 ## 24. Rule Category Delivery Plan
 
@@ -674,12 +698,16 @@ Current M34 evidence is indexed in `docs/20_MVP_Release_Evidence.md`. Local impl
 `X-Request-Id`/`X-Correlation-Id` propagation, response support headers, frontend request context, bounded
 request-completion logs, and durable audit records. This advances the critical-telemetry gate without selecting the
 technology covered by Proposed ADR-031. The reproducible `npm run verify:mvp` command combines backend,
-Testcontainers, frontend unit/browser/accessibility, production-build, dependency-audit, and OpenAPI checks.
+Testcontainers, frontend unit/browser/accessibility, production-build, dependency-audit, OpenAPI checks, and a
+platform-neutral repository security-boundary scan. This does not select the still-unresolved hosted CI platform.
+The command also requires a reachable Docker-compatible engine before starting so the PostgreSQL portability suites
+cannot be silently omitted from M34 evidence.
 
 The 2026-08-25 local live-provider journey now records GitHub OAuth, repository discovery, durable synchronization,
 immutable snapshot creation, deterministic analysis, dashboard/readiness, roadmap, keyboard/focus, accessibility-tree,
-and 200% zoom/reflow evidence. M34 remains unapproved: spoken screen-reader and reduced-motion review, external security
-review, and staging deployment smoke are not recorded.
+and 200% zoom/reflow evidence. Automated Chromium reduced-motion media behavior is now covered. M34 remains unapproved:
+spoken screen-reader and physical OS-settings reduced-motion review, external security review, and staging deployment
+smoke are not recorded.
 Staging/production observability, deployment, and secret management remain blocked by Proposed ADR-031, ADR-033, and
 ADR-034 respectively. Post-MVP milestone work must not use
 this local evidence as implicit approval of the MVP gate.
@@ -694,6 +722,17 @@ this local evidence as implicit approval of the MVP gate.
 | User-provided project information | Optional after upload/security controls |
 
 Registration must include ownership, authorization, source status, synchronization, deletion, frontend management, and tests.
+
+The current M35 Notion source-registration slice implements session-bound OAuth state, server-only encrypted access and
+refresh credentials, owner-scoped connection status, bounded shared page/data-source metadata discovery, explicit UI
+refresh, safe rate-limit and dependency errors, permission-loss expiry, reauthorization, disconnect, metadata deletion,
+durable audit events, and Korean loading/empty/success/error/recovery states. The browser never receives provider tokens
+or page body content and only links to validated HTTPS Notion hosts. Local adapter, application, security, frontend, and
+contract tests provide implementation evidence; a live Notion OAuth, rate-limit, permission-loss, and revocation exercise
+remains required before owner approval. This does not implement KnowledgeDocument ingestion or complete M35.
+
+M36 remains blocked on the Proposed ADR-028 vector-store decision. This registration slice must not be described as
+knowledge ingestion, retrieval, RAG, or Notion content analysis.
 
 ## 36. Knowledge Ingestion Pipeline Milestone
 
@@ -1386,8 +1425,8 @@ Progress tracks milestone status, exit criteria, blocking defects, open ADRs, re
 | Current-user and logout APIs | Verified local | MockMvc security tests and the 2026-08-25 live journey verified authenticated current-user retrieval, CSRF-protected 204 logout, protected-resource 401 after logout, correlation headers/logging, and a durable `LOGOUT_SUCCEEDED` audit record |
 | Frontend session bootstrap | Complete | Tests and production build passed |
 | GitHub connection slice | Partial | Session-bound GitHub App authorization/callback, owner-scoped encrypted tokens and refresh, bounded full provider pagination, persistent ACTIVE/EXPIRED/REVOKED recovery, actual-secret discard, reauthorization, disconnect with remote revocation attempt, permission/rate-limit auditing, 429 reset recovery, and Korean UI states are implemented; the 2026-08-25 local OAuth and discovery journey passed, while organization permission edge cases and a live revocation exercise remain pending |
-| Repository registration slice | Partial | GitHub selection, server-side permission re-verification, canonical metadata persistence, duplicate-safe registration, owner-scoped cursor list/detail/archive/restore APIs, lifecycle filtering, audit events, and Korean repository workspace/detail UI are implemented; live provider verification remains pending |
-| Repository synchronization and snapshot slice | Partial | PostgreSQL durable jobs/outbox, bounded generic retries, provider-reset-aware rate-limit waiting, owner-scoped status APIs, GitHub branch/commit/language/dependency/file/PR/review/issue/README collection, immutable snapshot persistence, current-snapshot linking, deterministic non-scoring collaboration/document evidence, audit events, and Korean progress/history UI are implemented; the 2026-08-25 live core sync journey passed, while cancellation, incremental sync, release/contributor collection, and live collaboration-data verification remain pending |
+| Repository registration slice | Partial | GitHub selection, server-side permission re-verification, canonical metadata persistence, duplicate-safe registration, owner-scoped cursor list/detail/archive/restore APIs, durable lifecycle audit, URL-restorable archived filtering, archive impact confirmation, provider-state recovery guidance, historical-result retention, and Korean workspace/detail UI are implemented; live provider archive/restore verification remains pending |
+| Repository synchronization and snapshot slice | Partial | PostgreSQL durable jobs/outbox, refresh-resumable owner-scoped job polling, bounded transient retries, provider-reset-aware rate-limit waiting, FR-045 terminal large-repository ceiling handling without partial snapshots, GitHub branch/commit/language/dependency/file/PR/review/issue/README collection, immutable snapshot persistence, current-snapshot linking, owner-scoped snapshot provenance detail, deterministic non-scoring collaboration/document evidence, bounded current-snapshot activity timeline, audit events, and Korean progress/history UI are implemented; the 2026-08-25 live core sync journey passed, while FR-044 staleness policy, cancellation, incremental sync, release/contributor collection, and live collaboration-data verification remain pending |
 | Learning roadmap workspace | Partial | Current roadmap, owner-scoped history/detail, lifecycle labels, idempotent archive, durable audit, and Korean UI are implemented; step-progress mutation remains blocked on an approved deterministic formula and transition contract |
 | OpenAPI subset | Complete | Redocly validation passed |
 | Durable security audit store | Partial | Append-only PostgreSQL audit records cover login, logout, absolute session timeout, and GitHub connect/disconnect/refresh-failure/permission-change events; broader product and administration events remain pending |
@@ -1399,4 +1438,18 @@ application startup, GitHub OAuth login, backend-restart session persistence, lo
 enforcement, and durable logout/absolute-timeout audit persistence have been observed. Owner review is still required
 before declaring the milestone complete. JDBC idle cleanup does not publish a user-attributed expiration event, and this
 foundation does not complete the broader Identity module.
+
+## 79. M49-M50 Reliability and Performance Progress
+
+| Roadmap Area | Status | Current Evidence | Remaining Gate |
+|---|---|---|---|
+| Retry/timeout | Verified local baseline | Configurable GitHub connect/read timeouts; jittered exponential retry capped at five minutes; attempt/final state persisted | Circuit breaker and provider-outage duration model |
+| Idempotency/duplicate safety | Verified PostgreSQL baseline | Transaction advisory locks plus unique indexes make simultaneous equivalent repository/analysis commands return one durable job | Sustained multi-instance contention profile |
+| Stale jobs/worker restart | Verified local baseline | Persisted lease recovery plus a dedicated scheduler that blocks new claims and waits for active work inside the lease window | Real two-process rolling-restart drill |
+| Queue backlog | Partial | 100 queued repository jobs pass application and PostgreSQL tests without request-thread provider calls | Approved concurrency/backpressure workload and external queue decision if needed |
+| Dashboard latency | Advisory baseline | Latest warmed cached-source application p95 measured 1.025 ms locally, below the SRS two-second threshold | Production-like database/cache/network workload and bottleneck profile |
+| High availability | Not claimed | No new infrastructure selected | Deployment, observability, and recovery decisions/evidence |
+
+M49 and M50 remain owner-review milestones. This slice closes concrete local reliability gaps but does not declare
+production capacity, high availability, circuit-breaker completion, or milestone approval.
 

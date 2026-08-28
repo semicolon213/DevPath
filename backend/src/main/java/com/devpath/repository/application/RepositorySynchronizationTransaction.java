@@ -39,6 +39,7 @@ class RepositorySynchronizationTransaction {
 
     @Transactional
     RepositorySyncJobView request(UUID userId, UUID repositoryId, String idempotencyKey, Instant now) {
+        synchronization.acquireRequestLocks(userId, repositoryId, idempotencyKey);
         Optional<RepositorySyncJob> repeated = synchronization.findByOwnerAndIdempotencyKey(userId, idempotencyKey);
         if (repeated.isPresent()) {
             if (!repeated.get().repositoryId().equals(repositoryId)) {
@@ -107,23 +108,40 @@ class RepositorySynchronizationTransaction {
             .orElseThrow(RepositoryNotFoundException::new);
     }
 
-    @Transactional(readOnly = true)
-    RepositoryEvidenceSummaryView getEvidence(UUID userId, UUID repositoryId) {
+    @Transactional
+    RepositoryEvidenceSummaryView getEvidence(UUID userId, UUID repositoryId, Instant now) {
         Repository repository = owned(userId, repositoryId);
         if (repository.currentSnapshotId() == null) {
             throw new RepositoryNotFoundException();
         }
-        return synchronization.findSnapshot(userId, repositoryId, repository.currentSnapshotId())
+        RepositoryEvidenceSummaryView view = synchronization.findSnapshot(userId, repositoryId, repository.currentSnapshotId())
             .map(RepositoryEvidenceSummaryView::from)
             .orElseThrow(RepositoryNotFoundException::new);
+        audit.record(RepositoryAuditEvent.REPOSITORY_EVIDENCE_VIEWED, userId, repositoryId, now);
+        return view;
     }
 
     @Transactional
     Optional<RepositorySyncWorkItem> claim(Instant now) {
-        return synchronization.findNextClaimable(now).map(job -> {
-            RepositorySyncJob running = synchronization.saveJob(job.start(now));
-            return new RepositorySyncWorkItem(running, owned(running.userId(), running.repositoryId()));
-        });
+        Optional<RepositorySyncJob> candidate = synchronization.findNextClaimable(now);
+        if (candidate.isEmpty()) {
+            return Optional.empty();
+        }
+        RepositorySyncJob claimed = synchronization.saveJob(candidate.get().start(now));
+        Repository repository = owned(claimed.userId(), claimed.repositoryId());
+        if (claimed.status() == RepositorySyncJobStatus.FAILED) {
+            if (repository.lifecycle() != RepositoryLifecycle.ARCHIVED
+                && repository.lifecycle() != RepositoryLifecycle.DELETED_EXTERNALLY) {
+                repositories.save(repository.markSyncFailed(now));
+            }
+            synchronization.appendOutbox(
+                "REPOSITORY", repository.id(), "RepositorySynchronizationFailed",
+                "{\"jobId\":\"" + claimed.id() + "\",\"errorCode\":\"WORKER_LEASE_EXPIRED\"}", now
+            );
+            audit.record(RepositoryAuditEvent.REPOSITORY_SYNC_FAILED, claimed.userId(), repository.id(), now);
+            return Optional.empty();
+        }
+        return Optional.of(new RepositorySyncWorkItem(claimed, repository));
     }
 
     @Transactional
@@ -202,6 +220,27 @@ class RepositorySynchronizationTransaction {
             );
             audit.record(RepositoryAuditEvent.REPOSITORY_SYNC_FAILED, item.job().userId(), item.repository().id(), now);
         }
+    }
+
+    @Transactional
+    void failTerminal(RepositorySyncWorkItem item, String errorCode, String safeMessage, Instant now) {
+        RepositorySyncJob current = synchronization.findByIdAndOwner(item.job().id(), item.job().userId())
+            .orElseThrow(RepositoryNotFoundException::new);
+        RepositorySyncJob failed = current.failTerminal(errorCode, safeMessage, now);
+        synchronization.saveJob(failed);
+        if (failed.status() != RepositorySyncJobStatus.FAILED) {
+            return;
+        }
+        Repository currentRepository = owned(item.job().userId(), item.repository().id());
+        if (currentRepository.lifecycle() != RepositoryLifecycle.ARCHIVED
+            && currentRepository.lifecycle() != RepositoryLifecycle.DELETED_EXTERNALLY) {
+            repositories.save(currentRepository.markSyncFailed(now));
+        }
+        synchronization.appendOutbox(
+            "REPOSITORY", item.repository().id(), "RepositorySynchronizationFailed",
+            "{\"jobId\":\"" + item.job().id() + "\",\"errorCode\":\"" + errorCode + "\"}", now
+        );
+        audit.record(RepositoryAuditEvent.REPOSITORY_SYNC_FAILED, item.job().userId(), item.repository().id(), now);
     }
 
     @Transactional

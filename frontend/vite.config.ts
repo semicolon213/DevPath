@@ -7,7 +7,8 @@ import { configDefaults } from "vitest/config";
 export default defineConfig({
   plugins: [react()],
   server: {
-    port: 5173
+    port: 5100,
+    strictPort: true
   },
   test: {
     environment: "jsdom",

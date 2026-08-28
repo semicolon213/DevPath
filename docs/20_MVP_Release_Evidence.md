@@ -6,7 +6,7 @@ This document records implementation evidence for the M34 MVP Completion Gate. I
 handoff aid, not a requirements source and not approval that the milestone is complete. Requirements and engine
 semantics remain controlled by `01_SRS.md`, `02_Rule_Engine.md`, and `03_Career_Path_Engine.md`.
 
-Evidence date: 2026-08-25.
+Evidence date: 2026-08-27.
 
 ## 2. Gate Evidence
 
@@ -16,8 +16,11 @@ Evidence date: 2026-08-25.
 | User can select career target | PASS | `UserProfileApplicationServiceTest`, `ProfilePanel.test.tsx`, career API/UI tests | Owner review |
 | User can connect GitHub safely | PARTIAL | GitHub application/adapter/security tests, AES-GCM credential test, token-redaction behavior | Live provider permission and revocation exercise |
 | User can register repository | PASS | Repository application/security tests and repository UI tests | Owner review |
+| User can manage repository lifecycle | PASS | FR-361 domain/application/security coverage plus the owner workspace archive-confirm-filter-restore test; archived/deleted detail states retain historical access and block new operations | Live provider archive/restore exercise |
 | Repository syncs asynchronously | PASS | Repository synchronization lifecycle, retry, idempotency, security, browser-journey tests, and live provider job `f5d15d93-eced-4402-9ae1-2c96ad7b0d06` | Owner review |
 | Immutable snapshot is created | PASS | `RepositorySnapshotTest` and PostgreSQL persistence tests | Owner review |
+| Synchronization result remains traceable after refresh | PASS | Repository UI tests restore owner-scoped job polling from the route query and link successful results/history cards to API-REP-008; the Chromium/axe journey verifies full immutable revision/hash/count detail and current-snapshot context | Owner review |
+| Snapshot input traces to completed official analyses | PASS | Snapshot detail traverses owner-scoped API-REP-012 cursor pages, selects exact stored snapshot references, preserves score/confidence/version values, links to analysis evidence, and keeps provenance available when analysis history fails | Owner review |
 | Features are extracted | PASS | Evidence extractor and technology detector tests with deterministic fixtures plus the live `semicolon213/DevPath` technology/evidence result | Owner review |
 | Rule Engine produces versioned results | PASS | Rule golden fixtures, deterministic engine/application/persistence tests | Owner review of fixture coverage |
 | Skill Matrix is created | PASS | Deterministic builder, application, persistence, security, UI, and browser tests | Owner review |
@@ -25,12 +28,13 @@ Evidence date: 2026-08-25.
 | Recommendations are produced | PASS | Deterministic recommendation tests, owner-scoped recommendation history/detail/evidence and roadmap history/archive tests, and PostgreSQL persistence tests | Owner review |
 | Historical analyses can be compared | PASS | Owner-scoped comparison API/application/persistence tests and the Chromium side-by-side comparison journey; the UI displays stored official results without deriving a new score or delta | Owner review |
 | Historical Skill Matrices can be compared | PASS | API-SKL-003 owner/security/persistence tests and the Chromium side-by-side skill journey; only stored score, level, confidence, evidence, and version values are displayed | Owner review |
+| Per-skill immutable history can be explored | PASS | The skill-detail React Query journey composes API-ANA-007 and API-SKL-002, loads older cursor pages, links each stored assessment to its analysis/repository, and isolates history failure from current detail; no delta or trend is calculated | Owner review |
 | Skill evidence is traceable | PASS | API-SKL-004/005 owner/security/persistence tests and the Chromium skill-detail journey from the current Matrix into normalized snapshot evidence | Owner review |
 | Career growth history is navigable | PASS | API-CAR-004/005/006 security/persistence coverage and the Chromium current readiness → recommendation set → immutable historical readiness → Skill Gap/skill-evidence journey | Owner review |
 | Frontend displays result | PASS | Vitest feature suite plus Playwright Chromium journey and axe scans | Manual assistive-technology review |
 | Authorization is enforced | PASS | Authentication/CSRF tests, owner-ID delegation assertions, cross-owner analysis and recommendation persistence tests | External security review |
 | Critical telemetry exists | PARTIAL | Safe request/correlation propagation, response support IDs, bounded request-completion logs, durable audit records | ADR-031 technology decision, metrics/traces/backend verification |
-| Critical tests pass | PASS | `npm run verify:mvp`; latest results must be attached to the review | CI execution is not yet configured |
+| Critical tests pass | PASS | `npm run verify:mvp`, including the tested platform-neutral security-boundary scan | Hosted CI execution is not configured because its platform decision remains open |
 | Deployment smoke passes | PARTIAL | Local PostgreSQL/Testcontainers build and local health smoke | ADR-033/034, staging deployment and smoke |
 | Known limitations documented | PASS | Section 4 of this document and roadmap exclusions | Owner acceptance |
 
@@ -48,19 +52,26 @@ Run from the repository root:
 npm run verify:mvp
 ```
 
-The command runs a clean backend build with the full JUnit/architecture/Testcontainers suite, a clean frontend install,
-Vitest, Playwright Chromium with axe, the production frontend build, npm audit, and OpenAPI lint. Environment-gated tests
+The command runs the security-boundary detector tests and repository scan, a clean backend build with the full
+JUnit/architecture/Testcontainers suite, a clean frontend install, Vitest, Playwright Chromium with axe, the production
+frontend build, npm audit, and OpenAPI lint. Environment-gated tests
 that require an explicit `DEVPATH_DB_URL` remain reported as skipped unless that variable is supplied.
+It now fails fast when no Docker-compatible server is reachable so Testcontainers-backed PostgreSQL coverage cannot be
+silently omitted from an MVP verification run.
 
-Latest local result on 2026-08-25:
+Latest clean local result on 2026-08-27:
 
-- Backend full suite: PASS; 124 tests, 122 passed, 0 failed, 2 environment-gated skips.
+- Backend full suite: PASS; 132 tests, 130 passed, 0 failed, 2 environment-gated skips.
 - PostgreSQL Testcontainers suites: PASS with Docker API compatibility set to 1.44.
-- Frontend Vitest: PASS; 34 files and 73 tests.
-- Playwright Chromium/axe: PASS; 5 browser journeys.
+- Frontend Vitest: PASS; 35 files and 83 tests.
+- Playwright Chromium/axe: PASS; 6 browser journeys, including reduced-motion media behavior.
+- Platform-neutral security boundary tests and repository scan: PASS.
 - Frontend production build: PASS.
 - Frontend npm audit: PASS; 0 vulnerabilities.
 - OpenAPI lint: PASS with 0 errors and 8 non-blocking pre-existing recommendation warnings.
+- One-command `npm run verify:mvp`: PASS from Docker/security preflight through clean backend build, clean frontend
+  install, complete frontend quality, and contract lint. The Docker-backed backend suite was then forced to rerun and
+  confirmed 132 total, 130 passed, 0 failed, and only the 2 explicit-`DEVPATH_DB_URL` skips.
 - Local PostgreSQL-backed startup smoke on port 8080: PASS; Flyway validated and applied 20 migrations, health returned 200,
   and the same bounded request/correlation identifiers appeared in response headers and the completion log.
 
@@ -98,6 +109,11 @@ real GitHub provider:
 - PASS: the same journey continued into API-SKL-003 and displayed two owner-scoped immutable Skill Matrices side by side
   with automated axe checks. The application path emits the durable comparison audit event and neither server nor
   browser derived a delta, replacement level, or new growth trend.
+- PASS: the controlled repository workspace exercises the reversible FR-361 lifecycle from an explicit impact
+  confirmation through default-list exclusion, URL-restored archived filtering, and restore. Archived or externally
+  deleted repositories retain immutable history but cannot start new synchronization or analysis operations.
+- PASS: the controlled analysis journey persists the owner-scoped analysis job identifier in the route, resumes polling
+  after refresh/navigation, and links a successful canonical result directly to the official analysis detail.
 - PASS: the controlled Chromium journey opened a current Matrix skill, displayed its stored score/level/confidence and
   reproduction metadata, and drilled into normalized owner-scoped snapshot evidence with automated axe checks. Detail
   and evidence reads emit separate durable audit events.
@@ -123,6 +139,12 @@ real GitHub provider:
   snapshot-local V20 tables, expose non-scoring collaboration and README section signals, and keep baseline-v2's
   official extractor input version unchanged. Testcontainers and repository-detail UI tests passed; a fresh live
   provider sync containing representative collaboration data remains pending.
+- PASS: FR-043 tests derive a bounded newest-first commit/PR/issue activity timeline from the current immutable snapshot,
+  expose total count and snapshot-relative elapsed days through owner-scoped API-REP-011, render empty/success/truncated
+  states, and write a durable evidence-view audit. FR-044 staleness classification remains pending an approved threshold.
+- PASS: FR-045 tests reject provider-truncated or over-limit collection as terminal `COLLECTION_LIMIT_EXCEEDED`, persist
+  failure/audit state on the first attempt, create no partial snapshot, expose `retryable=false`, and render actionable
+  repository-detail guidance. Live verification against an intentionally oversized private repository was not performed.
 - PASS: request-completion logs contained bounded per-request IDs and a shared browser correlation ID for the OAuth,
   discovery, synchronization, analysis, and dashboard requests without credential data.
 - PASS: the authenticated JDBC session survived two clean backend process restarts and continued to return the
@@ -149,6 +171,8 @@ real GitHub provider:
   clipping; controls reflowed vertically, and the browser zoom was restored to its original 80% afterward.
 - PASS: the Windows accessibility tree exposed main/navigation/region landmarks, heading hierarchy, labeled form
   controls, status and alert semantics, and descriptive link/button names on the exercised home and dashboard routes.
+- PASS: Chromium reduced-motion emulation removes the skip-link transition while preserving keyboard entry, route
+  focus, repository analysis actions, and axe semantics. A physical Windows reduced-motion setting exercise remains pending.
 
 This is local system evidence, not a staging deployment, external security review, spoken screen-reader review,
 provider permission-edge-case test, token revocation exercise, or owner approval.
@@ -156,7 +180,7 @@ provider permission-edge-case test, token revocation exercise, or owner approval
 ## 5. Known Limitations and Release Blockers
 
 - The core M32 live GitHub OAuth/provider journey is recorded above; organization permission edge cases, explicit
-  provider-token revocation, spoken screen-reader output, and an OS-level reduced-motion exercise remain unverified.
+  provider-token revocation, spoken screen-reader output, and a physical OS-settings reduced-motion exercise remain unverified.
 - Spring Session JDBC 3.3.3 deletes idle-expired rows without publishing `SessionExpiredEvent`; idle expiry is evidenced
   by the protected-request 401, bounded request log, and session-row cleanup, but a user-attributed durable idle-timeout
   audit event remains unresolved. Absolute timeout and explicit logout do have durable audit records.
@@ -173,7 +197,7 @@ provider permission-edge-case test, token revocation exercise, or owner approval
 |---|---|---|
 | Engineering self-review | PENDING | Review diff, test output, contract, migrations, and generated artifacts |
 | Security review | PENDING | Review owner isolation, OAuth/token handling, correlation redaction, and dependency results |
-| Accessibility manual review | PARTIAL | PASS for keyboard, visible focus, skip link, route focus restoration, 200% zoom/reflow, and accessibility-tree semantics; spoken screen-reader output and OS-level reduced-motion exercise remain NOT RUN |
+| Accessibility manual review | PARTIAL | PASS for keyboard, visible focus, skip link, route focus restoration, 200% zoom/reflow, accessibility-tree semantics, and automated reduced-motion behavior; spoken screen-reader output and a physical OS-settings reduced-motion exercise remain NOT RUN |
 | Live-provider demonstration | PASS | 2026-08-25 local GitHub OAuth, repository discovery, sync, immutable snapshot, deterministic analysis, readiness, dashboard, and roadmap journey recorded in section 4 |
 | Deployment review | BLOCKED | Requires Accepted ADR-031/033/034 and a target environment |
 | MVP gate approval | PENDING | Project owner/coordinator decision after required evidence is attached |

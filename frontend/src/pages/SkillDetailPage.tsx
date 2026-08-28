@@ -1,11 +1,12 @@
 import { Link, useParams } from "react-router-dom";
-import type { SkillAssessment } from "../features/skills/api/skillMatrixApi";
-import { useSkillWorkspace } from "../features/skills/model/useSkillMatrix";
+import type { SkillAssessment, SkillHistoryPoint } from "../features/skills/api/skillMatrixApi";
+import { useSkillHistory, useSkillWorkspace } from "../features/skills/model/useSkillMatrix";
 import { ApiError } from "../shared/api/apiClient";
 
 export function SkillDetailPage() {
   const { skillId } = useParams();
   const query = useSkillWorkspace(skillId);
+  const history = useSkillHistory(skillId);
   if (query.isPending) return <Shell><p role="status">기술 상세와 연결된 증거를 불러오는 중입니다.</p></Shell>;
   if (query.isError) return <Shell><ErrorState error={query.error} retry={() => query.refetch()} /></Shell>;
 
@@ -22,6 +23,7 @@ export function SkillDetailPage() {
     </section>
     <section className="analysis-notice"><div><h2>결정론적 평가 기준</h2><p>점수와 등급은 서버에 저장된 값입니다. 브라우저는 계산하거나 수정하지 않습니다.</p></div>
       <time dateTime={detail.generatedAt}>{formatDate(detail.generatedAt)} 생성</time></section>
+    <SkillHistorySection query={history} />
     <section aria-labelledby="skill-facts-title"><div className="section-heading"><div><h2 id="skill-facts-title">평가 추적 정보</h2></div></div>
       <dl className="detail-grid"><Fact label="범주" value={skill.category} /><Fact label="상태" value={stateLabel(skill)} />
         <Fact label="성장 상태" value={growthLabel(skill.growthTrend)} /><Fact label="평가 참조" value={skill.aggregateRuleResultReference} />
@@ -37,6 +39,45 @@ export function SkillDetailPage() {
     </section>
     <div className="workspace-actions"><Link to="/skills">전체 기술 역량</Link><Link to="/analyses">분석 이력</Link></div>
   </Shell>;
+}
+
+type SkillHistoryQuery = ReturnType<typeof useSkillHistory>;
+
+function SkillHistorySection({ query }: { query: SkillHistoryQuery }) {
+  if (query.isPending) return <section className="skill-history" aria-labelledby="skill-history-title">
+    <HistoryHeading /><p role="status">과거 Skill Matrix 평가를 불러오는 중입니다.</p>
+  </section>;
+  if (query.isError) return <section className="skill-history" aria-labelledby="skill-history-title">
+    <HistoryHeading /><div className="state-panel state-panel--compact" role="alert"><h3>기술 평가 이력만 불러오지 못했습니다.</h3>
+      <p>현재 평가와 증거는 그대로 확인할 수 있습니다.</p><button type="button" onClick={() => query.refetch()}>이력 다시 시도</button></div>
+  </section>;
+  const points = query.data.pages.flatMap(page => page.points);
+  return <section className="skill-history" aria-labelledby="skill-history-title">
+    <HistoryHeading />
+    {points.length === 0 ? <div className="state-panel state-panel--compact"><h3>저장된 과거 평가가 없습니다.</h3>
+      <p>새 분석이 완료되면 같은 기술의 저장된 평가가 여기에 시간순으로 추가됩니다.</p></div> :
+      <ol className="skill-history-list">{points.map(point => <SkillHistoryItem key={point.skillMatrixId} point={point} />)}</ol>}
+    {query.hasNextPage ? <button type="button" disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
+      {query.isFetchingNextPage ? "이전 평가를 불러오는 중…" : "이전 평가 더 보기"}
+    </button> : points.length > 0 ? <p className="skill-history-end">저장된 기술 평가를 모두 확인했습니다.</p> : null}
+  </section>;
+}
+
+function HistoryHeading() {
+  return <div className="section-heading"><div><h2 id="skill-history-title">기술 평가 이력</h2>
+    <p>각 시점의 불변 Matrix에 저장된 점수·등급·신뢰도만 표시합니다. 변화량이나 성장 추세는 계산하지 않습니다.</p></div></div>;
+}
+
+function SkillHistoryItem({ point }: { point: SkillHistoryPoint }) {
+  return <li><article>
+    <div className="skill-history-item__summary"><div><span className={`status-badge${point.matrixStatus === "CURRENT" ? " status-badge--active" : ""}`}>
+      {point.matrixStatus === "CURRENT" ? "현재 Matrix" : "과거 Matrix"}</span><h3>{point.repositoryFullName}</h3>
+      <time dateTime={point.generatedAt}>{formatDate(point.generatedAt)}</time></div>
+      <div className="official-score" aria-label={`저장된 공식 점수 ${format(point.skill.score)}점`}><strong>{format(point.skill.score)}</strong><span>/ 100</span></div></div>
+    <dl className="skill-history-facts"><Fact label="등급" value={levelLabel(point.skill.level)} /><Fact label="신뢰도" value={`${format(point.skill.confidence)}%`} />
+      <Fact label="연결 근거" value={`${point.skill.evidenceIds.length}개`} /><Fact label="정책·규칙" value={`${point.policyVersion} · ${point.ruleSetVersion}`} /></dl>
+    <div className="skill-history-item__actions"><Link to={`/analyses/${point.analysisId}`}>분석 근거 보기</Link><Link to={`/repositories/${point.repositoryId}`}>저장소 보기</Link></div>
+  </article></li>;
 }
 
 function ErrorState({ error, retry }: { error: Error; retry: () => void }) {

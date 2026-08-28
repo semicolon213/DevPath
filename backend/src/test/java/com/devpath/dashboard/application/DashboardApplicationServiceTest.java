@@ -34,6 +34,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
+import java.util.Arrays;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
@@ -127,6 +128,26 @@ class DashboardApplicationServiceTest {
         assertThat(result.roadmap().progressPercent()).isEqualByComparingTo("25.00");
         assertThat(result.recentJobs().items()).extracting(DashboardSummaryView.JobItem::jobType)
             .containsExactly("ANALYSIS", "REPOSITORY_SYNC");
+    }
+
+    @Test
+    void cachedSourceBaselineKeepsDashboardSummaryP95BelowTwoSeconds() {
+        Fixture fixture = new Fixture();
+        fixture.stubEmpty();
+        DashboardApplicationService service = fixture.service();
+        for (int index = 0; index < 20; index++) service.getSummary(USER_ID);
+        long[] elapsedNanos = new long[100];
+
+        for (int index = 0; index < elapsedNanos.length; index++) {
+            long started = System.nanoTime();
+            service.getSummary(USER_ID);
+            elapsedNanos[index] = System.nanoTime() - started;
+        }
+
+        Arrays.sort(elapsedNanos);
+        long p95Nanos = elapsedNanos[94];
+        System.out.printf("dashboard.cached-source.p95.ms=%.3f%n", p95Nanos / 1_000_000.0);
+        assertThat(p95Nanos).isLessThan(2_000_000_000L);
     }
 
     private static final class Fixture {

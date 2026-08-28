@@ -1,5 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { getCurrentSkillMatrix, getSkillMatrixComparison, getSkillWorkspace } from "../api/skillMatrixApi";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { getCurrentSkillMatrix, getSkillHistoryPage, getSkillMatrixComparison, getSkillWorkspace } from "../api/skillMatrixApi";
 
 export const currentSkillMatrixKey = ["skill-matrices", "current"] as const;
 
@@ -23,6 +23,16 @@ export function useSkillWorkspace(skillId: string | undefined) {
   return useQuery({
     queryKey: ["skills", skillId, "workspace"],
     queryFn: () => getSkillWorkspace(skillId!),
+    enabled: Boolean(skillId)
+  });
+}
+
+export function useSkillHistory(skillId: string | undefined) {
+  return useInfiniteQuery({
+    queryKey: ["skills", skillId, "history"],
+    queryFn: ({ pageParam }) => getSkillHistoryPage(skillId!, pageParam),
+    initialPageParam: null as string | null,
+    getNextPageParam: page => page.nextCursor ?? undefined,
     enabled: Boolean(skillId)
   });
 }

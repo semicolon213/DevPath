@@ -3,6 +3,7 @@ package com.devpath.analysis.application;
 import com.devpath.rule.application.CompletedRuleEvaluationApplicationService;
 import com.devpath.career.application.CareerReadinessApplicationService;
 import com.devpath.recommendation.application.RecommendationApplicationService;
+import com.devpath.shared.infrastructure.WorkerShutdownGate;
 import java.time.Clock;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -16,26 +17,33 @@ class AnalysisWorker {
     private final CareerReadinessApplicationService careerReadiness;
     private final RecommendationApplicationService recommendations;
     private final Clock clock;
+    private final WorkerShutdownGate shutdownGate;
 
     AnalysisWorker(
         AnalysisApplicationService analyses,
         CompletedRuleEvaluationApplicationService ruleEvaluations,
         CareerReadinessApplicationService careerReadiness,
         RecommendationApplicationService recommendations,
-        Clock clock
+        Clock clock,
+        WorkerShutdownGate shutdownGate
     ) {
         this.analyses = analyses;
         this.ruleEvaluations = ruleEvaluations;
         this.careerReadiness = careerReadiness;
         this.recommendations = recommendations;
         this.clock = clock;
+        this.shutdownGate = shutdownGate;
     }
 
     @Scheduled(
         fixedDelayString = "${devpath.jobs.analysis.poll-interval:1000}",
-        initialDelayString = "${devpath.jobs.analysis.initial-delay:1500}"
+        initialDelayString = "${devpath.jobs.analysis.initial-delay:1500}",
+        scheduler = "workerTaskScheduler"
     )
     void processNext() {
+        if (!shutdownGate.acceptingClaims()) {
+            return;
+        }
         analyses.claim(clock.instant()).ifPresent(item -> {
             try {
                 var completion = ruleEvaluations.evaluateAndPersistWithMatrix(item.snapshot(), clock.instant());

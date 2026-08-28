@@ -8,7 +8,7 @@ export function SettingsLayout({ title, description, children }: { title: string
     <nav className="settings-tabs" aria-label="설정 메뉴">
       <NavLink end to="/settings" className={({ isActive }) => isActive ? "settings-tab settings-tab--active" : "settings-tab"}>설정 홈</NavLink>
       <NavLink to="/settings/profile" className={({ isActive }) => isActive ? "settings-tab settings-tab--active" : "settings-tab"}>프로필과 목표</NavLink>
-      <NavLink to="/settings/integrations" className={({ isActive }) => isActive ? "settings-tab settings-tab--active" : "settings-tab"}>GitHub 연결</NavLink>
+      <NavLink to="/settings/integrations" className={({ isActive }) => isActive ? "settings-tab settings-tab--active" : "settings-tab"}>외부 서비스 연결</NavLink>
     </nav>
     {children}
   </main>;

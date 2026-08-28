@@ -3,6 +3,7 @@ import {
   archiveRepository,
   getRepositories,
   getRepository,
+  getRepositorySnapshot,
   getRepositorySnapshots,
   getRepositoryTechnologies,
   getRepositoryEvidence,
@@ -52,6 +53,14 @@ export function useRepositorySnapshots(repositoryId: string | undefined) {
     queryKey: [...repositoriesKey, repositoryId, "snapshots"],
     queryFn: () => getRepositorySnapshots(repositoryId!),
     enabled: Boolean(repositoryId)
+  });
+}
+
+export function useRepositorySnapshot(repositoryId: string | undefined, snapshotId: string | undefined) {
+  return useQuery({
+    queryKey: [...repositoriesKey, repositoryId, "snapshots", snapshotId],
+    queryFn: () => getRepositorySnapshot(repositoryId!, snapshotId!),
+    enabled: Boolean(repositoryId) && Boolean(snapshotId)
   });
 }
 

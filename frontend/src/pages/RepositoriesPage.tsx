@@ -1,9 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useState, type ReactNode } from "react";
-import { useRepositories } from "../features/repositories/model/useRepositories";
+import type { ImportedRepository } from "../features/repositories/api/repositoryApi";
+import { useArchiveRepository, useRepositories, useRestoreRepository } from "../features/repositories/model/useRepositories";
 
 export function RepositoriesPage() {
-  const [includeArchived, setIncludeArchived] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const includeArchived = searchParams.get("includeArchived") === "true";
   const query = useRepositories(includeArchived);
 
   if (query.isPending) {
@@ -51,7 +53,12 @@ export function RepositoriesPage() {
           <input
             type="checkbox"
             checked={includeArchived}
-            onChange={event => setIncludeArchived(event.target.checked)}
+            onChange={event => setSearchParams(current => {
+              const next = new URLSearchParams(current);
+              if (event.target.checked) next.set("includeArchived", "true");
+              else next.delete("includeArchived");
+              return next;
+            }, { replace: true })}
           />
           보관 저장소 포함
         </label>
@@ -72,24 +79,7 @@ export function RepositoriesPage() {
             </div>
           </div>
           <div className="repository-grid">
-            {repositories.map(repository => (
-              <article className="repository-card" key={repository.repositoryId}>
-                <div className="repository-card__topline">
-                  <span className="status-badge">{repository.visibility === "PRIVATE" ? "비공개" : "공개"}</span>
-                  <span>{repository.lifecycle === "ARCHIVED" ? "DevPath에서 보관됨" : "등록 완료"}</span>
-                </div>
-                <h3><Link to={`/repositories/${repository.repositoryId}`}>{repository.fullName}</Link></h3>
-                <dl className="metadata-list">
-                  <div><dt>기본 브랜치</dt><dd>{repository.defaultBranch}</dd></div>
-                  <div><dt>분석 준비</dt><dd>{syncLabel(repository.syncStatus)}</dd></div>
-                  <div><dt>등록일</dt><dd>{formatDate(repository.discoveredAt)}</dd></div>
-                </dl>
-                <div className="repository-card__actions">
-                  <Link to={`/repositories/${repository.repositoryId}`}>상세 보기</Link>
-                  <a href={repository.htmlUrl} target="_blank" rel="noreferrer">GitHub 열기</a>
-                </div>
-              </article>
-            ))}
+            {repositories.map(repository => <RepositoryCard key={repository.repositoryId} repository={repository} />)}
           </div>
           {query.hasNextPage ? (
             <button type="button" disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
@@ -100,6 +90,69 @@ export function RepositoriesPage() {
       )}
     </Workspace>
   );
+}
+
+function RepositoryCard({ repository }: { repository: ImportedRepository }) {
+  const [confirmingArchive, setConfirmingArchive] = useState(false);
+  const archive = useArchiveRepository();
+  const restore = useRestoreRepository();
+  const mutation = repository.lifecycle === "ARCHIVED" ? restore : archive;
+  const canChangeLifecycle = repository.lifecycle !== "DELETED_EXTERNALLY"
+    && !(repository.lifecycle === "ARCHIVED" && repository.providerArchived);
+
+  return (
+    <article className={`repository-card${repository.lifecycle === "ARCHIVED" ? " repository-card--archived" : ""}`}>
+      <div className="repository-card__topline">
+        <span className="status-badge">{repository.visibility === "PRIVATE" ? "비공개" : "공개"}</span>
+        <span>{lifecycleLabel(repository.lifecycle)}</span>
+      </div>
+      <h3><Link to={`/repositories/${repository.repositoryId}`}>{repository.fullName}</Link></h3>
+      <dl className="metadata-list">
+        <div><dt>기본 브랜치</dt><dd>{repository.defaultBranch}</dd></div>
+        <div><dt>분석 준비</dt><dd>{syncLabel(repository.syncStatus)}</dd></div>
+        <div><dt>등록일</dt><dd>{formatDate(repository.discoveredAt)}</dd></div>
+      </dl>
+      {repository.lifecycle === "ARCHIVED" && repository.providerArchived ? (
+        <p className="muted">GitHub에서 먼저 저장소 보관을 해제해야 DevPath에서도 복원할 수 있습니다.</p>
+      ) : repository.lifecycle === "DELETED_EXTERNALLY" ? (
+        <p className="muted">GitHub에서 삭제된 저장소는 로컬에서 복원할 수 없습니다.</p>
+      ) : null}
+      {mutation.isError ? <p className="form-error" role="alert">저장소 상태를 변경하지 못했습니다. 다시 시도해 주세요.</p> : null}
+      {confirmingArchive ? (
+        <div className="lifecycle-confirmation" role="group" aria-label={`${repository.fullName} 보관 확인`}>
+          <p>목록에서 숨겨지고 새 동기화와 분석이 중단됩니다. 기존 스냅샷과 분석 결과는 유지됩니다.</p>
+          <div>
+            <button type="button" className="button-danger" disabled={archive.isPending}
+              onClick={() => archive.mutate(repository.repositoryId, { onSettled: () => setConfirmingArchive(false) })}>
+              {archive.isPending ? "보관 중…" : "보관 확인"}
+            </button>
+            <button type="button" disabled={archive.isPending} onClick={() => setConfirmingArchive(false)}>취소</button>
+          </div>
+        </div>
+      ) : null}
+      <div className="repository-card__actions">
+        <Link to={`/repositories/${repository.repositoryId}`}>상세 보기</Link>
+        <button
+          type="button"
+          className={repository.lifecycle === "ARCHIVED" ? "button-quiet" : "button-quiet button-quiet--danger"}
+          disabled={!canChangeLifecycle || mutation.isPending}
+          onClick={() => repository.lifecycle === "ARCHIVED"
+            ? mutation.mutate(repository.repositoryId)
+            : setConfirmingArchive(true)}
+        >
+          {mutation.isPending ? "처리 중…" : repository.lifecycle === "ARCHIVED" ? "복원" : "보관"}
+        </button>
+        <a href={repository.htmlUrl} target="_blank" rel="noreferrer">GitHub 열기</a>
+      </div>
+    </article>
+  );
+}
+
+function lifecycleLabel(lifecycle: ImportedRepository["lifecycle"]) {
+  if (lifecycle === "ARCHIVED") return "DevPath에서 보관됨";
+  if (lifecycle === "DELETED_EXTERNALLY") return "GitHub에서 삭제됨";
+  if (lifecycle === "ACTIVE") return "동기화됨";
+  return "등록 완료";
 }
 
 function Workspace({ children }: { children: ReactNode }) {

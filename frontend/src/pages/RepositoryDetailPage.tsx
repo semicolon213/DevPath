@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useArchiveRepository,
@@ -19,14 +19,16 @@ import { currentSkillMatrixKey } from "../features/skills/model/useSkillMatrix";
 
 export function RepositoryDetailPage() {
   const { repositoryId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [confirmingArchive, setConfirmingArchive] = useState(false);
   const query = useRepository(repositoryId);
   const queryClient = useQueryClient();
   const archive = useArchiveRepository();
   const restore = useRestoreRepository();
   const synchronize = useSynchronizeRepository();
   const requestAnalysis = useRequestAnalysis();
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
+  const jobId = searchParams.get("syncJobId");
+  const analysisJobId = searchParams.get("analysisJobId");
   const job = useRepositorySyncJob(jobId);
   const analysisJob = useAnalysisJob(analysisJobId);
   const snapshots = useRepositorySnapshots(repositoryId);
@@ -61,10 +63,22 @@ export function RepositoryDetailPage() {
   }
 
   const repository = query.data;
+  const activityTimeline = evidence.data?.activityTimeline;
   const lifecycleMutation = repository.lifecycle === "ARCHIVED" ? restore : archive;
   const isProviderArchived = repository.providerArchived;
   const actionDisabled = lifecycleMutation.isPending || (repository.lifecycle === "ARCHIVED" && isProviderArchived);
   const actionLabel = repository.lifecycle === "ARCHIVED" ? "저장소 복원" : "저장소 보관";
+  const repositoryUnavailable = repository.lifecycle === "DELETED_EXTERNALLY";
+  const repositoryArchived = repository.lifecycle === "ARCHIVED";
+  const changeLifecycle = () => repositoryId && lifecycleMutation.mutate(repositoryId, { onSuccess: () => {
+    setConfirmingArchive(false);
+    setSearchParams(current => {
+      const next = new URLSearchParams(current);
+      next.delete("syncJobId");
+      next.delete("analysisJobId");
+      return next;
+    }, { replace: true });
+  } });
   return (
     <main className="shell workspace">
       <nav><Link to="/repositories">← 내 저장소</Link></nav>
@@ -75,28 +89,45 @@ export function RepositoryDetailPage() {
           <p>GitHub 동기화 상태와 재현 가능한 저장소 스냅샷을 관리합니다.</p>
         </div>
         <div className="repository-detail-actions">
-          {repository.lifecycle !== "ARCHIVED" ? (
+          {!repositoryArchived && !repositoryUnavailable ? (
             <button
               type="button"
               disabled={synchronize.isPending || job.data?.status === "queued" || job.data?.status === "running"}
               onClick={() => repositoryId && synchronize.mutate(repositoryId, {
-                onSuccess: value => setJobId(value.jobId)
+                onSuccess: value => setSearchParams(current => {
+                  const next = new URLSearchParams(current);
+                  next.set("syncJobId", value.jobId);
+                  return next;
+                }, { replace: true })
               })}
             >
               {synchronize.isPending ? "동기화 요청 중…" : "GitHub 동기화"}
             </button>
           ) : null}
-          <button
-            type="button"
-            className={repository.lifecycle === "ARCHIVED" ? undefined : "button-danger"}
-            disabled={actionDisabled}
-            onClick={() => repositoryId && lifecycleMutation.mutate(repositoryId)}
-          >
-            {lifecycleMutation.isPending ? "처리 중…" : actionLabel}
-          </button>
+          {!repositoryUnavailable ? <button
+              type="button"
+              className={repositoryArchived ? undefined : "button-danger"}
+              disabled={actionDisabled}
+              onClick={() => repositoryArchived ? changeLifecycle() : setConfirmingArchive(true)}
+            >
+              {lifecycleMutation.isPending ? "처리 중…" : actionLabel}
+            </button> : null}
           <a className="button-link" href={repository.htmlUrl} target="_blank" rel="noreferrer">GitHub에서 보기</a>
         </div>
       </header>
+
+      {confirmingArchive ? (
+        <section className="lifecycle-confirmation lifecycle-confirmation--detail" aria-labelledby="archive-confirmation-title">
+          <h2 id="archive-confirmation-title">이 저장소를 DevPath에서 보관할까요?</h2>
+          <p>활성 목록에서 숨겨지고 새 동기화와 분석을 시작할 수 없습니다. 기존 메타데이터, 불변 스냅샷, 공식 분석 결과는 삭제되지 않습니다.</p>
+          <div>
+            <button type="button" className="button-danger" disabled={archive.isPending} onClick={changeLifecycle}>
+              {archive.isPending ? "보관 중…" : "저장소 보관 확인"}
+            </button>
+            <button type="button" disabled={archive.isPending} onClick={() => setConfirmingArchive(false)}>취소</button>
+          </div>
+        </section>
+      ) : null}
 
       {job.data ? (
         <section className="sync-panel" aria-live="polite">
@@ -105,13 +136,27 @@ export function RepositoryDetailPage() {
             <span>시도 {job.data.attemptCount}/{job.data.maxAttempts}</span>
           </div>
           <progress max="100" value={job.data.progressPercent}>{job.data.progressPercent}%</progress>
-          {job.data.status === "failed" ? (
+          {job.data.status === "failed" && job.data.errorCode === "COLLECTION_LIMIT_EXCEEDED" ? (
+            <p role="alert">
+              저장소가 현재 안전 수집 범위를 초과했습니다. 부분 스냅샷은 생성되지 않았고 서버는 자동으로 재시도하지 않습니다.
+              브랜치·파일·PR·이슈 규모를 줄인 뒤 새 동기화를 요청해 주세요.
+            </p>
+          ) : job.data.status === "failed" ? (
             <p role="alert">동기화에 실패했습니다. GitHub 연결과 저장소 권한을 확인한 뒤 다시 요청해 주세요.</p>
           ) : null}
           {job.data.phase === "RETRY_WAIT" && job.data.errorCode === "RATE_LIMIT_EXCEEDED" ? (
             <p role="status">GitHub 요청 한도가 해제되면 서버가 자동으로 동기화를 다시 시작합니다.</p>
           ) : null}
+          {job.data.status === "succeeded" && snapshotRouteFromResult(repositoryId, job.data.resultResourceUrl) ? (
+            <p><Link to={snapshotRouteFromResult(repositoryId, job.data.resultResourceUrl)!}>생성된 불변 스냅샷 보기</Link></p>
+          ) : null}
         </section>
+      ) : job.isError ? (
+        <section className="sync-panel" role="alert"><strong>동기화 작업 상태를 불러오지 못했습니다.</strong>
+          <p>작업이 없거나 현재 계정으로 접근할 수 없습니다. 저장소 데이터는 변경되지 않았습니다.</p>
+          <button type="button" onClick={() => setSearchParams(current => {
+            const next = new URLSearchParams(current); next.delete("syncJobId"); return next;
+          }, { replace: true })}>작업 표시 닫기</button></section>
       ) : synchronize.isError ? (
         <p role="alert" className="form-error">{syncRequestError(synchronize.error)}</p>
       ) : null}
@@ -124,12 +169,18 @@ export function RepositoryDetailPage() {
           </div>
           <progress max="100" value={analysisJob.data.progressPercent}>{analysisJob.data.progressPercent}%</progress>
           {analysisJob.data.status === "succeeded" ? (
-            <p>분석이 완료되었습니다. <Link to="/skills">스킬 분석 결과 보기</Link> · <Link to="/analyses">분석 이력 보기</Link></p>
+            <p>분석이 완료되었습니다. {analysisRouteFromResult(analysisJob.data.resultResourceUrl) ? <><Link to={analysisRouteFromResult(analysisJob.data.resultResourceUrl)!}>완료된 공식 분석 보기</Link> · </> : null}<Link to="/skills">스킬 분석 결과 보기</Link> · <Link to="/analyses">분석 이력 보기</Link></p>
           ) : null}
           {analysisJob.data.status === "failed" ? (
             <p role="alert">결정론적 분석에 실패했습니다. 잠시 후 다시 요청해 주세요.</p>
           ) : null}
         </section>
+      ) : analysisJob.isError ? (
+        <section className="sync-panel analysis-panel" role="alert"><strong>분석 작업 상태를 불러오지 못했습니다.</strong>
+          <p>작업이 없거나 현재 계정으로 접근할 수 없습니다. 공식 분석 결과는 변경되지 않았습니다.</p>
+          <button type="button" onClick={() => setSearchParams(current => {
+            const next = new URLSearchParams(current); next.delete("analysisJobId"); return next;
+          }, { replace: true })}>작업 표시 닫기</button></section>
       ) : requestAnalysis.isError ? (
         <p role="alert" className="form-error">분석 요청을 만들지 못했습니다. 동기화 상태를 확인한 뒤 다시 시도해 주세요.</p>
       ) : null}
@@ -161,14 +212,20 @@ export function RepositoryDetailPage() {
           <p className="muted">공식 결과는 현재 불변 스냅샷과 버전이 고정된 Rule Engine으로만 계산됩니다.</p>
           <button
             type="button"
-            disabled={repository.syncStatus !== "SYNCHRONIZED" || requestAnalysis.isPending
+            disabled={repositoryArchived || repositoryUnavailable || repository.syncStatus !== "SYNCHRONIZED" || requestAnalysis.isPending
               || analysisJob.data?.status === "queued" || analysisJob.data?.status === "running"}
             onClick={() => repositoryId && requestAnalysis.mutate(repositoryId, {
-              onSuccess: value => setAnalysisJobId(value.jobId)
+              onSuccess: value => setSearchParams(current => {
+                const next = new URLSearchParams(current);
+                next.set("analysisJobId", value.jobId);
+                return next;
+              }, { replace: true })
             })}
           >
             {requestAnalysis.isPending ? "분석 요청 중…" : "결정론적 분석 시작"}
           </button>
+          {repositoryArchived ? <p className="muted">보관된 저장소는 새 동기화와 분석을 시작할 수 없습니다. 기존 스냅샷과 분석 결과는 계속 조회할 수 있습니다.</p> : null}
+          {repositoryUnavailable ? <p className="muted">GitHub에서 삭제된 저장소는 새 작업을 시작할 수 없습니다. 보존된 과거 결과만 조회할 수 있습니다.</p> : null}
         </div>
       </section>
 
@@ -253,6 +310,43 @@ export function RepositoryDetailPage() {
         {evidence.data ? <p className="muted">추출기 {evidence.data.extractorVersion}</p> : null}
       </section>
 
+      <section className="snapshot-section" aria-labelledby="repository-activity-title">
+        <div className="section-heading">
+          <div>
+            <h2 id="repository-activity-title">저장소 활동 타임라인</h2>
+            <p>현재 불변 스냅샷에 수집된 커밋, PR, 이슈 활동을 최신순으로 보여줍니다.</p>
+          </div>
+        </div>
+        {repository.syncStatus !== "SYNCHRONIZED" ? <p className="muted">저장소를 동기화하면 활동 기록이 표시됩니다.</p> : null}
+        {evidence.data && !activityTimeline ? <p className="muted">활동 타임라인을 불러올 수 없습니다.</p> : null}
+        {activityTimeline?.events.length === 0 ? <p className="muted">현재 스냅샷에 수집된 활동이 없습니다.</p> : null}
+        {activityTimeline?.latestActivityAt ? (
+          <p className="muted">
+            마지막 활동은 스냅샷 수집 시점 기준 {activityTimeline.daysSinceLatestActivity?.toLocaleString("ko-KR")}일 전입니다.
+            정책 임계값을 적용한 오래됨 판정은 포함하지 않습니다.
+          </p>
+        ) : null}
+        {activityTimeline?.events.length ? (
+          <ol className="activity-timeline">
+            {activityTimeline.events.map((event, index) => (
+              <li key={`${event.eventType}:${event.sourceReference}:${event.occurredAt}:${index}`}>
+                <div>
+                  <strong>{activityEventLabel(event.eventType)}</strong>
+                  <time dateTime={event.occurredAt}>
+                    {new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(event.occurredAt))}
+                  </time>
+                </div>
+                <code>{event.sourceReference.slice(0, 16)}</code>
+              </li>
+            ))}
+          </ol>
+        ) : null}
+        {activityTimeline?.truncated ? (
+          <p className="muted">전체 {activityTimeline.totalEventCount.toLocaleString("ko-KR")}건 중 최신 100건을 표시합니다.</p>
+        ) : null}
+        {activityTimeline ? <p className="muted">추출기 {activityTimeline.extractorVersion}</p> : null}
+      </section>
+
       <section className="snapshot-section" aria-labelledby="snapshot-history-title">
         <div className="section-heading">
           <div>
@@ -277,11 +371,25 @@ export function RepositoryDetailPage() {
               <div><dt>이슈</dt><dd>{snapshot.issueCount}개</dd></div>
               <div><dt>문서</dt><dd>{snapshot.documentCount}개</dd></div>
             </dl>
+            <Link to={`/repositories/${repository.repositoryId}/snapshots/${snapshot.snapshotId}`}>스냅샷 상세 보기</Link>
           </article>
         ))}
       </section>
     </main>
   );
+}
+
+function snapshotRouteFromResult(repositoryId: string | undefined, resultResourceUrl: string | null) {
+  if (!repositoryId || !resultResourceUrl) return null;
+  const match = resultResourceUrl.match(/^\/api\/v1\/repositories\/([^/]+)\/snapshots\/([^/?#]+)$/);
+  if (!match || match[1] !== repositoryId) return null;
+  return `/repositories/${repositoryId}/snapshots/${match[2]}`;
+}
+
+function analysisRouteFromResult(resultResourceUrl: string | null) {
+  if (!resultResourceUrl) return null;
+  const match = /^\/api\/v1\/analyses\/([^/?#]+)$/.exec(resultResourceUrl);
+  return match ? `/analyses/${match[1]}` : null;
 }
 
 function jobLabel(status: string, phase: string) {
@@ -344,6 +452,17 @@ const evidenceLabels: Record<string, string> = {
 
 function evidenceSignalLabel(signalKey: string) {
   return evidenceLabels[signalKey] ?? signalKey;
+}
+
+function activityEventLabel(eventType: "COMMIT" | "PULL_REQUEST_OPENED" | "PULL_REQUEST_CLOSED" | "PULL_REQUEST_MERGED" | "ISSUE_OPENED" | "ISSUE_CLOSED") {
+  return {
+    COMMIT: "커밋",
+    PULL_REQUEST_OPENED: "PR 열림",
+    PULL_REQUEST_CLOSED: "PR 종료",
+    PULL_REQUEST_MERGED: "PR 병합",
+    ISSUE_OPENED: "이슈 열림",
+    ISSUE_CLOSED: "이슈 종료"
+  }[eventType];
 }
 
 function syncRequestError(error: Error) {

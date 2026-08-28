@@ -74,8 +74,9 @@ class RecommendationSecurityTest {
         mockMvc.perform(get("/api/v1/learning-roadmaps")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/learning-roadmaps").with(oauth2Login().oauth2User(principal()))).andExpect(status().isOk()).andExpect(jsonPath("$.data.roadmaps[0].roadmapId").value(roadmapId.toString()));
         mockMvc.perform(post("/api/v1/learning-roadmaps/{roadmapId}/archive",roadmapId).header("Idempotency-Key","archive-1").contentType(MediaType.APPLICATION_JSON).content("{}").with(oauth2Login().oauth2User(principal()))).andExpect(status().isForbidden());
-        mockMvc.perform(post("/api/v1/learning-roadmaps/{roadmapId}/archive",roadmapId).header("Idempotency-Key","archive-1").contentType(MediaType.APPLICATION_JSON).content("{}").with(csrf()).with(oauth2Login().oauth2User(principal()))).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("ARCHIVED"));
-        verify(service).archiveRoadmap(USER,roadmapId);
+        mockMvc.perform(post("/api/v1/learning-roadmaps/{roadmapId}/archive",roadmapId).header("Idempotency-Key","archive-1").with(csrf()).with(oauth2Login().oauth2User(principal()))).andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("ARCHIVED"));
+        mockMvc.perform(post("/api/v1/learning-roadmaps/{roadmapId}/archive",roadmapId).header("Idempotency-Key","archive-2").contentType(MediaType.APPLICATION_JSON).content("{}").with(csrf()).with(oauth2Login().oauth2User(principal()))).andExpect(status().isOk());
+        verify(service,org.mockito.Mockito.times(2)).archiveRoadmap(USER,roadmapId);
     }
     private DevPathOAuth2User principal(){return new DevPathOAuth2User(new AuthenticatedUser(USER,"User",null,AccountStatus.ACTIVE,OAuthProvider.GITHUB,Instant.parse("2026-07-27T00:00:00Z")),Map.of("id","1","login","owner"));}
 }

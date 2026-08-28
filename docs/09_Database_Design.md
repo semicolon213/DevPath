@@ -223,6 +223,13 @@ store normalized lifecycle timestamps and measured review counts; issues store n
 documents store path, SHA-256, byte size, and deterministic section-presence signals. Raw README content and the
 nullable object-content reference are intentionally not populated until ADR-029 is accepted.
 
+The implemented `V21__create_notion_workspace_schema.sql` adds the owner-scoped `notion_workspace_connections` and
+`notion_page_metadata` tables for FR-051~FR-067. PostgreSQL stores workspace identity, connection lifecycle, encrypted
+access/refresh credentials, and bounded page/data-source metadata only. A user has at most one current Notion workspace
+connection record; reauthorization rotates that record. Expiry and disconnect replace both provider secrets with
+discarded ciphertext, and delete derived page metadata. Page body content, chunks, embeddings, and vector indexes are
+not stored by this migration and remain outside M35.
+
 ### 5.3 Analysis and Rule Tables
 
 | Table | Purpose | Primary Key | Foreign Keys | Important Columns | Relationships | Lifecycle |

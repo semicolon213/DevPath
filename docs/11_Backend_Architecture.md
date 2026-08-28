@@ -1186,3 +1186,31 @@ Future extensions are not current committed scope.
 | Runtime verification | Gradle Java 21 commands | `clean test` and `build` passed; PostgreSQL-dependent tests skipped because Docker is unavailable |
 
 No repository, analysis, Rule, Career, Knowledge, Prompt, AI, or artifact backend use case is implemented by this slice.
+
+## 53. Reliability and Performance Hardening Evidence
+
+The current PostgreSQL-backed repository-sync and analysis workers use pessimistic claim locking and a persisted
+lease deadline in `next_attempt_at`. A queued job becomes `RUNNING` only inside its claim transaction. If a process
+stops after claiming, a later worker can reclaim the expired lease, increment the persisted attempt count, and record
+`WORKER_LEASE_RECOVERED`. A job whose lease expires after its third attempt becomes terminal `FAILED` with
+`WORKER_LEASE_EXPIRED`; it is not sent to the provider again. This is an in-process worker implementation over the
+existing durable job tables and is not an external queue technology selection.
+
+Transient repository and analysis failures use deterministic jittered exponential delays beginning at approximately
+30 seconds and capped at five minutes. GitHub HTTP calls use configurable positive connect/read timeouts (defaults
+5 seconds and 30 seconds). Repository-sync acceptance no longer performs provider I/O on the request thread: owner,
+lifecycle, idempotency, and active-job checks remain transactional, while provider credential/access validation occurs
+in the worker and produces durable retry or terminal state.
+
+Job-creation transactions acquire PostgreSQL transaction-scoped advisory locks in a fixed order: owner/idempotency key
+first, then repository or analysis basis. The locks contain no business data, release automatically at transaction
+completion, and make concurrent equivalent requests observe and return the first committed active job. Existing unique
+indexes remain the final integrity guard.
+
+Repository and analysis schedules run on a dedicated two-thread scheduler. On `ContextClosedEvent`, a shared gate
+rejects new claims while already claimed work may finish for up to the configured shutdown timeout (ten minutes by
+default). Configuration rejects a shutdown timeout longer than the persisted fifteen-minute lease, so a replacement
+worker cannot reclaim the job while the previous process is still inside its permitted graceful-shutdown window.
+
+No circuit-breaker library, external queue, high-availability guarantee, or production throughput claim is introduced.
+Those require their applicable decision and deployment evidence.

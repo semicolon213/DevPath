@@ -18,6 +18,7 @@ import com.devpath.integration.adapter.out.persistence.EncryptedProviderCredenti
 import com.devpath.integration.adapter.out.persistence.StoredProviderCredential;
 import com.devpath.integration.config.GitHubIntegrationProperties;
 import com.devpath.integration.application.IntegrationAuditPort;
+import com.devpath.integration.application.GitHubCollectionLimitExceededException;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
@@ -287,6 +288,31 @@ class GitHubApiAdapterTest {
             assertThat(value.contentHash()).matches("[a-f0-9]{64}");
             assertThat(value.qualitySignals()).containsExactly("OVERVIEW", "SETUP", "USAGE", "TESTING");
         });
+        server.verify();
+    }
+
+    @Test
+    void rejectsATruncatedProviderTreeInsteadOfCreatingAnUnmarkedPartialSnapshot() {
+        var builder = RestClient.builder();
+        var server = MockRestServiceServer.bindTo(builder).build();
+        var credentials = mock(EncryptedProviderCredentialStore.class);
+        var adapter = new GitHubApiAdapter(properties(), credentials, mock(IntegrationAuditPort.class), builder);
+        UUID userId = UUID.randomUUID();
+        Instant now = Instant.parse("2026-08-11T00:00:00Z");
+        when(credentials.findActive(userId)).thenReturn(Optional.of(stored(userId, now)));
+        server.expect(once(), requestTo("https://api.github.com/repositories/42/branches?per_page=100&page=1"))
+            .andRespond(withSuccess("[{\"name\":\"main\",\"commit\":{\"sha\":\"abc123\"}}]", MediaType.APPLICATION_JSON));
+        server.expect(once(), requestTo("https://api.github.com/repositories/42/commits?sha=main&per_page=100&page=1"))
+            .andRespond(withSuccess("[]", MediaType.APPLICATION_JSON));
+        server.expect(once(), requestTo("https://api.github.com/repositories/42/languages"))
+            .andRespond(withSuccess("{}", MediaType.APPLICATION_JSON));
+        server.expect(once(), requestTo("https://api.github.com/repositories/42/git/trees/abc123?recursive=1"))
+            .andRespond(withSuccess("{\"truncated\":true,\"tree\":[]}", MediaType.APPLICATION_JSON));
+
+        assertThatThrownBy(() -> adapter.collectRepository(userId, "42", "main", now))
+            .isInstanceOf(GitHubCollectionLimitExceededException.class)
+            .hasMessageContaining("tree");
+
         server.verify();
     }
 

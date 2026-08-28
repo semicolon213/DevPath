@@ -1,8 +1,8 @@
-import { apiRequest } from "../../../shared/api/apiClient";
+import { apiRequest, withCsrf } from "../../../shared/api/apiClient";
 
 export type ConnectedAccount = {
   connectionId: string;
-  provider: "GITHUB";
+  provider: "GITHUB" | "NOTION";
   status: "ACTIVE" | "EXPIRED" | "REVOKED";
   scopes: string[];
   connectedAt: string;
@@ -25,23 +25,33 @@ export type GitHubRepository = {
 };
 
 type GitHubRepositoryList = { repositories: GitHubRepository[] };
+export type NotionWorkspacePage = {
+  providerPageId: string;
+  title: string;
+  objectType: "PAGE" | "DATA_SOURCE";
+  url: string | null;
+  lastEditedAt: string;
+  inTrash: boolean;
+};
+export type NotionWorkspace = {
+  connectionId: string;
+  workspaceId: string;
+  workspaceName: string;
+  workspaceIconUrl: string | null;
+  status: "ACTIVE";
+  connectedAt: string;
+  discoveredAt: string;
+  pages: NotionWorkspacePage[];
+};
+type NotionWorkspaceList = { workspaces: NotionWorkspace[] };
 type OAuthAuthorization = { authorizationUrl: string };
-type CsrfToken = { headerName: string; token: string };
-
 export async function getConnections() {
   return (await apiRequest<ConnectedAccountList>("/api/v1/users/me/connections")).data;
 }
 
 export async function authorizeGitHub() {
-  const csrf = await apiRequest<CsrfToken>("/api/v1/csrf");
-  return (await apiRequest<OAuthAuthorization>("/api/v1/integrations/github/authorize", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      [csrf.data.headerName]: csrf.data.token
-    },
-    body: JSON.stringify({})
-  })).data;
+  return (await apiRequest<OAuthAuthorization>("/api/v1/integrations/github/authorize",
+    await withCsrf({ method: "POST" }))).data;
 }
 
 export async function getGitHubRepositories() {
@@ -49,9 +59,20 @@ export async function getGitHubRepositories() {
 }
 
 export async function disconnectGitHub() {
-  const csrf = await apiRequest<CsrfToken>("/api/v1/csrf");
-  return (await apiRequest<ConnectedAccount>("/api/v1/integrations/github", {
-    method: "DELETE",
-    headers: { [csrf.data.headerName]: csrf.data.token }
-  })).data;
+  return (await apiRequest<ConnectedAccount>("/api/v1/integrations/github",
+    await withCsrf({ method: "DELETE" }))).data;
+}
+
+export async function authorizeNotion() {
+  return (await apiRequest<OAuthAuthorization>("/api/v1/integrations/notion/authorize",
+    await withCsrf({ method: "POST" }))).data;
+}
+
+export async function getNotionWorkspaces() {
+  return (await apiRequest<NotionWorkspaceList>("/api/v1/integrations/notion/workspaces")).data;
+}
+
+export async function disconnectNotion() {
+  return (await apiRequest<ConnectedAccount>("/api/v1/integrations/notion",
+    await withCsrf({ method: "DELETE" }))).data;
 }

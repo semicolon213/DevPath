@@ -19,6 +19,9 @@ import com.devpath.identity.config.SecurityConfiguration;
 import com.devpath.identity.domain.AccountStatus;
 import com.devpath.identity.domain.OAuthProvider;
 import com.devpath.repository.application.RepositorySnapshotListView;
+import com.devpath.repository.application.RepositoryActivityEventView;
+import com.devpath.repository.application.RepositoryActivityTimelineView;
+import com.devpath.repository.application.RepositoryEvidenceSummaryView;
 import com.devpath.repository.application.RepositorySyncJobView;
 import com.devpath.repository.application.RepositorySynchronizationApplicationService;
 import java.time.Instant;
@@ -47,6 +50,7 @@ class RepositorySynchronizationSecurityTest {
     private static final UUID USER_ID = UUID.fromString("e046a279-9c82-4bbf-9d8f-0737b222fa97");
     private static final UUID REPOSITORY_ID = UUID.fromString("3fd75d74-17d4-4dc5-bf3b-251f611633f2");
     private static final UUID JOB_ID = UUID.fromString("38393675-fd18-410d-9fb8-cff66200fa46");
+    private static final UUID SNAPSHOT_ID = UUID.fromString("97fb9cf1-598d-4726-976d-8b20d71609f5");
 
     @Autowired MockMvc mockMvc;
     @MockBean RepositorySynchronizationApplicationService service;
@@ -81,6 +85,33 @@ class RepositorySynchronizationSecurityTest {
                 .with(oauth2Login().oauth2User(principal())))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.data.snapshots").isArray());
+    }
+
+    @Test
+    void evidenceTimelineRequiresTheOwnerSessionAndReturnsOnlyNormalizedActivity() throws Exception {
+        var timeline = new RepositoryActivityTimelineView(
+            "repository-activity-timeline-v1", "CURRENT_SNAPSHOT",
+            Instant.parse("2026-08-11T00:00:00Z"), Instant.parse("2026-08-10T00:00:00Z"),
+            1L, 1, false, List.of(new RepositoryActivityEventView(
+                "COMMIT", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", Instant.parse("2026-08-10T00:00:00Z")
+            ))
+        );
+        when(service.getEvidence(USER_ID, REPOSITORY_ID)).thenReturn(new RepositoryEvidenceSummaryView(
+            REPOSITORY_ID, SNAPSHOT_ID, "engineering-evidence-extractor-v3", List.of(), timeline
+        ));
+
+        mockMvc.perform(get("/api/v1/repositories/{repositoryId}/evidence", REPOSITORY_ID))
+            .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/v1/repositories/{repositoryId}/evidence", REPOSITORY_ID)
+                .with(oauth2Login().oauth2User(principal())))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.data.activityTimeline.scope").value("CURRENT_SNAPSHOT"))
+            .andExpect(jsonPath("$.data.activityTimeline.daysSinceLatestActivity").value(1))
+            .andExpect(jsonPath("$.data.activityTimeline.events[0].eventType").value("COMMIT"))
+            .andExpect(jsonPath("$.data.activityTimeline.events[0].sourceReference")
+                .value("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+
+        verify(service).getEvidence(USER_ID, REPOSITORY_ID);
     }
 
     private RepositorySyncJobView job() {

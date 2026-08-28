@@ -1,6 +1,6 @@
 spring:
   datasource:
-    url: ${DEVPATH_DB_URL:jdbc:postgresql://localhost:5432/devpath}
+    url: ${DEVPATH_DB_URL:jdbc:postgresql://localhost:15432/devpath}
     username: ${DEVPATH_DB_USERNAME:devpath}
     password: ${DEVPATH_DB_PASSWORD:devpath-local-only}
   security:
@@ -19,4 +19,4 @@ server:
 
 devpath:
   security:
-    frontend-origin: ${DEVPATH_FRONTEND_ORIGIN:http://localhost:5173}
+    frontend-origin: ${DEVPATH_FRONTEND_ORIGIN:http://localhost:5100}

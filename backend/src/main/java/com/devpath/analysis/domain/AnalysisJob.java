@@ -12,6 +12,8 @@ public record AnalysisJob(
     Instant completedAt, Instant nextAttemptAt, UUID resultAnalysisId,
     String errorCode, String errorMessage, long version
 ) {
+    private static final Duration DEFAULT_LEASE = Duration.ofMinutes(15);
+    private static final Duration MAX_RETRY_DELAY = Duration.ofMinutes(5);
     public AnalysisJob {
         Objects.requireNonNull(id); Objects.requireNonNull(userId); Objects.requireNonNull(repositoryId);
         Objects.requireNonNull(snapshotId); Objects.requireNonNull(status); Objects.requireNonNull(submittedAt);
@@ -34,9 +36,25 @@ public record AnalysisJob(
     }
 
     public AnalysisJob start(Instant now) {
-        if (status != AnalysisJobStatus.QUEUED) return this;
+        return claim(now, DEFAULT_LEASE);
+    }
+
+    public AnalysisJob claim(Instant now, Duration leaseDuration) {
+        Objects.requireNonNull(now); Objects.requireNonNull(leaseDuration);
+        if (leaseDuration.isZero() || leaseDuration.isNegative()) {
+            throw new IllegalArgumentException("Analysis job lease must be positive");
+        }
+        boolean queued = status == AnalysisJobStatus.QUEUED && !nextAttemptAt.isAfter(now);
+        boolean stale = status == AnalysisJobStatus.RUNNING && !nextAttemptAt.isAfter(now);
+        if (!queued && !stale) return this;
+        if (stale && attemptCount >= maxAttempts) {
+            return copy(AnalysisJobStatus.FAILED, "FAILED", progressPercent, attemptCount, startedAt, now,
+                nextAttemptAt, null, "WORKER_LEASE_EXPIRED", "Analysis stopped after its worker lease expired.");
+        }
         return copy(AnalysisJobStatus.RUNNING, "EVALUATING_RULES", 20, attemptCount + 1,
-            startedAt == null ? now : startedAt, null, nextAttemptAt, null, null, null);
+            startedAt == null ? now : startedAt, null, now.plus(leaseDuration), null,
+            stale ? "WORKER_LEASE_RECOVERED" : null,
+            stale ? "Analysis resumed after a worker interruption." : null);
     }
 
     public AnalysisJob succeed(UUID analysisId, Instant now) {
@@ -51,10 +69,18 @@ public record AnalysisJob(
         if (safeMessage.length() > 500) safeMessage = safeMessage.substring(0, 500);
         if (attemptCount < maxAttempts) {
             return copy(AnalysisJobStatus.QUEUED, "RETRY_WAIT", 0, attemptCount, startedAt, null,
-                now.plus(Duration.ofSeconds(30)), null, code, safeMessage);
+                now.plus(retryDelay()), null, code, safeMessage);
         }
         return copy(AnalysisJobStatus.FAILED, "FAILED", progressPercent, attemptCount, startedAt, now,
             nextAttemptAt, null, code, safeMessage);
+    }
+
+    private Duration retryDelay() {
+        long exponentialSeconds = 30L << Math.max(0, attemptCount - 1);
+        long boundedSeconds = Math.min(exponentialSeconds, MAX_RETRY_DELAY.toSeconds());
+        long jitterRange = Math.max(1, boundedSeconds / 4);
+        long jitterSeconds = Math.floorMod(Objects.hash(id, attemptCount), jitterRange);
+        return Duration.ofSeconds(Math.min(MAX_RETRY_DELAY.toSeconds(), boundedSeconds + jitterSeconds));
     }
 
     private AnalysisJob copy(AnalysisJobStatus newStatus, String newPhase, int progress, int attempts,

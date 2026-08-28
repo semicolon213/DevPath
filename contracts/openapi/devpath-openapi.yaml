@@ -1,12 +1,14 @@
 openapi: 3.0.3
 info:
   title: DevPath Implemented API
-  version: 0.21.0
+  version: 0.24.0
   description: >
     Implemented contract for authenticated identity, repository synchronization, deterministic analysis,
     rule evaluation, Skill Matrix, career catalog, career readiness, deterministic recommendation,
     learning roadmap, company catalog, onboarding-progress, dashboard-summary, GitHub connection-recovery,
-    provider rate-limit recovery, and repository collaboration/document evidence slices. Provider access tokens,
+    provider rate-limit recovery, terminal large-repository collection-limit handling,
+    repository collaboration/document evidence, repository activity timeline, and Notion workspace-source registration
+    slices. Provider access tokens,
     private README content, and unimplemented APIs are excluded.
 servers:
   - url: http://localhost:8080
@@ -301,11 +303,6 @@ paths:
       security: [{sessionCookie: []}]
       parameters:
         - $ref: "#/components/parameters/CsrfHeader"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: "#/components/schemas/InitiateOAuthRequest"}
       responses:
         "200":
           description: Short-lived, session-bound authorization URL.
@@ -371,6 +368,117 @@ paths:
               schema: {$ref: "#/components/schemas/ErrorEnvelope"}
         "503":
           description: GitHub is unavailable or reconnection is required.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/integrations/notion:
+    delete:
+      x-api-id: API-INT-010
+      summary: Disconnect Notion workspace access
+      operationId: disconnectNotionIntegration
+      tags: [Integration]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200":
+          description: Notion access was removed locally and remote token revocation was attempted.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ConnectedAccountEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "403":
+          description: Missing or invalid CSRF token.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: No active Notion connection exists for the current user.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/integrations/notion/authorize:
+    post:
+      x-api-id: API-INT-008
+      summary: Start Notion workspace authorization
+      operationId: initiateNotionIntegration
+      tags: [Integration]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      responses:
+        "200":
+          description: Short-lived, session-bound authorization URL.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/OAuthAuthorizationEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "403":
+          description: Missing or invalid CSRF token.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "503":
+          description: Notion integration configuration is unavailable.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+  /api/v1/integrations/notion/callback:
+    get:
+      x-api-id: API-INT-009
+      summary: Complete Notion workspace authorization
+      operationId: completeNotionIntegration
+      tags: [Integration]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: state, in: query, required: true, schema: {type: string}}
+        - {name: code, in: query, required: false, schema: {type: string}}
+        - {name: error, in: query, required: false, schema: {type: string}}
+      responses:
+        "302":
+          description: Redirect to the configured frontend with a safe connection result.
+        "401":
+          description: The account-linking session is unavailable.
+  /api/v1/integrations/notion/workspaces:
+    get:
+      x-api-id: API-INT-011
+      summary: Discover accessible Notion workspace page metadata
+      operationId: listNotionWorkspaces
+      tags: [Integration]
+      security: [{sessionCookie: []}]
+      responses:
+        "200":
+          description: Workspace and shared page metadata; page content and credentials are excluded.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/NotionWorkspaceListEnvelope"}
+        "401":
+          description: No valid session.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "404":
+          description: No active Notion connection exists.
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "429":
+          description: Notion request quota is exhausted.
+          headers:
+            Retry-After: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/ErrorEnvelope"}
+        "503":
+          description: Notion is unavailable or reconnection is required.
           content:
             application/json:
               schema: {$ref: "#/components/schemas/ErrorEnvelope"}
@@ -1397,11 +1505,6 @@ paths:
         - {name: roadmapId, in: path, required: true, schema: {type: string, format: uuid}}
         - {$ref: "#/components/parameters/CsrfHeader"}
         - {$ref: "#/components/parameters/IdempotencyKeyHeader"}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: {$ref: "#/components/schemas/ArchiveResourceRequest"}
       responses:
         "200":
           description: Archived roadmap, or its unchanged current archived state on a repeated request.
@@ -1599,7 +1702,7 @@ components:
       required: [connectionId, provider, status, scopes, connectedAt, expiresAt]
       properties:
         connectionId: {type: string, format: uuid}
-        provider: {type: string, enum: [GITHUB]}
+        provider: {type: string, enum: [GITHUB, NOTION]}
         status: {type: string, enum: [ACTIVE, EXPIRED, REVOKED]}
         scopes:
           type: array
@@ -1628,9 +1731,6 @@ components:
       properties:
         data: {$ref: "#/components/schemas/ConnectedAccountList"}
         metadata: {$ref: "#/components/schemas/ApiMetadata"}
-    InitiateOAuthRequest:
-      type: object
-      additionalProperties: false
     OAuthAuthorization:
       type: object
       additionalProperties: false
@@ -1643,6 +1743,48 @@ components:
       required: [data, metadata]
       properties:
         data: {$ref: "#/components/schemas/OAuthAuthorization"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    NotionWorkspacePage:
+      type: object
+      additionalProperties: false
+      required: [providerPageId, title, objectType, url, lastEditedAt, inTrash]
+      properties:
+        providerPageId: {type: string}
+        title: {type: string, maxLength: 512}
+        objectType: {type: string, enum: [PAGE, DATA_SOURCE]}
+        url: {type: string, format: uri, nullable: true}
+        lastEditedAt: {type: string, format: date-time}
+        inTrash: {type: boolean}
+    NotionWorkspace:
+      type: object
+      additionalProperties: false
+      required: [connectionId, workspaceId, workspaceName, workspaceIconUrl, status, connectedAt, discoveredAt, pages]
+      properties:
+        connectionId: {type: string, format: uuid}
+        workspaceId: {type: string}
+        workspaceName: {type: string}
+        workspaceIconUrl: {type: string, format: uri, nullable: true}
+        status: {type: string, enum: [ACTIVE]}
+        connectedAt: {type: string, format: date-time}
+        discoveredAt: {type: string, format: date-time}
+        pages:
+          type: array
+          maxItems: 1000
+          items: {$ref: "#/components/schemas/NotionWorkspacePage"}
+    NotionWorkspaceList:
+      type: object
+      additionalProperties: false
+      required: [workspaces]
+      properties:
+        workspaces:
+          type: array
+          items: {$ref: "#/components/schemas/NotionWorkspace"}
+    NotionWorkspaceListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/NotionWorkspaceList"}
         metadata: {$ref: "#/components/schemas/ApiMetadata"}
     GitHubRepository:
       type: object
@@ -1739,9 +1881,14 @@ components:
         completedAt: {type: string, format: date-time, nullable: true}
         pollingUrl: {type: string}
         resultResourceUrl: {type: string, nullable: true}
-        errorCode: {type: string, nullable: true}
+        errorCode:
+          type: string
+          nullable: true
+          description: Safe normalized failure code; repository sync may return non-retryable COLLECTION_LIMIT_EXCEEDED.
         errorMessage: {type: string, nullable: true}
-        retryable: {type: boolean}
+        retryable:
+          type: boolean
+          description: Whether creating a new user request can reasonably succeed without changing the repository collection scope or policy.
     RepositorySyncJobEnvelope:
       type: object
       additionalProperties: false
@@ -2057,7 +2204,7 @@ components:
     RepositoryEvidenceSummary:
       type: object
       additionalProperties: false
-      required: [repositoryId, snapshotId, extractorVersion, categories]
+      required: [repositoryId, snapshotId, extractorVersion, categories, activityTimeline]
       properties:
         repositoryId: {type: string, format: uuid}
         snapshotId: {type: string, format: uuid}
@@ -2065,6 +2212,33 @@ components:
         categories:
           type: array
           items: {$ref: "#/components/schemas/EvidenceCategory"}
+        activityTimeline: {$ref: "#/components/schemas/RepositoryActivityTimeline"}
+    RepositoryActivityEvent:
+      type: object
+      additionalProperties: false
+      required: [eventType, sourceReference, occurredAt]
+      properties:
+        eventType:
+          type: string
+          enum: [COMMIT, PULL_REQUEST_OPENED, PULL_REQUEST_CLOSED, PULL_REQUEST_MERGED, ISSUE_OPENED, ISSUE_CLOSED]
+        sourceReference: {type: string, minLength: 1, maxLength: 128}
+        occurredAt: {type: string, format: date-time}
+    RepositoryActivityTimeline:
+      type: object
+      additionalProperties: false
+      required: [extractorVersion, scope, measuredAt, latestActivityAt, daysSinceLatestActivity, totalEventCount, truncated, events]
+      properties:
+        extractorVersion: {type: string, enum: [repository-activity-timeline-v1]}
+        scope: {type: string, enum: [CURRENT_SNAPSHOT]}
+        measuredAt: {type: string, format: date-time}
+        latestActivityAt: {type: string, format: date-time, nullable: true}
+        daysSinceLatestActivity: {type: integer, format: int64, minimum: 0, nullable: true}
+        totalEventCount: {type: integer, minimum: 0}
+        truncated: {type: boolean}
+        events:
+          type: array
+          maxItems: 100
+          items: {$ref: "#/components/schemas/RepositoryActivityEvent"}
     RepositoryEvidenceSummaryEnvelope:
       type: object
       additionalProperties: false
@@ -2515,9 +2689,6 @@ components:
       properties:
         data: {$ref: "#/components/schemas/LearningRoadmapList"}
         metadata: {$ref: "#/components/schemas/ApiMetadata"}
-    ArchiveResourceRequest:
-      type: object
-      additionalProperties: false
     DashboardSourceStatus:
       type: string
       enum: [AVAILABLE, EMPTY, UNAVAILABLE]

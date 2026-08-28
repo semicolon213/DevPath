@@ -377,6 +377,7 @@ Single-resource responses use a consistent envelope unless a standard protocol e
 | Rate limit | `RATE_LIMIT_EXCEEDED` | 429 | Yes | Client should follow rate-limit headers. |
 | Dependency unavailable | `DEPENDENCY_UNAVAILABLE` | 503 | Yes | External provider or internal dependency unavailable. |
 | Synchronization failure | `SYNCHRONIZATION_FAILED` | 424 or 500 | Yes | Provider sync or normalization failed. |
+| Collection limit exceeded | `COLLECTION_LIMIT_EXCEEDED` | Async job result | No | Repository facts exceed the documented safe collection ceiling; no partial snapshot is created. |
 | Analysis failure | `ANALYSIS_FAILED` | 422 or 500 | Sometimes | Analysis could not complete from supplied references. |
 | AI provider failure | `AI_PROVIDER_FAILURE` | 502 or 503 | Yes | LLM provider timeout, rate limit, or unavailability. |
 | Response validation failure | `AI_RESPONSE_REJECTED` | 422 | Sometimes | Generated response failed validation. |
@@ -454,22 +455,22 @@ not require the optional company target.
 
 | ID | Method | Path | Purpose | Auth | Authorization | Request Body | Response Body | Status Codes | Error Codes | Idempotency | Side Effects | Requirements |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| API-INT-001 | POST | `/api/v1/integrations/github/authorize` | Initiate GitHub OAuth connection. | Required | Self | InitiateOAuthRequest | OAuthAuthorizationResponse | 200 | VALIDATION_ERROR | Required | Creates OAuth state | FR-021 |
+| API-INT-001 | POST | `/api/v1/integrations/github/authorize` | Initiate GitHub OAuth connection. | Required | Self | None | OAuthAuthorizationResponse | 200 | VALIDATION_ERROR | Required | Creates OAuth state | FR-021 |
 | API-INT-002 | GET | `/api/v1/integrations/github/callback` | Handle GitHub API integration authorization callback; application-login callback remains security-boundary owned under ADR-026. | Callback | OAuth state bound to authenticated account-link context | Provider callback params | OAuthCallbackResponse | 200, 302 | AUTHENTICATION_REQUIRED, DEPENDENCY_UNAVAILABLE | Required by state | GitHubAccountConnected | FR-021 |
 | API-INT-003 | DELETE | `/api/v1/integrations/github` | Disconnect GitHub. | Required | Self | None | ConnectedAccountResponse | 200 | RESOURCE_NOT_FOUND | Required | IntegrationDisconnected | FR-014~FR-015 |
 | API-INT-004 | GET | `/api/v1/integrations/github/repositories` | List provider-accessible repositories before import. | Required | Self with GitHub permission | None | ProviderRepositoryListResponse | 200 | RATE_LIMIT_EXCEEDED, DEPENDENCY_UNAVAILABLE | Safe/idempotent | None | FR-024, FR-046 |
 | API-INT-005 | POST | `/api/v1/repositories/imports` | Import/register a GitHub repository. | Required | Self with GitHub permission | ImportRepositoryRequest | RepositoryResponse | 201 | VALIDATION_ERROR, RESOURCE_CONFLICT, RATE_LIMIT_EXCEEDED | Required | RepositoryDiscovered | FR-025, FR-046 |
-| API-INT-006 | POST | `/api/v1/repositories/{repositoryId}/sync` | Synchronize repository. | Required | Repository owner | SyncRepositoryRequest | JobStatusResponse | 202 | RATE_LIMIT_EXCEEDED, SYNCHRONIZATION_FAILED | Required | SynchronizationRequested | FR-026~FR-050 |
+| API-INT-006 | POST | `/api/v1/repositories/{repositoryId}/sync` | Synchronize repository. | Required | Repository owner | SyncRepositoryRequest | JobStatusResponse | 202 | RATE_LIMIT_EXCEEDED, COLLECTION_LIMIT_EXCEEDED, SYNCHRONIZATION_FAILED | Required | SynchronizationRequested | FR-026~FR-050 |
 | API-INT-007 | GET | `/api/v1/repository-sync-jobs/{jobId}` | Check sync status. | Required | Job owner | None | JobStatusResponse | 200 | RESOURCE_NOT_FOUND | Safe/idempotent | None | FR-049 |
 
 ### 11.2 Notion Integration Endpoints
 
 | ID | Method | Path | Purpose | Auth | Authorization | Request Body | Response Body | Status Codes | Error Codes | Idempotency | Side Effects | Requirements |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| API-INT-008 | POST | `/api/v1/integrations/notion/authorize` | Initiate Notion OAuth connection. | Required | Self | InitiateOAuthRequest | OAuthAuthorizationResponse | 200 | VALIDATION_ERROR | Required | Creates OAuth state | FR-051 |
+| API-INT-008 | POST | `/api/v1/integrations/notion/authorize` | Initiate Notion OAuth connection. | Required | Self | None | OAuthAuthorizationResponse | 200 | VALIDATION_ERROR | Required | Creates OAuth state | FR-051 |
 | API-INT-009 | GET | `/api/v1/integrations/notion/callback` | Handle Notion callback. | Callback | OAuth state | Provider callback params | OAuthCallbackResponse | 200, 302 | AUTHENTICATION_REQUIRED, DEPENDENCY_UNAVAILABLE | Required by state | NotionWorkspaceConnected | FR-052 |
-| API-INT-010 | DELETE | `/api/v1/integrations/notion` | Disconnect Notion. | Required | Self | None | ConnectedAccountResponse | 200 | RESOURCE_NOT_FOUND | Required | IntegrationDisconnected | FR-051~FR-070 |
-| API-INT-011 | GET | `/api/v1/integrations/notion/workspaces` | List accessible workspaces/pages summary. | Required | Self with Notion permission | None | NotionWorkspaceListResponse | 200 | DEPENDENCY_UNAVAILABLE | Safe/idempotent | None | FR-053~FR-070 |
+| API-INT-010 | DELETE | `/api/v1/integrations/notion` | Disconnect Notion and remove retained page metadata. | Required | Self | None | ConnectedAccountResponse | 200, 404 | RESOURCE_NOT_FOUND | Required | IntegrationDisconnected | FR-051~FR-070 |
+| API-INT-011 | GET | `/api/v1/integrations/notion/workspaces` | Discover and replace accessible workspace/page metadata. | Required | Self with Notion permission | None | NotionWorkspaceListResponse | 200, 404, 429, 503 | RESOURCE_NOT_FOUND, RATE_LIMIT_EXCEEDED, DEPENDENCY_UNAVAILABLE | Safe/idempotent | Metadata replacement | FR-053~FR-070 |
 | API-INT-012 | POST | `/api/v1/knowledge-documents/imports/notion` | Import Notion knowledge content. | Required | Self with Notion permission | ImportNotionKnowledgeRequest | JobStatusResponse | 202 | VALIDATION_ERROR | Required | Knowledge ingestion job | FR-051~FR-070, KR-001 |
 
 ### 11.3 Provider Adapter Boundary
@@ -486,7 +487,10 @@ Import re-verifies the provider repository through the current user's server-sid
 persists canonical metadata idempotently for normal duplicate requests, and records an audit event.
 Repository list, detail, archive, and restore are owner-scoped; mutation endpoints are CSRF-protected and
 record durable audit events on actual lifecycle changes. The list uses a bounded opaque cursor, excludes
-locally archived repositories by default, and includes them when `includeArchived=true`.
+locally archived repositories by default, and includes them when `includeArchived=true`. The implemented browser
+workspace preserves that filter in the route, requires an explicit impact confirmation before archive, permits restore
+only when the canonical provider state allows it, and continues to expose retained immutable history while disabling
+new synchronization and analysis commands for locally archived or provider-deleted repositories.
 
 The implemented repository-synchronization subset includes API-INT-007 and API-REP-006 through
 API-REP-008. A CSRF-protected, idempotent sync command creates or reuses a PostgreSQL-backed durable
@@ -496,6 +500,23 @@ failures, and writes a new immutable snapshot for every successful execution. Th
 scope includes the default branch, complete bounded branch pagination, and complete bounded commit
 pagination. Results beyond the configured safe provider-page ceiling fail instead of becoming silent
 partial snapshots. Job and snapshot reads are owner-scoped and expose only safe failure details.
+
+For NFR-005 and NFR-006, API-REP-006 performs only owner, repository lifecycle, input, idempotency, and active-job
+checks before durably accepting the command. It does not call GitHub on the HTTP request thread. The worker performs
+the definitive provider credential and repository-access check while collecting; revocation or provider failure is
+persisted as bounded retry/final job state. This preserves owner authorization at acceptance without representing a
+previously imported repository as currently provider-accessible before the worker verifies it.
+
+Concurrent API-REP-006 requests are serialized by owner/idempotency key and repository basis inside the PostgreSQL
+transaction. Equivalent commands return the first active job rather than surfacing a unique-constraint conflict.
+Analysis creation uses the same rule for owner/idempotency key and snapshot/scope basis.
+
+For FR-045, branch and commit pagination, recursive tree completeness, normalized file count, supported manifest
+count, pull-request count, review pagination, and issue pagination/count have explicit adapter ceilings. Crossing one
+of these ceilings produces the terminal, non-retryable `COLLECTION_LIMIT_EXCEEDED` job result on the first attempt.
+The job exposes a bounded user-safe message and traceable job identifier, marks repository synchronization as failed,
+writes the existing durable failure audit/outbox records, and never persists a partial snapshot or raw provider detail.
+Transient provider outages remain separately retryable as `DEPENDENCY_UNAVAILABLE`.
 
 For the implemented `API-ID-004` subset, `ConnectedAccountListResponse.data.connections` contains the owner's current provider API connection record in `ACTIVE`, `EXPIRED`, or `REVOKED` state. Each item contains `connectionId`, `provider`, `status`, a non-secret `scopes` summary, `connectedAt`, and nullable `expiresAt`. Inactive records expose an empty scope list and allow the client to offer reauthorization without attempting provider access. A GitHub login identity that has never established a provider credential is not returned as a repository-access connection.
 
@@ -522,7 +543,7 @@ signals without calculating an official score. Private README content is not ret
 | API-REP-003 | POST | `/api/v1/repositories` | Register repository by supported source reference. | Required | Owner/provider permission | RegisterRepositoryRequest | RepositoryResponse | 201 | Required | FR-025 |
 | API-REP-004 | POST | `/api/v1/repositories/{repositoryId}/archive` | Archive repository locally. | Required | Owner | None | RepositoryResponse | 200 | Idempotent by repository state | FR-361 |
 | API-REP-005 | POST | `/api/v1/repositories/{repositoryId}/restore` | Restore a locally archived repository. | Required | Owner | None | RepositoryResponse | 200 | Idempotent by repository state | FR-361 |
-| API-REP-006 | POST | `/api/v1/repositories/{repositoryId}/sync` | Request sync. | Required | Owner/provider permission | SyncRepositoryRequest | JobStatusResponse | 202 | Required | FR-026~FR-050 |
+| API-REP-006 | POST | `/api/v1/repositories/{repositoryId}/sync` | Request sync. | Required | Owner/provider permission | SyncRepositoryRequest | JobStatusResponse | 202 | Required; terminal `COLLECTION_LIMIT_EXCEEDED` is non-retryable | FR-026~FR-050 |
 | API-REP-007 | GET | `/api/v1/repositories/{repositoryId}/snapshots` | List repository snapshots. | Required | Owner | None | RepositorySnapshotListResponse | 200 | Safe | FR-026~FR-047 |
 | API-REP-008 | GET | `/api/v1/repositories/{repositoryId}/snapshots/{snapshotId}` | Retrieve immutable snapshot metadata. | Required | Owner | None | RepositorySnapshotResponse | 200 | Safe | FR-026~FR-047 |
 | API-REP-009 | GET | `/api/v1/repositories/{repositoryId}/technologies` | Retrieve detected technologies. | Required | Owner | None | TechnologySummaryResponse | 200 | Safe | RR-001~RR-003 |
@@ -531,6 +552,17 @@ signals without calculating an official score. Private README content is not ret
 | API-REP-012 | GET | `/api/v1/repositories/{repositoryId}/analyses` | List repository analysis history. | Required | Owner | None | AnalysisHistoryResponse | 200 | Safe | FR-071~FR-180 |
 
 RepositorySnapshot resources are immutable. Current snapshot access is exposed through filters such as `status=READY&sort=capturedAt.desc&limit=1`, not by mutating historical snapshots.
+
+The Korean repository-detail journey retains the opaque owner-scoped synchronization `jobId` as a `syncJobId` route
+query parameter and resumes API-INT-007 polling after a browser refresh. It never stores a session or provider token.
+When a successful job returns an API-REP-008 result URL matching the current repository, the browser converts it to the
+corresponding application snapshot-detail route. API-REP-007 history items link to the same route. The detail view shows
+only stored immutable metadata, full source revision/content hash, measured collection counts, and whether the snapshot
+is the repository's current snapshot. Missing and cross-owner resources use the same unavailable state.
+The snapshot-detail journey also walks cursor-paginated API-REP-012 pages and selects completed analyses whose stored
+`snapshotId` exactly matches the viewed snapshot. It displays only the persisted overall score, confidence, versions,
+completion time, and analysis link. No score, delta, trend, or current-result designation is recalculated. A history
+failure is isolated from the API-REP-008 provenance view and can be retried independently.
 
 ## 13. Analysis and Rule Evaluation APIs
 
@@ -570,6 +602,12 @@ internally. API-SKL-004/005 treat `skillId` as the stable Skill catalog identity
 evidence from the authenticated owner's current immutable Matrix. Historical Matrix assessments remain available through
 API-SKL-002. A missing current assessment and a cross-owner resource both return `404`; no public analysis-trigger endpoint
 or background job technology is implied by this subset.
+
+The Korean `/skills/{skillId}` browser journey composes API-ANA-007 history pages with the referenced owner-scoped
+API-SKL-002 immutable Matrices to present a newest-first per-skill history. The browser filters by stable `skillId` and
+displays only each Matrix's stored score, level, confidence, evidence count, policy/rule versions, and generation time.
+It does not calculate a delta, growth trend, replacement level, or new official result. History loading and failure are
+isolated from API-SKL-004/005 so the current authoritative detail and evidence remain usable when an older page fails.
 
 ## 15. Career and Company APIs
 
@@ -645,7 +683,7 @@ state-transition contract is approved.
 | API-LRN-006 | PATCH | `/api/v1/learning-roadmaps/{roadmapId}/steps/{stepId}` | Update step progress. | Required | Owner | UpdateRoadmapStepRequest | RoadmapStepResponse | 200 | ETag recommended | CR-006 |
 | API-LRN-007 | POST | `/api/v1/learning-roadmaps/{roadmapId}/steps/{stepId}/complete` | Complete step. | Required | Owner | RoadmapStepActionRequest | RoadmapStepResponse | 200 | Required | CR-006 |
 | API-LRN-008 | POST | `/api/v1/learning-roadmaps/{roadmapId}/steps/{stepId}/skip` | Skip step. | Required | Owner | RoadmapStepActionRequest | RoadmapStepResponse | 200 | Required | CR-006 |
-| API-LRN-009 | POST | `/api/v1/learning-roadmaps/{roadmapId}/archive` | Archive roadmap. | Required | Owner | ArchiveResourceRequest | LearningRoadmapResponse | 200 | Required | CR-006 |
+| API-LRN-009 | POST | `/api/v1/learning-roadmaps/{roadmapId}/archive` | Archive roadmap. | Required | Owner | None | LearningRoadmapResponse | 200 | Required | CR-006 |
 | API-LRN-010 | GET | `/api/v1/learning-resources` | Retrieve learning resources. | Required | Owner | None | LearningResourceListResponse | 200 | Safe | CR-006 |
 
 User-editable roadmap fields include display title, user notes, target dates, and progress state. Generated reasoning, source recommendation references, and deterministic ordering basis are immutable.
@@ -1034,7 +1072,7 @@ Internal stack traces and sensitive provider payloads must not be exposed.
 | API-ID-007 | Identity | PUT | `/api/v1/users/me/preferences/company` | SetCompanyTarget | Required | No | Required | SetCompanyTargetRequest | UserPreferenceResponse | 200 | CR-003 |
 | API-ID-008 | Identity | POST | `/api/v1/users/me/deletion-requests` | RequestDeletion | Required | Yes | Required | CreateDeletionRequest | JobStatusResponse | 202 | FR-012 |
 | API-ID-010 | Identity | GET | `/api/v1/users/me/onboarding-progress` | GetOnboardingProgress | Required | No | Safe | None | OnboardingProgressResponse | 200 | FR-018~FR-019 |
-| API-INT-001 | Integration | POST | `/api/v1/integrations/github/authorize` | InitiateGitHubOAuth | Required | No | Required | InitiateOAuthRequest | OAuthAuthorizationResponse | 200 | FR-021 |
+| API-INT-001 | Integration | POST | `/api/v1/integrations/github/authorize` | InitiateGitHubOAuth | Required | No | Required | None | OAuthAuthorizationResponse | 200 | FR-021 |
 | API-INT-002 | Integration | GET | `/api/v1/integrations/github/callback` | GitHubIntegrationCallback | Callback | No | State | ProviderCallback | OAuthCallbackResponse | 200/302 | FR-021 |
 | API-INT-004 | Integration | GET | `/api/v1/integrations/github/repositories` | ListGitHubRepositories | Required | No | Safe | None | ProviderRepositoryListResponse | 200 | FR-024 |
 | API-REP-001 | Repository | GET | `/api/v1/repositories` | ListRepositories | Required | No | Safe | None | RepositoryListResponse | 200 | FR-024~FR-050 |
@@ -1117,7 +1155,7 @@ For API-ID-002/003, `careerStage` is nullable and one of `STUDENT`, `ENTRY_LEVEL
 | RepositoryDetailResponse | repositoryId, fullName, defaultBranch, visibility, currentSnapshotId, lifecycle | Repository detail. | Repository private if private | Repository |
 | RepositorySnapshotResponse | snapshotId, repositoryId, capturedAt, sourceRevision, status, isImmutable | Snapshot metadata. | Repository private if private | RepositorySnapshot |
 | TechnologySummaryResponse | repositoryId, snapshotId, extractorVersion, taxonomyVersion, primaryLanguage, technologies | Current-snapshot deterministic technology evidence without an official score. | Repository private if private | RepositorySnapshot/Technology |
-| RepositoryEvidenceSummaryResponse | repositoryId, snapshotId, extractorVersion, categories | Current-snapshot architecture, database, testing, DevOps, documentation, and activity signals without official scores. | Repository private if private | RepositorySnapshot/Evidence |
+| RepositoryEvidenceSummaryResponse | repositoryId, snapshotId, extractorVersion, categories, activityTimeline | Current-snapshot engineering signals and a bounded measured activity timeline without official scores or staleness classification. | Repository private if private | RepositorySnapshot/Evidence |
 
 For the implemented API-REP-009 subset, each detected technology contains a category of `LANGUAGE`,
 `FRAMEWORK`, or `DATABASE`, a provider/dependency evidence label, nullable language byte/percentage
@@ -1125,12 +1163,21 @@ statistics, taxonomy support state, evidence type, and repository-relative manif
 Dependency declarations prove detection only; they do not produce an official score or prove meaningful usage.
 
 For the implemented API-REP-011 subset, evidence is grouped into `ARCHITECTURE`, `DATABASE`, `TESTING`,
-`DEVOPS`, `DOCUMENTATION`, and `ACTIVITY`. Database evidence reports normalized detected database technologies,
+`DEVOPS`, `DOCUMENTATION`, `COLLABORATION`, and `ACTIVITY`. Database evidence reports normalized detected database technologies,
 data-access dependencies, migration assets, and explicit persistence-configuration paths. Each signal reports presence, count, an optional observed
 value, and at most 20 owner-authorized repository-relative evidence paths. Absence is explicit and no
 score, confidence, readiness, or recommendation priority is calculated by this endpoint.
 
-The API-REP-011 evidence view and active `baseline-v2` Rule Engine use `engineering-evidence-extractor-v2`.
+The response also includes the FR-043 `activityTimeline`, derived only from the current immutable snapshot's commit,
+pull-request, and issue timestamps. It reports the snapshot capture time, latest observed activity, whole elapsed days,
+the complete measured event count, a truncation flag, and at most 100 newest-first normalized events. Events expose only
+type, provider source reference, and occurrence time. Empty snapshots return an empty timeline with nullable latest-time
+and elapsed-day fields. No FR-044 staleness label or policy threshold is inferred until that policy is approved.
+Successful reads remain owner-scoped and create a durable `REPOSITORY_EVIDENCE_VIEWED` audit record.
+
+The API-REP-011 evidence view uses `engineering-evidence-extractor-v3`; its timeline uses
+`repository-activity-timeline-v1`. The active `baseline-v2` Rule Engine remains deliberately bound to
+`engineering-evidence-extractor-v2`, so this additive read model cannot change an official score.
 The immutable superseded `baseline-v1` remains bound to its original `engineering-evidence-extractor-v1` facts, so
 historical results remain reproducible.
 

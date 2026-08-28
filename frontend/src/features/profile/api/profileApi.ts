@@ -1,18 +1,15 @@
-import { apiRequest } from "../../../shared/api/apiClient";
+import { apiRequest, withCsrf } from "../../../shared/api/apiClient";
 
 export type CareerStage = "STUDENT" | "ENTRY_LEVEL" | "JUNIOR" | "MID_LEVEL" | "SENIOR";
 export type UserProfile = { profileId: string; displayName: string; careerStage: CareerStage | null; bio: string | null; updatedAt: string };
 export type UserPreferences = { careerId: string | null; companyId: string | null; updatedAt: string | null };
 
-type CsrfToken = { headerName: string; token: string };
-
 async function csrfInit(method: string, body: unknown): Promise<RequestInit> {
-  const csrf = await apiRequest<CsrfToken>("/api/v1/csrf");
-  return {
+  return withCsrf({
     method,
-    headers: { "Content-Type": "application/json", [csrf.data.headerName]: csrf.data.token },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body)
-  };
+  });
 }
 
 export async function getProfile() { return (await apiRequest<UserProfile>("/api/v1/users/me/profile")).data; }

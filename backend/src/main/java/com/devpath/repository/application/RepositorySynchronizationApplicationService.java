@@ -1,7 +1,5 @@
 package com.devpath.repository.application;
 
-import com.devpath.integration.application.GitHubIntegrationApplicationService;
-import com.devpath.repository.domain.Repository;
 import java.time.Clock;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -9,27 +7,18 @@ import org.springframework.stereotype.Service;
 @Service
 public class RepositorySynchronizationApplicationService {
     private final RepositorySynchronizationTransaction transactions;
-    private final GitHubIntegrationApplicationService github;
     private final Clock clock;
 
     public RepositorySynchronizationApplicationService(
         RepositorySynchronizationTransaction transactions,
-        GitHubIntegrationApplicationService github,
         Clock clock
     ) {
         this.transactions = transactions;
-        this.github = github;
         this.clock = clock;
     }
 
     public RepositorySyncJobView request(UUID userId, UUID repositoryId, String idempotencyKey) {
         String key = validateKey(idempotencyKey);
-        Repository target = transactions.target(userId, repositoryId);
-        boolean accessible = github.listRepositories(userId).repositories().stream()
-            .anyMatch(repository -> repository.providerRepositoryId().equals(target.providerRepositoryId()));
-        if (!accessible) {
-            throw new RepositoryNotAccessibleException();
-        }
         return transactions.request(userId, repositoryId, key, clock.instant());
     }
 
@@ -50,7 +39,7 @@ public class RepositorySynchronizationApplicationService {
     }
 
     public RepositoryEvidenceSummaryView getEvidence(UUID userId, UUID repositoryId) {
-        return transactions.getEvidence(userId, repositoryId);
+        return transactions.getEvidence(userId, repositoryId, clock.instant());
     }
 
     private String validateKey(String value) {

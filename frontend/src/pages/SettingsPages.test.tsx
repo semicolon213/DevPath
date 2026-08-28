@@ -40,8 +40,8 @@ describe("Settings workspace", () => {
 
     renderWithProviders(<AppRoutes />, ["/settings/integrations"]);
 
-    expect(screen.getByRole("heading", { name: "GitHub 연결과 저장소", level: 1 })).toBeInTheDocument();
-    expect(await screen.findByText("미연결")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "외부 서비스 연결", level: 1 })).toBeInTheDocument();
+    expect(await screen.findAllByText("미연결")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "GitHub 저장소 연결" })).toBeInTheDocument();
     expect(screen.queryByText("접근 가능한 저장소")).not.toBeInTheDocument();
   });

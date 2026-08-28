@@ -4,7 +4,8 @@ GitHub에 프로젝트는 쌓이는데, 정작 **내가 어떤 개발자로 성�
 
 커밋 수나 사용 언어 비율만으로는 프로젝트의 구조, 테스트 습관, 문서화 수준, 기술적인 고민을 설명하기 어렵기 때문입니다. DevPath는 이런 개발 기록을 분석해서 현재 역량과 부족한 부분을 보여주고, 목표 직무에 맞는 다음 학습 방향을 제안하는 서비스입니다.
 
-아직 개발 중인 프로젝트이며, 현재는 GitHub 로그인과 사용자·세션 저장 기반까지 구현한 상태입니다.
+아직 개발 중인 프로젝트이며, 현재는 GitHub 로그인부터 저장소 동기화, 결정론 분석, Skill Matrix,
+커리어 준비도, 추천과 학습 로드맵까지 이어지는 MVP 핵심 여정이 구현된 상태입니다.
 
 ## 왜 만들었나요?
 
@@ -45,7 +46,7 @@ LLM이 직접 점수를 만들면 실행할 때마다 결과가 달라질 수 �
 - 프로젝트 기반 면접 질문 생성
 - Notion 학습 노트와 회고 분석
 
-현재 모든 기능이 구현된 것은 아닙니다. 기능별 요구사항과 설계를 먼저 정리한 뒤 작은 단위로 구현하고 있습니다.
+현재 모든 기능이 구현된 것은 아닙니다. 기능별 요구사항과 설계를 먼저 정리한 뒤 사용자 여정 단위의 수직 기능으로 구현하고 있습니다.
 
 ## 동작 방식
 
@@ -67,7 +68,7 @@ flowchart LR
 
 ## 현재 구현 상태
 
-지금은 서비스의 첫 번째 기반인 **Identity / Persistence 영역**을 작업하고 있습니다.
+현재 **결정론 MVP 핵심 구현과 출시 하드닝**을 진행하고 있습니다.
 
 구현한 내용:
 
@@ -81,8 +82,14 @@ flowchart LR
 - logout과 session 무효화
 - CSRF 및 CORS 설정
 - React Query 기반 frontend session 확인
+- Notion OAuth 연결, 암호화 토큰 보관, 공유 페이지/데이터 소스 메타데이터 탐색과 연결 해제
 - OpenAPI 계약
 - domain, persistence, security, architecture 테스트 코드
+
+저장소 루트의 `npm run verify:mvp`는 플랫폼에 종속되지 않은 동일한 출시 검증을 실행합니다. 여기에
+민감 파일과 고신뢰 credential, 위험한 JPA schema mode, 브라우저 credential 저장, 프론트의 provider 직접
+호출을 차단하는 `npm run security:check`가 포함됩니다. PostgreSQL 통합 테스트가 조용히 건너뛰지 않도록
+실행 중인 Docker 엔진도 시작 전에 확인합니다. 실제 CI 서비스 선택은 배포 결정 전까지 유보합니다.
 
 Frontend 테스트 9개와 production build, OpenAPI 검증은 통과했습니다.
 
@@ -116,7 +123,8 @@ Java 21 환경에서 backend compile, 테스트, production build도 통과했�
 
 ### AI / Knowledge
 
-아직 구현 전이며 다음 구성을 기준으로 설계하고 있습니다.
+Notion 지식 소스 등록과 메타데이터 탐색까지만 구현되어 있습니다. 본문 수집, 검색, AI 생성은 아직 구현
+전이며 벡터 저장소와 AI provider 관련 Proposed ADR이 승인되기 전에는 특정 기술을 선택하지 않습니다.
 
 - FastAPI
 - Ollama
@@ -195,8 +203,9 @@ npm ci
 npm run dev
 ```
 
-- Frontend: `http://localhost:5173`
+- Frontend: `http://localhost:5100`
 - Backend: `http://localhost:8080`
+- PostgreSQL: `localhost:15432`
 - Health Check: `GET /internal/health`
 
 ## 테스트

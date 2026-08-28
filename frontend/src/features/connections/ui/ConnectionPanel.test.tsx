@@ -13,9 +13,83 @@ it("distinguishes GitHub login from repository access", async () => {
 
   renderWithProviders(<ConnectionPanel />);
 
-  expect(await screen.findByText("미연결")).toBeInTheDocument();
+  expect(await screen.findAllByText("미연결")).toHaveLength(2);
   expect(screen.getByText(/GitHub 로그인은 완료되었지만/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "GitHub 저장소 연결" })).toBeInTheDocument();
+});
+
+it("shows discovered Notion page metadata without page content", async () => {
+  vi.stubGlobal("fetch", vi.fn((input: string | URL | Request) => {
+    const url = String(input);
+    const data = url.endsWith("/notion/workspaces")
+      ? { workspaces: [{
+        connectionId: "4a0b0a84-43ec-4d09-b5d5-7db7cc9369b8",
+        workspaceId: "workspace-1",
+        workspaceName: "DevPath Notes",
+        workspaceIconUrl: null,
+        status: "ACTIVE",
+        connectedAt: "2026-08-27T00:00:00Z",
+        discoveredAt: "2026-08-27T01:00:00Z",
+        pages: [{ providerPageId: "page-1", title: "Backend roadmap", objectType: "PAGE",
+          url: "https://notion.so/page-1", lastEditedAt: "2026-08-27T00:30:00Z", inTrash: false }]
+      }] }
+      : { connections: [{ connectionId: "4a0b0a84-43ec-4d09-b5d5-7db7cc9369b8", provider: "NOTION",
+        status: "ACTIVE", scopes: ["read_content"], connectedAt: "2026-08-27T00:00:00Z", expiresAt: null }] };
+    return Promise.resolve(Response.json({ data, metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-27T01:00:00Z" } }));
+  }));
+
+  renderWithProviders(<ConnectionPanel />);
+
+  expect(await screen.findByRole("heading", { name: "DevPath Notes" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Backend roadmap" })).toHaveAttribute("href", "https://notion.so/page-1");
+  expect(screen.getByText(/페이지 본문은 저장하지 않습니다/)).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "페이지 목록 새로 고침" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Notion 연결 해제" })).toBeInTheDocument();
+});
+
+it("does not expose untrusted provider URLs and explains an all-trashed workspace", async () => {
+  vi.stubGlobal("fetch", vi.fn((input: string | URL | Request) => {
+    const url = String(input);
+    const data = url.endsWith("/notion/workspaces")
+      ? { workspaces: [{
+        connectionId: "4a0b0a84-43ec-4d09-b5d5-7db7cc9369b8", workspaceId: "workspace-1",
+        workspaceName: "Private Notes", workspaceIconUrl: null, status: "ACTIVE",
+        connectedAt: "2026-08-27T00:00:00Z", discoveredAt: "2026-08-27T01:00:00Z",
+        pages: [{ providerPageId: "page-1", title: "Removed note", objectType: "PAGE",
+          url: "javascript:alert(1)", lastEditedAt: "2026-08-27T00:30:00Z", inTrash: true }]
+      }] }
+      : { connections: [{ connectionId: "4a0b0a84-43ec-4d09-b5d5-7db7cc9369b8", provider: "NOTION",
+        status: "ACTIVE", scopes: ["read_content"], connectedAt: "2026-08-27T00:00:00Z", expiresAt: null }] };
+    return Promise.resolve(Response.json({ data, metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-27T01:00:00Z" } }));
+  }));
+
+  renderWithProviders(<ConnectionPanel />);
+
+  expect(await screen.findByRole("heading", { name: "Private Notes" })).toBeInTheDocument();
+  expect(screen.getByText(/공유된 활성 페이지가 없습니다/)).toBeInTheDocument();
+  expect(screen.queryByRole("link", { name: "Removed note" })).not.toBeInTheDocument();
+});
+
+it("labels a Notion rate limit without presenting it as a GitHub failure", async () => {
+  vi.stubGlobal("fetch", vi.fn((input: string | URL | Request) => {
+    const url = String(input);
+    if (url.endsWith("/notion/workspaces")) {
+      return Promise.resolve(Response.json({
+        error: { code: "RATE_LIMIT_EXCEEDED", message: "Retry later." },
+        metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-27T01:00:00Z" }
+      }, { status: 429, headers: { "Retry-After": "30" } }));
+    }
+    return Promise.resolve(Response.json({
+      data: { connections: [{ connectionId: "4a0b0a84-43ec-4d09-b5d5-7db7cc9369b8", provider: "NOTION",
+        status: "ACTIVE", scopes: ["read_content"], connectedAt: "2026-08-27T00:00:00Z", expiresAt: null }] },
+      metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-27T01:00:00Z" }
+    }));
+  }));
+
+  renderWithProviders(<ConnectionPanel />);
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("Notion 요청 한도를 모두 사용했습니다");
+  expect(screen.getByRole("alert")).not.toHaveTextContent("GitHub 요청 한도");
 });
 
 it("shows an active repository-access connection reported by the server", async () => {

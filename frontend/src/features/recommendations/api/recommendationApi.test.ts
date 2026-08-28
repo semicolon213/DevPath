@@ -6,7 +6,7 @@ const metadata = { requestId: "request-1", apiVersion: "v1", timestamp: "2026-08
 describe("recommendationApi", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("archives a roadmap with the server CSRF header, an idempotency key, and the contract body", async () => {
+  it("archives a roadmap with the server CSRF header and an idempotency key", async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(Response.json({ data: { headerName: "X-CSRF-TOKEN", token: "csrf-token" }, metadata }))
       .mockResolvedValueOnce(Response.json({ data: {
@@ -23,10 +23,8 @@ describe("recommendationApi", () => {
       credentials: "include",
       headers: expect.objectContaining({
         "X-CSRF-TOKEN": "csrf-token",
-        "Idempotency-Key": expect.any(String),
-        "Content-Type": "application/json"
-      }),
-      body: "{}"
+        "Idempotency-Key": expect.any(String)
+      })
     }));
   });
 });

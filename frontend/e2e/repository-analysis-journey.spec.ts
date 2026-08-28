@@ -85,8 +85,25 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expect(page.getByRole("heading", { name: "엔지니어링 증거" })).toBeVisible();
   await expectNoAccessibilityViolations(page);
 
+  await page.getByRole("link", { name: "스냅샷 상세 보기" }).click();
+  await expect(page).toHaveURL(/\/repositories\/repository-id\/snapshots\/snapshot-id$/);
+  await expect(page.getByRole("heading", { name: "owner/devpath 스냅샷" })).toBeFocused();
+  await expect(page.getByLabel("스냅샷 적용 상태")).toContainText("현재 분석 기준");
+  await expect(page.getByText("sha256:e2e")).toBeVisible();
+  await expect(page.getByText(/점수나 품질 판정이 아닙니다/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "이 스냅샷의 공식 분석" })).toBeVisible();
+  await expect(page.getByLabel("저장된 공식 점수 82.5점")).toBeVisible();
+  await expect(page.getByRole("link", { name: "공식 분석과 근거 보기" })).toHaveAttribute("href", "/analyses/analysis-id");
+  await expectNoAccessibilityViolations(page);
+  await page.getByRole("link", { name: "저장소 상세" }).click();
+
   await page.getByRole("button", { name: "결정론적 분석 시작" }).click();
   await expect(page.getByText("분석이 완료되었습니다.")).toBeVisible();
+  await expect(page).toHaveURL(/analysisJobId=analysis-job-id/);
+  await expect(page.getByRole("link", { name: "완료된 공식 분석 보기" })).toHaveAttribute("href", "/analyses/analysis-id");
+  await page.reload();
+  await expect(page.getByText("분석이 완료되었습니다.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "완료된 공식 분석 보기" })).toHaveAttribute("href", "/analyses/analysis-id");
   expect(captured).toHaveLength(1);
   expect(captured[0]).toMatchObject({
     csrf: "e2e-csrf-token",
@@ -130,8 +147,12 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await page.getByRole("link", { name: "테스트 역량" }).click();
   await expect(page).toHaveURL(/\/skills\/skill-id$/);
   await expect(page.getByRole("heading", { name: "Testing Discipline" })).toBeFocused();
-  await expect(page.getByText("50", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("현재 기술 평가 요약").getByText("50", { exact: true })).toBeVisible();
   await expect(page.getByText("테스트 파일 근거가 확인되었습니다.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "기술 평가 이력" })).toBeVisible();
+  await expect(page.getByText("현재 Matrix")).toBeVisible();
+  await expect(page.getByText(/변화량이나 성장 추세는 계산하지 않습니다/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "분석 근거 보기" })).toHaveAttribute("href", "/analyses/analysis-id");
   await expectNoAccessibilityViolations(page);
 
   await page.goto("/career-readiness");
@@ -175,6 +196,21 @@ test("anonymous readiness failure is actionable and accessible", async ({ page }
   await page.goto("/career-readiness");
   await expect(page.getByRole("alert")).toContainText("로그인이 필요합니다");
   await expect(page.getByRole("link", { name: "로그인 화면으로 이동" })).toHaveAttribute("href", "/");
+  await expectNoAccessibilityViolations(page);
+});
+
+test("reduced-motion users keep the keyboard journey without nonessential transitions", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await installApiFixture(page, []);
+  await page.goto(`/repositories/${repository.repositoryId}`);
+
+  await page.keyboard.press("Tab");
+  const skipLink = page.getByRole("link", { name: "본문으로 건너뛰기" });
+  await expect(skipLink).toBeFocused();
+  await expect(skipLink).toHaveCSS("transition-duration", "0s");
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("main")).toBeFocused();
+  await expect(page.getByRole("button", { name: "결정론적 분석 시작" })).toBeEnabled();
   await expectNoAccessibilityViolations(page);
 });
 
@@ -235,6 +271,11 @@ const responses: Record<string, unknown> = {
     sourceRevision: "abc123", status: "READY", immutable: true, contentHash: "sha256:e2e",
     branchCount: 2, commitCount: 42
   }] },
+  "GET /api/v1/repositories/repository-id/snapshots/snapshot-id": {
+    snapshotId: "snapshot-id", repositoryId: repository.repositoryId, capturedAt: timestamp,
+    sourceRevision: "abc123", status: "READY", immutable: true, contentHash: "sha256:e2e",
+    branchCount: 2, commitCount: 42, pullRequestCount: 8, issueCount: 5, documentCount: 1
+  },
   "GET /api/v1/repositories/repository-id/technologies": {
     repositoryId: repository.repositoryId, snapshotId: "snapshot-id",
     extractorVersion: "repository-technology-summary-v1", taxonomyVersion: "technology-taxonomy-v1",
@@ -244,15 +285,28 @@ const responses: Record<string, unknown> = {
     }]
   },
   "GET /api/v1/repositories/repository-id/evidence": {
-    repositoryId: repository.repositoryId, snapshotId: "snapshot-id", extractorVersion: "engineering-evidence-extractor-v2",
+    repositoryId: repository.repositoryId, snapshotId: "snapshot-id", extractorVersion: "engineering-evidence-extractor-v3",
     categories: [{ category: "TESTING", label: "Testing", signals: [{
       signalKey: "TEST_FILES", label: "Test files", present: true, count: 12,
       observedValue: null, evidencePaths: ["frontend/src/App.test.tsx"]
-    }] }]
+    }] }],
+    activityTimeline: {
+      extractorVersion: "repository-activity-timeline-v1", scope: "CURRENT_SNAPSHOT", measuredAt: timestamp,
+      latestActivityAt: timestamp, daysSinceLatestActivity: 0, totalEventCount: 1, truncated: false,
+      events: [{ eventType: "COMMIT", sourceReference: "abc123", occurredAt: timestamp }]
+    }
   },
   "POST /api/v1/analyses": analysisJob("queued", "QUEUED", 0, null),
   "GET /api/v1/analysis-jobs/analysis-job-id": analysisJob("succeeded", "COMPLETED", 100, "/api/v1/analyses/analysis-id"),
   "GET /api/v1/analyses": {
+    analyses: [{
+      analysisId: "analysis-id", repositoryId: repository.repositoryId, snapshotId: "snapshot-id",
+      evaluationId: "evaluation-id", skillMatrixId: "matrix-id", analysisScope: "REPOSITORY_BASELINE",
+      currentForRepository: true, completedAt: timestamp, repositoryFullName: repository.fullName,
+      overallScore: 82.5, confidence: 95, ruleSetVersion: "baseline-v2", policyVersion: "skill-matrix-v2"
+    }], limit: 20, nextCursor: null, totalCount: 1
+  },
+  "GET /api/v1/repositories/repository-id/analyses": {
     analyses: [{
       analysisId: "analysis-id", repositoryId: repository.repositoryId, snapshotId: "snapshot-id",
       evaluationId: "evaluation-id", skillMatrixId: "matrix-id", analysisScope: "REPOSITORY_BASELINE",

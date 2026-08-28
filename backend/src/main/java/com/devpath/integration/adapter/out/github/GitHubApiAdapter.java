@@ -4,6 +4,7 @@ import com.devpath.integration.adapter.out.persistence.EncryptedProviderCredenti
 import com.devpath.integration.adapter.out.persistence.StoredProviderCredential;
 import com.devpath.integration.application.ConnectedAccountView;
 import com.devpath.integration.application.GitHubConnectionPort;
+import com.devpath.integration.application.GitHubCollectionLimitExceededException;
 import com.devpath.integration.application.GitHubConnectionNotFoundException;
 import com.devpath.integration.application.GitHubInstallationRequiredException;
 import com.devpath.integration.application.GitHubIntegrationUnavailableException;
@@ -45,6 +46,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import org.springframework.http.MediaType;
 import org.springframework.http.HttpMethod;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
@@ -77,7 +79,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
         GitHubIntegrationProperties properties,
         EncryptedProviderCredentialStore credentials,
         IntegrationAuditPort audit,
-        RestClient.Builder restClientBuilder
+        @Qualifier("githubRestClientBuilder") RestClient.Builder restClientBuilder
     ) {
         this.properties = properties;
         this.credentials = credentials;
@@ -380,7 +382,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
                 return List.copyOf(branches);
             }
         }
-        throw new GitHubIntegrationUnavailableException("GitHub branch result exceeds the safe pagination limit");
+        throw new GitHubCollectionLimitExceededException("GitHub branch result exceeds the safe pagination limit");
     }
 
     private List<GitHubCommitFact> listCommits(String repositoryId, String defaultBranch, String token) {
@@ -399,7 +401,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
                 return List.copyOf(commits);
             }
         }
-        throw new GitHubIntegrationUnavailableException("GitHub commit result exceeds the safe pagination limit");
+        throw new GitHubCollectionLimitExceededException("GitHub commit result exceeds the safe pagination limit");
     }
 
     @SuppressWarnings("unchecked")
@@ -422,7 +424,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
             token, GitHubTreeResponse.class
         );
         if (response.truncated()) {
-            throw new GitHubIntegrationUnavailableException("GitHub repository tree exceeds the safe collection limit");
+            throw new GitHubCollectionLimitExceededException("GitHub repository tree exceeds the safe collection limit");
         }
         List<GitHubFileFact> files = safe(response.tree()).stream()
             .filter(entry -> "blob".equals(entry.type()) && isSafePath(entry.path()))
@@ -432,7 +434,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
             .map(entry -> new GitHubFileFact(entry.path(), entry.sha(), entry.size() == null ? 0 : entry.size()))
             .toList();
         if (files.size() > MAX_FILE_COUNT) {
-            throw new GitHubIntegrationUnavailableException("GitHub repository file count exceeds the safe collection limit");
+            throw new GitHubCollectionLimitExceededException("GitHub repository file count exceeds the safe collection limit");
         }
         return files;
     }
@@ -440,10 +442,14 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
     private List<GitHubDependencyFact> listDependencies(
         String repositoryId, List<GitHubFileFact> files, String token
     ) {
-        return files.stream()
+        List<GitHubFileFact> manifests = files.stream()
             .filter(entry -> isSupportedManifest(entry.path()))
             .filter(entry -> entry.byteSize() <= MAX_MANIFEST_BYTES)
-            .limit(MAX_MANIFEST_COUNT)
+            .toList();
+        if (manifests.size() > MAX_MANIFEST_COUNT) {
+            throw new GitHubCollectionLimitExceededException("GitHub manifest count exceeds the safe collection limit");
+        }
+        return manifests.stream()
             .flatMap(entry -> parseManifest(repositoryId, entry, token).stream())
             .distinct()
             .toList();
@@ -459,7 +465,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
             );
             List<GitHubPullRequest> values = Arrays.asList(response);
             if (collected.size() + values.size() > MAX_PULL_REQUEST_COUNT) {
-                throw new GitHubIntegrationUnavailableException("GitHub pull request result exceeds the safe collection limit");
+                throw new GitHubCollectionLimitExceededException("GitHub pull request result exceeds the safe collection limit");
             }
             collected.addAll(values);
             if (values.size() < PAGE_SIZE) return collected.stream().map(value -> {
@@ -471,7 +477,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
                 );
             }).toList();
         }
-        throw new GitHubIntegrationUnavailableException("GitHub pull request result exceeds the safe collection limit");
+        throw new GitHubCollectionLimitExceededException("GitHub pull request result exceeds the safe collection limit");
     }
 
     private int countReviews(String repositoryId, long pullRequestNumber, String token) {
@@ -485,7 +491,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
             count += response.length;
             if (response.length < PAGE_SIZE) return count;
         }
-        throw new GitHubIntegrationUnavailableException("GitHub pull request review result exceeds the safe collection limit");
+        throw new GitHubCollectionLimitExceededException("GitHub pull request review result exceeds the safe collection limit");
     }
 
     private List<GitHubIssueFact> listIssues(String repositoryId, String token) {
@@ -498,7 +504,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
             );
             List<GitHubIssue> values = Arrays.stream(response).filter(value -> value.pullRequest() == null).toList();
             if (result.size() + values.size() > MAX_ISSUE_COUNT) {
-                throw new GitHubIntegrationUnavailableException("GitHub issue result exceeds the safe collection limit");
+                throw new GitHubCollectionLimitExceededException("GitHub issue result exceeds the safe collection limit");
             }
             values.stream().map(value -> new GitHubIssueFact(
                 Long.toString(value.id()), value.state().toUpperCase(java.util.Locale.ROOT),
@@ -507,7 +513,7 @@ public class GitHubApiAdapter implements GitHubConnectionPort {
             )).forEach(result::add);
             if (response.length < PAGE_SIZE) return List.copyOf(result);
         }
-        throw new GitHubIntegrationUnavailableException("GitHub issue result exceeds the safe pagination limit");
+        throw new GitHubCollectionLimitExceededException("GitHub issue result exceeds the safe pagination limit");
     }
 
     private List<GitHubDocumentFact> listDocuments(

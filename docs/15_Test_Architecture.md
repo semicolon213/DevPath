@@ -999,14 +999,73 @@ DevPath testing prioritizes deterministic correctness, security, privacy, tracea
 | Frontend | `frontend/src/app/App.test.tsx`, `frontend/src/features/session` | 9 tests passed |
 | OpenAPI | `contracts/openapi/devpath-openapi.yaml` | Redocly validation passed with advisory warnings |
 
-The latest Java 21 backend run reports 124 tests: 122 passed, 0 failed, and 2 explicit-`DEVPATH_DB_URL` skips.
+The latest Java 21 backend run reports 132 tests: 130 passed, 0 failed, and 2 explicit-`DEVPATH_DB_URL` skips.
 PostgreSQL Testcontainers migration and JPA suites passed with Docker API compatibility 1.44. Separate local browser
 evidence covers backend-restart persistence, logout, absolute timeout, idle timeout, and OAuth recovery.
-The latest frontend quality run reports 34 Vitest files and 73 tests passed, 5 Playwright Chromium journeys with axe
+The latest frontend quality run reports 35 Vitest files and 83 tests passed, 6 Playwright Chromium journeys with axe
 passed, the production build passed, and `npm audit` reported 0 vulnerabilities. Manual Chrome evidence additionally
 covers the skip link, visible keyboard focus, route focus restoration, accessibility-tree semantics, and 200% reflow;
-spoken screen-reader output and OS-level reduced-motion behavior remain unverified.
+spoken screen-reader output and a physical OS-settings reduced-motion exercise remain unverified. Automated Chromium
+media emulation verifies the reduced-motion CSS path, skip-link keyboard flow, route focus, primary action availability,
+and axe semantics.
+The RR-009 per-skill history slice verifies canonical analysis-history and immutable-Matrix request composition,
+newest-first stored assessment rendering, cursor-based older-page loading, explicit no-delta/no-trend content, and
+partial failure isolation that keeps the current skill detail usable while historical reads are retried.
+The FR-026 synchronization-to-snapshot traceability slice verifies URL-restored owner-scoped job polling, exact
+job-result-to-snapshot route conversion, API-REP-008 request composition, full immutable provenance/count rendering,
+uniform missing/cross-owner states, route focus, responsive layout, and axe accessibility checks.
+Snapshot-to-analysis tests additionally verify exact `snapshotId` selection from API-REP-012, older cursor-page
+discovery, stored score/version rendering without recalculation, links to official evidence detail, and partial failure
+isolation that preserves API-REP-008 provenance.
+The FR-361 repository-lifecycle journey verifies CSRF-backed archive and restore from the owner workspace, default-list
+exclusion, URL-restorable archived inclusion, explicit impact confirmation, provider-state recovery guidance, retained
+historical access, and disabled new sync/analysis commands. The analysis-job browser journey additionally verifies that
+owner-scoped polling resumes from `analysisJobId` after navigation or refresh and links only a canonical result path.
 The FR-031~FR-036 test slice stubs GitHub pull, review, issue, tree, and blob responses; verifies PR filtering from the
 issues endpoint and deterministic README section extraction; validates the V20 schema and JPA round trip against
 PostgreSQL Testcontainers; and renders collaboration/document signals in the repository detail UI. Official
 baseline-v2 tests additionally verify that the newer read-model signals do not change the rule extractor version.
+
+The FR-043 test slice verifies deterministic newest-first ordering and tie-breakers, bounded 100-event output with the
+complete measured count, snapshot-relative elapsed days without staleness classification, authenticated HTTP contract
+shape, application audit-time propagation, and repository-detail rendering. The timeline fixtures contain only
+normalized references and timestamps. Existing baseline-v2 regression tests remain the guard that this additive read
+model does not alter official Rule Engine results.
+
+The FR-045 test slice verifies provider-tree truncation is translated into a dedicated collection-limit exception,
+the worker selects the terminal path before the generic provider retry path, the durable job fails on attempt one with
+no result snapshot and `retryable=false`, and the browser announces that no partial snapshot was created. Existing
+transient-provider and rate-limit tests remain separate regression guards.
+
+The platform-neutral M34 security gate has three detector tests and scans tracked plus non-ignored worktree files for
+sensitive key containers, high-confidence provider credentials, prohibited JPA schema mutation, browser credential
+storage, and browser-to-provider calls. It is part of `verify:mvp`; selection of a hosted CI service remains unresolved.
+The same command fails before backend execution when no Docker-compatible server is reachable, preventing the portable
+PostgreSQL Testcontainers suites from being silently treated as an acceptable MVP verification skip.
+
+## 41. M49-M50 Reliability and Performance Baseline Evidence
+
+NFR-005 is covered at two levels: an application transaction test accepts 100 distinct owner-scoped repository jobs,
+and a PostgreSQL Testcontainers test persists 100 jobs through the Flyway/JPA schema. The persistence test also proves
+that an expired `RUNNING` lease becomes claimable while later queued work remains ineligible. Request-thread tests
+verify that acceptance has no GitHub call.
+
+NFR-006 domain tests cover repository-sync and analysis lease recovery, three-attempt exhaustion, persisted final
+status/error, increasing jittered backoff, and the five-minute upper bound. Provider-client configuration tests reject
+zero/unbounded timeout values. Existing worker tests continue to distinguish provider reset timing, transient retry,
+and terminal collection-limit failure.
+
+A PostgreSQL concurrency integration test releases two repository-sync requests and two analysis requests at the same
+instant with different idempotency keys. Each pair returns one shared durable job ID and the database contains one row
+per repository/snapshot basis. Worker tests verify that context shutdown blocks new claims for both job types. The
+dedicated scheduler test verifies two worker lanes, rejects shutdown windows outside the lease, and proves an already
+running task is allowed to finish during scheduler destruction.
+
+The NFR-004 test records 100 warmed application-service samples over cached/in-memory source responses and asserts the
+95th percentile is below the SRS two-second threshold; the latest 2026-08-27 local run measured 1.025 ms. This is a local
+component baseline only. It does not include
+network, production database volume, shared-cache behavior, or deployment contention and therefore is not evidence of
+production capacity or milestone approval. A production-like workload model remains required for M50 completion.
+
+The 2026-08-27 Java 21 `clean test` run with Docker API compatibility 1.44 reports 146 tests: 144 passed, 0 failed,
+and 2 explicit-`DEVPATH_DB_URL` skips. Fourteen PostgreSQL Testcontainers integration tests passed.

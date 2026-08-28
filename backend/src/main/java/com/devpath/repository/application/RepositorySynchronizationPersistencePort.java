@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface RepositorySynchronizationPersistencePort {
+    default void acquireRequestLocks(UUID userId, UUID repositoryId, String idempotencyKey) {}
     Optional<RepositorySyncJob> findByOwnerAndIdempotencyKey(UUID userId, String idempotencyKey);
     Optional<RepositorySyncJob> findActiveByRepository(UUID repositoryId);
     Optional<RepositorySyncJob> findByIdAndOwner(UUID jobId, UUID userId);

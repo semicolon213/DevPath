@@ -1,4 +1,4 @@
-import { apiRequest } from "../../../shared/api/apiClient";
+import { apiRequest, withCsrf } from "../../../shared/api/apiClient";
 
 export type Recommendation = { recommendationId:string;skillGapId:string;category:string;type:"STUDY"|"PROJECT"|"ARCHITECTURE"|"PORTFOLIO";priority:"CRITICAL"|"HIGH"|"MEDIUM"|"LOW";rationaleCode:string;title:string;completionCriteria:string;expectedEvidence:string[];evidenceIds:string[];effortHours:number;position:number;status:"PROPOSED"|"ACCEPTED"|"DISMISSED"|"COMPLETED" };
 export type RecommendationSet = { recommendationSetId:string;careerReadinessId:string;policyVersion:string;status:"PUBLISHED"|"SUPERSEDED";recommendations:Recommendation[];generatedAt:string };
@@ -12,5 +12,4 @@ export async function getRecommendation(recommendationId:string){return (await a
 export async function getRecommendationEvidence(recommendationId:string){return (await apiRequest<{recommendationId:string;evidence:RecommendationEvidence[]}>(`/api/v1/recommendations/${recommendationId}/evidence`)).data;}
 export async function getActiveRoadmap(){return (await apiRequest<LearningRoadmap>("/api/v1/learning-roadmaps/active")).data;}
 export async function getRoadmaps(){return (await apiRequest<{roadmaps:LearningRoadmap[]}>("/api/v1/learning-roadmaps")).data.roadmaps;}
-export async function archiveRoadmap(roadmapId:string){const csrf=await apiRequest<{headerName:string;token:string}>("/api/v1/csrf");return (await apiRequest<LearningRoadmap>(`/api/v1/learning-roadmaps/${roadmapId}/archive`,{method:"POST",headers:{[csrf.data.headerName]:csrf.data.token,"Idempotency-Key":createId(),"Content-Type":"application/json"},body:JSON.stringify({})})).data;}
-function createId(){const randomUUID=globalThis.crypto?.randomUUID;return typeof randomUUID==="function"?randomUUID.call(globalThis.crypto):`roadmap-${Date.now()}-${Math.random().toString(36).slice(2)}`;}
+export async function archiveRoadmap(roadmapId:string){return (await apiRequest<LearningRoadmap>(`/api/v1/learning-roadmaps/${roadmapId}/archive`,await withCsrf({method:"POST",headers:{"Idempotency-Key":crypto.randomUUID()}}))).data;}
