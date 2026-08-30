@@ -17,14 +17,19 @@ import com.devpath.rule.application.SkillMatrixAuditEvent;
 import com.devpath.rule.application.SkillMatrixAuditPort;
 import com.devpath.onboarding.application.OnboardingAuditEvent;
 import com.devpath.onboarding.application.OnboardingAuditPort;
+import com.devpath.knowledge.application.KnowledgeAuditEvent;
+import com.devpath.knowledge.application.KnowledgeAuditPort;
+import com.devpath.knowledge.application.KnowledgeRetrievalAuditDetails;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
 @Repository
 class DurableAuditRecordAdapter implements AuthenticationAuditPort, IntegrationAuditPort, RepositoryAuditPort,
-    AnalysisAuditPort, DashboardAuditPort, LearningAuditPort, SkillMatrixAuditPort, OnboardingAuditPort {
+    AnalysisAuditPort, DashboardAuditPort, LearningAuditPort, SkillMatrixAuditPort, OnboardingAuditPort,
+    KnowledgeAuditPort {
     private static final String PRIVACY_CLASS = "AUDIT_RESTRICTED";
     private final AuditRecordJpaRepository repository;
 
@@ -106,6 +111,25 @@ class DurableAuditRecordAdapter implements AuthenticationAuditPort, IntegrationA
         save(event.name(), userId, resourceType, skillId.toString(), "SUCCEEDED", occurredAt);
     }
 
+    @Override
+    public void record(KnowledgeAuditEvent event, UUID userId, UUID resourceId, Instant occurredAt) {
+        String outcome = event == KnowledgeAuditEvent.INGESTION_FAILED ? "FAILED" : "SUCCEEDED";
+        String resourceType = event.name().startsWith("INGESTION") ? "KNOWLEDGE_INGESTION_JOB" : "KNOWLEDGE_DOCUMENT";
+        save(event.name(), userId, resourceType, resourceId.toString(), outcome, occurredAt);
+    }
+
+    @Override
+    public void recordRetrieval(UUID userId, UUID resultId, KnowledgeRetrievalAuditDetails details, Instant occurredAt) {
+        save(KnowledgeAuditEvent.KNOWLEDGE_RETRIEVED.name(), userId, "KNOWLEDGE_RETRIEVAL_RESULT",
+            resultId.toString(), "SUCCEEDED", occurredAt, Map.of(
+                "sourceTypes", details.sourceTypes(),
+                "documentFilterCount", details.documentFilterCount(),
+                "resultCount", details.resultCount(),
+                "policyVersion", details.policyVersion(),
+                "contextPurpose", details.contextPurpose()
+            ));
+    }
+
     private void save(
         String actionType,
         UUID userId,
@@ -114,9 +138,21 @@ class DurableAuditRecordAdapter implements AuthenticationAuditPort, IntegrationA
         String outcome,
         Instant occurredAt
     ) {
+        save(actionType, userId, resourceType, resourceId, outcome, occurredAt, Map.of());
+    }
+
+    private void save(
+        String actionType,
+        UUID userId,
+        String resourceType,
+        String resourceId,
+        String outcome,
+        Instant occurredAt,
+        Map<String, Object> details
+    ) {
         repository.save(new AuditRecordJpaEntity(
             UUID.randomUUID(), userId, actionType, resourceType, resourceId,
-            PRIVACY_CLASS, outcome, occurredAt
+            PRIVACY_CLASS, outcome, occurredAt, details
         ));
     }
 }

@@ -6,5 +6,5 @@ export type OnboardingStep = { step: OnboardingStepName; requirement: "REQUIRED"
 export type OnboardingProgress = { status: "GETTING_STARTED" | "IN_PROGRESS" | "DASHBOARD_READY"; completedStepCount: number; totalStepCount: number; nextStep: OnboardingStepName | "DASHBOARD_READY"; steps: OnboardingStep[]; generatedAt: string };
 
 export async function getOnboardingProgress() {
-  return (await apiRequest<OnboardingProgress>("/api/v1/users/me/onboarding-progress")).data;
+  return apiRequest<OnboardingProgress>("/api/v1/users/me/onboarding-progress");
 }

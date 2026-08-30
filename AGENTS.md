@@ -263,6 +263,7 @@ PostgreSQL/Testcontainers 검증에는 실행 중인 Docker 호환 엔진이 필
 - coordinator가 소유권 이전을 승인하지 않으면 다른 worker의 task 파일을 수정하지 않는다.
 - contract 작업을 관련 backend/frontend 작업보다 먼저 수행한다. migration 소유권을 persistence adapter 작업보다 먼저 확정한다.
 - worker는 변경 파일, 결정, 테스트, 생략한 검사, 위험, 권장 통합 순서를 보고한다.
+- 하나의 응집된 capability가 구현·검증되어 독립적으로 보존할 가치가 생긴 시점이나 다음 범위로 넘어가기 전에는 사용자에게 적절한 commit 체크포인트임을 알린다. 단, 명시적 요청 없이 직접 commit하지 않는다.
 - 사용자나 coordinator의 명시적 요청 없이 commit, push, merge 또는 history rewrite를 하지 않는다.
 - 기존 dirty worktree를 사용자 소유 변경으로 간주하고 관련 없는 파일을 정리하거나 되돌리지 않는다.
 

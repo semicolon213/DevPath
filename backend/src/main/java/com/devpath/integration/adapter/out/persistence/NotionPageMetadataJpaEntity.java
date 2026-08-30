@@ -39,4 +39,12 @@ class NotionPageMetadataJpaEntity {
         this.objectType = objectType; this.title = title; this.url = url; this.lastEditedAt = lastEditedAt;
         this.inTrash = inTrash; this.discoveredAt = discoveredAt;
     }
+
+    com.devpath.integration.application.NotionWorkspacePageView toView() {
+        return new com.devpath.integration.application.NotionWorkspacePageView(
+            providerPageId, title, objectType, url, lastEditedAt, inTrash
+        );
+    }
+
+    UUID connectionId() { return connectionId; }
 }

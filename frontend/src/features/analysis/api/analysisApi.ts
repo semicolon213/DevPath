@@ -103,46 +103,46 @@ export type AnalysisComparison = { analyses: AnalysisHistoryItem[] };
 export type AnalysisComparisonDetail = { analyses: Array<{ summary: AnalysisHistoryItem; evaluation: RuleEvaluation }> };
 
 export async function requestAnalysis(repositoryId: string) {
-  return (await apiRequest<AnalysisJob>("/api/v1/analyses", await withCsrf({
+  return apiRequest<AnalysisJob>("/api/v1/analyses", await withCsrf({
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Idempotency-Key": crypto.randomUUID()
     },
     body: JSON.stringify({ repositoryId, analysisScope: "REPOSITORY_BASELINE" })
-  }))).data;
+  }));
 }
 
 export async function getAnalysisJob(jobId: string) {
-  return (await apiRequest<AnalysisJob>(`/api/v1/analysis-jobs/${jobId}`)).data;
+  return apiRequest<AnalysisJob>(`/api/v1/analysis-jobs/${jobId}`);
 }
 
 export async function getAnalysisHistory(cursor: string | null = null) {
   const query = new URLSearchParams({ limit: "20" });
   if (cursor) query.set("cursor", cursor);
-  return (await apiRequest<AnalysisHistory>(`/api/v1/analyses?${query}`)).data;
+  return apiRequest<AnalysisHistory>(`/api/v1/analyses?${query}`);
 }
 
 export async function getRepositoryAnalysisHistory(repositoryId: string, cursor: string | null = null) {
   const query = new URLSearchParams({ limit: "20" });
   if (cursor) query.set("cursor", cursor);
-  return (await apiRequest<AnalysisHistory>(`/api/v1/repositories/${repositoryId}/analyses?${query}`)).data;
+  return apiRequest<AnalysisHistory>(`/api/v1/repositories/${repositoryId}/analyses?${query}`);
 }
 
 export async function getAnalysisResult(analysisId: string) {
-  return (await apiRequest<AnalysisResult>(`/api/v1/analyses/${analysisId}`)).data;
+  return apiRequest<AnalysisResult>(`/api/v1/analyses/${analysisId}`);
 }
 
 export async function getAnalysisComparison(analysisIds:string[]):Promise<AnalysisComparisonDetail>{
   const query=new URLSearchParams();analysisIds.forEach(id=>query.append("analysisId",id));
-  const comparison=(await apiRequest<AnalysisComparison>(`/api/v1/analyses/compare?${query}`)).data;
+  const comparison=await apiRequest<AnalysisComparison>(`/api/v1/analyses/compare?${query}`);
   const evaluations=await Promise.all(comparison.analyses.map(item=>apiRequest<RuleEvaluation>(`/api/v1/rule-evaluations/${item.evaluationId}`)));
-  return {analyses:comparison.analyses.map((summary,index)=>({summary,evaluation:evaluations[index].data}))};
+  return {analyses:comparison.analyses.map((summary,index)=>({summary,evaluation:evaluations[index]}))};
 }
 
 export async function getAnalysisDetail(analysisId: string): Promise<AnalysisDetail> {
   const result = await getAnalysisResult(analysisId);
-  const [repository, evaluationEnvelope, evidenceEnvelope, matrix] = await Promise.all([
+  const [repository, evaluation, evidence, matrix] = await Promise.all([
     getRepository(result.repositoryId),
     apiRequest<RuleEvaluation>(`/api/v1/rule-evaluations/${result.evaluationId}`),
     apiRequest<{ evaluationId: string; evidence: RuleEvidence[] }>(
@@ -150,5 +150,5 @@ export async function getAnalysisDetail(analysisId: string): Promise<AnalysisDet
     ),
     getSkillMatrix(result.skillMatrixId)
   ]);
-  return { result, repository, evaluation: evaluationEnvelope.data, evidence: evidenceEnvelope.data.evidence, matrix };
+  return { result, repository, evaluation, evidence: evidence.evidence, matrix };
 }

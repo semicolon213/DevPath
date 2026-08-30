@@ -6,10 +6,9 @@ export type RoadmapMilestone = { milestoneId:string;position:number;category:str
 export type RoadmapStep = { roadmapStepId:string;milestoneId:string;recommendationId:string;position:number;category:string;title:string;difficulty:"BEGINNER"|"INTERMEDIATE"|"ADVANCED";effortHours:number;prerequisiteStepIds:string[];completionCriteria:string;expectedEvidence:string[];status:"NOT_STARTED"|"IN_PROGRESS"|"COMPLETED"|"SKIPPED" };
 export type LearningRoadmap = { roadmapId:string;recommendationSetId:string;policyVersion:string;status:"CREATED"|"IN_PROGRESS"|"COMPLETED"|"ARCHIVED";progressPercent:number;milestones:RoadmapMilestone[];steps:RoadmapStep[];generatedAt:string;updatedAt:string };
 export type RecommendationEvidence = { evidenceId:string;evidenceType:string;sourceReference:string;observedFactSummary:string;confidence:number;createdAt:string };
-export async function getCurrentRecommendations(){return (await apiRequest<RecommendationSet>("/api/v1/recommendations/current")).data;}
-export async function getRecommendationSets(){return (await apiRequest<{recommendationSets:RecommendationSet[]}>("/api/v1/recommendations")).data.recommendationSets;}
-export async function getRecommendation(recommendationId:string){return (await apiRequest<Recommendation>(`/api/v1/recommendations/${recommendationId}`)).data;}
-export async function getRecommendationEvidence(recommendationId:string){return (await apiRequest<{recommendationId:string;evidence:RecommendationEvidence[]}>(`/api/v1/recommendations/${recommendationId}/evidence`)).data;}
-export async function getActiveRoadmap(){return (await apiRequest<LearningRoadmap>("/api/v1/learning-roadmaps/active")).data;}
-export async function getRoadmaps(){return (await apiRequest<{roadmaps:LearningRoadmap[]}>("/api/v1/learning-roadmaps")).data.roadmaps;}
-export async function archiveRoadmap(roadmapId:string){return (await apiRequest<LearningRoadmap>(`/api/v1/learning-roadmaps/${roadmapId}/archive`,await withCsrf({method:"POST",headers:{"Idempotency-Key":crypto.randomUUID()}}))).data;}
+export async function getCurrentRecommendations(){return apiRequest<RecommendationSet>("/api/v1/recommendations/current");}
+export async function getRecommendationSets(){return (await apiRequest<{recommendationSets:RecommendationSet[]}>("/api/v1/recommendations")).recommendationSets;}
+export async function getRecommendation(recommendationId:string){return apiRequest<Recommendation>(`/api/v1/recommendations/${recommendationId}`);}
+export async function getRecommendationEvidence(recommendationId:string){return apiRequest<{recommendationId:string;evidence:RecommendationEvidence[]}>(`/api/v1/recommendations/${recommendationId}/evidence`);}
+export async function getRoadmaps(){return (await apiRequest<{roadmaps:LearningRoadmap[]}>("/api/v1/learning-roadmaps")).roadmaps;}
+export async function archiveRoadmap(roadmapId:string){return apiRequest<LearningRoadmap>(`/api/v1/learning-roadmaps/${roadmapId}/archive`,await withCsrf({method:"POST",headers:{"Idempotency-Key":crypto.randomUUID()}}));}

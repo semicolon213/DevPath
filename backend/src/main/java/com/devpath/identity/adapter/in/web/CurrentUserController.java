@@ -1,7 +1,7 @@
 package com.devpath.identity.adapter.in.web;
 
 import com.devpath.identity.adapter.in.security.DevPathOAuth2User;
-import com.devpath.identity.application.FindCurrentUserUseCase;
+import com.devpath.identity.application.CurrentUserApplicationService;
 import com.devpath.identity.domain.UserId;
 import com.devpath.shared.api.ApiResponse;
 import com.devpath.shared.api.RequestIds;
@@ -14,9 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/v1/users")
 public class CurrentUserController {
-    private final FindCurrentUserUseCase findCurrentUser;
+    private final CurrentUserApplicationService findCurrentUser;
 
-    public CurrentUserController(FindCurrentUserUseCase findCurrentUser) {
+    public CurrentUserController(CurrentUserApplicationService findCurrentUser) {
         this.findCurrentUser = findCurrentUser;
     }
 

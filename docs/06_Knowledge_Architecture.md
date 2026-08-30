@@ -350,7 +350,7 @@ Embeddings shall be paired with keyword and metadata indexes so retrieval can co
 
 ### 11.1 Vector Store Role
 
-The Vector Store stores embeddings and retrieval metadata. The SRS identifies `pgvector` as part of the AI technical stack; therefore PostgreSQL with pgvector is the baseline architecture option.
+The Vector Store stores embeddings and retrieval metadata. ADR-028 accepts PostgreSQL with pgvector as the initial physical store. Canonical knowledge, ownership, provenance, lifecycle, and embedding metadata remain relational PostgreSQL records; vector representations and indexes are derived and rebuildable behind the Vector Search Port.
 
 ### 11.2 Stored Elements
 
@@ -366,6 +366,7 @@ The Vector Store stores embeddings and retrieval metadata. The SRS identifies `p
 ### 11.3 Vector Store Rules
 
 - Vector retrieval shall enforce user isolation.
+- Vector queries shall apply owner, authorized source/document, active lifecycle, and embedding-model/version filters before returning candidates.
 - Deleted or inaccessible chunks shall not be returned.
 - Vector indexes shall be rebuildable from canonical knowledge chunks.
 - Vector corruption shall trigger index quarantine and rebuild workflows.

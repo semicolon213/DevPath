@@ -421,6 +421,24 @@ button:disabled {
 .settings-card .button-link { margin-top: auto; }
 .settings-security-note { margin-top: 20px; }
 .settings-workspace .profile-panel, .settings-workspace .connection-panel { background: #fff; border: 1px solid #dce3ef; border-radius: 16px; padding: 24px; }
+.knowledge-section { border-top: 1px solid #dce3ef; margin-top: 28px; padding-top: 24px; }
+.knowledge-source-list, .knowledge-document-grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.knowledge-source-list article, .knowledge-document-grid article, .knowledge-job { background: #fff; border: 1px solid #dce3ef; border-radius: 16px; padding: 20px; }
+.knowledge-source-list article { align-items: center; display: flex; gap: 16px; justify-content: space-between; }
+.knowledge-source-list h3, .knowledge-document-grid h3 { margin: 8px 0; }
+.knowledge-source-list p, .knowledge-document-grid p { color: #60708f; margin: 0 0 12px; }
+.knowledge-job { display: grid; gap: 14px; margin: 22px 0; }
+.knowledge-job > div { display: flex; justify-content: space-between; }
+.knowledge-job progress { width: 100%; }
+.knowledge-chunk-list { display: grid; gap: 10px; padding-left: 24px; }
+.knowledge-chunk-list li { background: #fff; border: 1px solid #dce3ef; border-radius: 12px; padding: 16px; }
+.knowledge-chunk-list li div { display: flex; gap: 12px; justify-content: space-between; }
+.knowledge-chunk-list code { display: block; font-size: .75rem; margin-top: 10px; overflow-wrap: anywhere; }
+.knowledge-search-form { align-items: end; display: grid; gap: .85rem; grid-template-columns: minmax(0, 2fr) minmax(12rem, 1fr) auto; }
+.knowledge-search-form label { display: grid; gap: .4rem; }
+.knowledge-search-results ol { display: grid; gap: 1rem; list-style: none; padding: 0; }
+.knowledge-search-results article { border: 1px solid #dce3ef; border-radius: 14px; padding: 18px; }
+.knowledge-search-results article > div:first-child { align-items: center; display: flex; gap: .65rem; }
 
 @media (max-width: 720px) {
   .shell { padding: 24px 16px; }
@@ -449,6 +467,8 @@ button:disabled {
   .onboarding-summary, .next-step-card, .onboarding-ready-actions { align-items: flex-start; flex-direction: column; }
   .onboarding-steps { grid-template-columns: 1fr; }
   .settings-card-grid { grid-template-columns: 1fr; }
+  .knowledge-source-list article, .knowledge-job > div, .knowledge-chunk-list li div { align-items: stretch; flex-direction: column; }
+  .knowledge-search-form { grid-template-columns: 1fr; }
   .skill-history-item__summary { align-items: stretch; flex-direction: column; }
   .skill-history-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .snapshot-provenance, .snapshot-count-grid { grid-template-columns: 1fr; }

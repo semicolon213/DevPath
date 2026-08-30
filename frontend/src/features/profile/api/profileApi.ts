@@ -12,14 +12,14 @@ async function csrfInit(method: string, body: unknown): Promise<RequestInit> {
   });
 }
 
-export async function getProfile() { return (await apiRequest<UserProfile>("/api/v1/users/me/profile")).data; }
+export async function getProfile() { return apiRequest<UserProfile>("/api/v1/users/me/profile"); }
 export async function updateProfile(profile: Pick<UserProfile, "displayName" | "careerStage" | "bio">) {
-  return (await apiRequest<UserProfile>("/api/v1/users/me/profile", await csrfInit("PATCH", profile))).data;
+  return apiRequest<UserProfile>("/api/v1/users/me/profile", await csrfInit("PATCH", profile));
 }
-export async function getPreferences() { return (await apiRequest<UserPreferences>("/api/v1/users/me/preferences")).data; }
+export async function getPreferences() { return apiRequest<UserPreferences>("/api/v1/users/me/preferences"); }
 export async function setCareer(careerId: string) {
-  return (await apiRequest<UserPreferences>("/api/v1/users/me/preferences/career", await csrfInit("PUT", { careerId }))).data;
+  return apiRequest<UserPreferences>("/api/v1/users/me/preferences/career", await csrfInit("PUT", { careerId }));
 }
 export async function setCompany(companyId: string) {
-  return (await apiRequest<UserPreferences>("/api/v1/users/me/preferences/company", await csrfInit("PUT", { companyId }))).data;
+  return apiRequest<UserPreferences>("/api/v1/users/me/preferences/company", await csrfInit("PUT", { companyId }));
 }

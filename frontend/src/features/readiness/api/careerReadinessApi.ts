@@ -34,17 +34,17 @@ export type CareerReadiness = {
 };
 
 export async function getCurrentCareerReadiness() {
-  return (await apiRequest<CareerReadiness>("/api/v1/career-readiness/current")).data;
+  return apiRequest<CareerReadiness>("/api/v1/career-readiness/current");
 }
 
 export async function getCareerReadiness(careerReadinessId: string) {
-  return (await apiRequest<CareerReadiness>(`/api/v1/career-readiness/${careerReadinessId}`)).data;
+  return apiRequest<CareerReadiness>(`/api/v1/career-readiness/${careerReadinessId}`);
 }
 
 export async function getCareerReadinessGaps(careerReadinessId: string) {
-  return (await apiRequest<{ careerReadinessId: string; skillGaps: SkillGap[] }>(
+  return apiRequest<{ careerReadinessId: string; skillGaps: SkillGap[] }>(
     `/api/v1/career-readiness/${careerReadinessId}/skill-gaps`
-  )).data;
+  );
 }
 
 export async function getCareerReadinessWorkspace(careerReadinessId: string) {

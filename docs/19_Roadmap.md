@@ -134,9 +134,9 @@ Phase 0 finalizes implementation-blocking decisions, synchronizes architecture d
 | ADR-025 Migration Tool | Accepted | 024 | Flyway SQL migration policy | Data/Ops | 09,11,15,16,17,19 | Resolved; implementation pending |
 | ADR-026 Auth/Session | Accepted | 020,021 | GitHub OAuth2 Login and opaque server session | Security | 08,09,10,11,12,13,15,16,17,19 | Resolved; implementation pending |
 | ADR-027 Job Technology | Accepted before job implementation | 010,020,003 | Persistent job plan | Backend/Ops | 11,16 | Workflow rework |
-| ADR-028 Vector Database | Accepted before knowledge | 014,003 | Filter proof | Knowledge | 06,09 | RAG rework |
-| ADR-029 Object Storage | Accepted before artifacts | 016,033 | Storage access model | Ops | 09,16 | Artifact rework |
-| ADR-030 AI SDK Strategy | Accepted before AI | 007,015 | Adapter strategy | AI | 04,17 | AI rework |
+| ADR-028 Vector Database | Accepted | 014,003 | PostgreSQL pgvector and filter proof | Knowledge | 06,09,11,16 | Decision resolved; implementation proof pending |
+| ADR-029 Object Storage | Accepted | 016,033 | S3-compatible port; production provider deferred to ADR-033 | Ops | 09,13,16 | Decision resolved; provider activation pending |
+| ADR-030 AI SDK Strategy | Accepted | 007,015 | Capability-specific provider adapters using official SDK or HTTP | AI | 04,05,17 | Decision resolved; provider/model configuration pending |
 | ADR-032 Testing Toolchain | Accepted | 020,021 | Test baseline | QA | 15 | CI/test delay |
 | ADR-031 Observability Tech | Accepted before release | 017 | Telemetry path | Ops | 14 | Release risk |
 | ADR-033 Deployment Platform | Accepted before staging | 016,023 | Environment choice | Platform | 16 | Deploy rework |
@@ -731,12 +731,14 @@ or page body content and only links to validated HTTPS Notion hosts. Local adapt
 contract tests provide implementation evidence; a live Notion OAuth, rate-limit, permission-loss, and revocation exercise
 remains required before owner approval. This does not implement KnowledgeDocument ingestion or complete M35.
 
-M36 remains blocked on the Proposed ADR-028 vector-store decision. This registration slice must not be described as
-knowledge ingestion, retrieval, RAG, or Notion content analysis.
+ADR-028 now accepts PostgreSQL with pgvector as the initial vector store. ADR-029 accepts an S3-compatible object-storage
+port with a filesystem adapter limited to local/test, and ADR-030 accepts capability-specific embedding/generation
+provider ports. M36 may proceed only through its requirements, contract, owner-filter, lifecycle, test, and owner-approval
+gates; accepting these ADRs does not complete knowledge ingestion, retrieval, RAG, or Notion content analysis.
 
 ## 36. Knowledge Ingestion Pipeline Milestone
 
-Pipeline: `Collector ??Normalizer ??Chunker ??Embedding Provider ??Vector Index ??Knowledge Record`
+Pipeline: `Collector → Normalizer → Chunker → Embedding Provider → Vector Index → Knowledge Record`
 
 | Concern | Exit Criteria |
 |---|---|
@@ -749,6 +751,16 @@ Pipeline: `Collector ??Normalizer ??Chunker ??Embedding Provider ??Vector Index 
 
 Retrieval MUST NOT be exposed until authorization filters are verified.
 
+The current M36 implementation provides owner-scoped Notion page collection, deterministic bounded normalization and
+chunking, an embedding provider port with an Ollama HTTP adapter, PostgreSQL/pgvector version and embedding persistence,
+private object references through the ADR-029 port, retry-safe ingestion jobs, archive/re-index lifecycle, durable audit
+events, metadata-only REST responses, and a refresh-recoverable frontend journey. The filesystem object adapter is enabled
+only when explicitly selected (and by the local default); selecting a future production adapter without its implementation
+fails dependency wiring instead of silently storing private content on local disk. Automated adapter, application,
+PostgreSQL/pgvector, security, frontend, browser, accessibility, contract, and build checks provide implementation evidence.
+A live Notion-to-configured-embedding-provider exercise, production S3-compatible provider selection, ADR-031 telemetry
+selection, retrieval authorization proof, and owner approval remain gates. M36 is therefore not declared complete here.
+
 ## 37. Retrieval Milestone
 
 | Scope | Exit Criteria |
@@ -760,6 +772,22 @@ Retrieval MUST NOT be exposed until authorization filters are verified.
 | Latency visibility | Retrieval telemetry present |
 | Gate | Authorization correctness > retrieval relevance |
 | Tests | Cross-user isolation blocks release if failing |
+
+The current M37 capability implements API-KNW-009 as `knowledge-semantic-v1` over PostgreSQL pgvector. Candidate SQL
+requires the authenticated owner, active Notion connection, still-shared non-trashed page, active document, exact current
+version, indexed chunk, active compatible embedding provider/model/version/dimension, configured relevance threshold,
+and optional owner-scoped document filter before similarity ranking. A second application boundary reads only those
+owner-scoped object references and returns bounded excerpts, normalized relevance, freshness, and Notion citations.
+PostgreSQL retains query hashes and bounded retrieval metadata, while durable audit details and redacted logs record policy,
+filter category, result count, and latency without query text, excerpts, object references, or vectors. Real pgvector tests
+prove that identical high-similarity vectors cannot cross users and that document filters, revoked connections, archived
+documents, stale versions, and stale embeddings remain outside the result set. The frontend implements loading, empty,
+error, and filtered-success states; unit and browser journeys verify filtered success, source navigation, CSRF, and
+automated accessibility behavior.
+
+This evidence resolves the ADR-028 metadata-filter implementation proof, but M37 is not declared complete without owner
+approval, a live configured embedding-provider search exercise, and the ADR-031 production metrics/trace implementation.
+Hybrid, career-aware, company-aware, global multi-resource search, and AI context assembly remain outside this capability.
 
 ## 38. AI Provider Foundation
 
@@ -1283,7 +1311,7 @@ The template MUST NOT be framework-specific until relevant ADRs are Accepted.
 | R-008 | Incomplete datasets | Medium | High | M23-M31 | Prepare early | Narrow MVP roles | Test gaps | QA | Open |
 | R-009 | Company credibility | Medium | Medium | M29 | Use defined profiles only | Company optional | Unsupported criteria | Career | Open |
 | R-010 | Async job reliability | Medium | High | M20/M25 | Idempotency tests | Manual retry | Stale jobs | Backend/Ops | Open |
-| R-011 | Vector complexity | Medium | High | M35 | Defer RAG | Repo-only AI context | ADR not accepted | Knowledge | Open |
+| R-011 | Vector complexity | Medium | High | M35-M37 | Start with rebuildable pgvector indexes behind the Vector Search Port | Disable retrieval and use non-vector context paths where requirements allow | Measured capacity/latency limits or authorization-filter proof failure | Knowledge | Open |
 | R-012 | Prompt injection | Medium | High | M42 | Validator/adversarial tests | Disable AI | Validator failure | AI/Security | Open |
 | R-013 | AI provider instability | Medium | Medium | M38 | Timeout/fallback | Prepared AI output | Provider outage | AI | Open |
 | R-014 | AI cost | Medium | Medium | M38 | Token budgets | Local/stub mode | Cost spike | AI/Ops | Open |
@@ -1352,8 +1380,8 @@ Progress tracks milestone status, exit criteria, blocking defects, open ADRs, re
 | RM-OI-003 | Persistence and migration tools resolved | ADR | 1/4 | No decision blocker | JPA/Hibernate adapters plus Flyway | Data | Before implementation verification | ADR-024/025 | Resolved |
 | RM-OI-004 | Auth/session model resolved | ADR | 2 | No decision blocker | GitHub OAuth2 Login plus opaque JDBC-backed MVP session | Security | Before implementation verification | ADR-026 | Resolved |
 | RM-OI-005 | Job technology resolved | ADR | 3/4 | No decision blocker | PostgreSQL-backed durable jobs and transactional outbox | Backend | Before M20 | ADR-027 | Resolved |
-| RM-OI-006 | Vector DB unresolved | ADR | 7 | Yes for knowledge | Metadata-filtered store | Knowledge | Before M35 | ADR-028 | Open |
-| RM-OI-007 | Object storage unresolved | ADR | 9/11 | Yes for artifacts | S3-compatible abstraction | Ops | Before M44/M53 | ADR-029 | Open |
+| RM-OI-006 | Vector DB selection and filter proof | ADR | 7 | No decision blocker; automated M37 proof recorded | PostgreSQL pgvector with mandatory owner/source/document/model-version filtering | Knowledge | Before M36/M37 owner approval | ADR-028 | Resolved |
+| RM-OI-007 | Production object-storage provider pending | ADR follow-up | 9/11 | Yes for production artifacts, not local/test M36 ingestion | S3-compatible port; filesystem local/test only | Ops | Before M44/M53 production activation | ADR-029/033 | Open |
 | RM-OI-008 | Deployment platform/secrets unresolved | ADR | 11 | Yes for release | Vendor-neutral units | Platform | Before M53 | ADR-033/034 | Open |
 | RM-OI-009 | MVP career/company subset approved | Career/Roadmap | 5 | No | Backend/Frontend careers first; company readiness remains post-MVP | Product | Before M30 | N/A | Resolved |
 | RM-OI-010 | Demonstration environment unknown | Roadmap | 12 | No | Local/staging fallback | Project Owner | Before M57 | ADR-033 | Open |

@@ -1,15 +1,16 @@
 openapi: 3.0.3
 info:
   title: DevPath Implemented API
-  version: 0.24.0
+  version: 0.26.0
   description: >
     Implemented contract for authenticated identity, repository synchronization, deterministic analysis,
     rule evaluation, Skill Matrix, career catalog, career readiness, deterministic recommendation,
     learning roadmap, company catalog, onboarding-progress, dashboard-summary, GitHub connection-recovery,
     provider rate-limit recovery, terminal large-repository collection-limit handling,
-    repository collaboration/document evidence, repository activity timeline, and Notion workspace-source registration
-    slices. Provider access tokens,
-    private README content, and unimplemented APIs are excluded.
+    repository collaboration/document evidence, repository activity timeline, Notion workspace-source registration,
+    owner-scoped Notion knowledge ingestion, and authorized semantic retrieval slices. Provider access tokens,
+    full raw source documents, raw embeddings, private README content, and unimplemented APIs are excluded;
+    retrieval may return bounded owner-authorized chunk excerpts.
 servers:
   - url: http://localhost:8080
     description: Local backend
@@ -1554,6 +1555,134 @@ paths:
         "401":
           description: No valid session.
           content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}
+  /api/v1/knowledge-documents/imports/notion:
+    post:
+      x-api-id: API-KNW-003
+      summary: Import an authorized Notion page into the knowledge index
+      operationId: importNotionKnowledge
+      tags: [Knowledge]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/ImportNotionKnowledgeRequest"}
+      responses:
+        "202": {description: Owner-scoped ingestion job accepted., content: {application/json: {schema: {$ref: "#/components/schemas/KnowledgeIngestionJobEnvelope"}}}}
+        "400": {description: Invalid import request., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "403": {description: Missing CSRF or page permission., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Active connection or shared page not found., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "409": {description: Concurrent or idempotency conflict., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "503": {description: Notion connection unavailable., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/knowledge-ingestion-jobs/{jobId}:
+    get:
+      x-api-id: API-KNW-008
+      summary: Retrieve an owner-scoped knowledge ingestion job
+      operationId: getKnowledgeIngestionJob
+      tags: [Knowledge]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: jobId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Ingestion job state., content: {application/json: {schema: {$ref: "#/components/schemas/KnowledgeIngestionJobEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Job not found in owner scope., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/knowledge-documents:
+    get:
+      x-api-id: API-KNW-004
+      summary: List owner-scoped knowledge documents
+      operationId: listKnowledgeDocuments
+      tags: [Knowledge]
+      security: [{sessionCookie: []}]
+      responses:
+        "200": {description: Knowledge documents., content: {application/json: {schema: {$ref: "#/components/schemas/KnowledgeDocumentListEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/knowledge-documents/{documentId}:
+    get:
+      x-api-id: API-KNW-005
+      summary: Retrieve owner-scoped knowledge document metadata
+      operationId: getKnowledgeDocument
+      tags: [Knowledge]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: documentId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Knowledge document metadata., content: {application/json: {schema: {$ref: "#/components/schemas/KnowledgeDocumentEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Document not found in owner scope., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/knowledge-documents/{documentId}/chunks:
+    get:
+      x-api-id: API-KNW-010
+      summary: List safe chunk metadata without content or vectors
+      operationId: listKnowledgeChunks
+      tags: [Knowledge]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: documentId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Chunk summaries., content: {application/json: {schema: {$ref: "#/components/schemas/KnowledgeChunkListEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Document not found in owner scope., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/knowledge-documents/{documentId}/archive:
+    post:
+      x-api-id: API-KNW-006
+      summary: Archive a knowledge document and remove it from active retrieval
+      operationId: archiveKnowledgeDocument
+      tags: [Knowledge]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - {name: documentId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Archived document metadata., content: {application/json: {schema: {$ref: "#/components/schemas/KnowledgeDocumentEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "403": {description: Missing or invalid CSRF token., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Document not found in owner scope., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/knowledge-documents/{documentId}/reindex:
+    post:
+      x-api-id: API-KNW-011
+      summary: Re-index an owner-scoped knowledge document
+      operationId: reindexKnowledgeDocument
+      tags: [Knowledge]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+        - {name: documentId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "202": {description: Re-index job accepted., content: {application/json: {schema: {$ref: "#/components/schemas/KnowledgeIngestionJobEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "403": {description: Missing or invalid CSRF token., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Document or active Notion source not found., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "409": {description: Concurrent or idempotency conflict., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/knowledge-search:
+    post:
+      x-api-id: API-KNW-009
+      summary: Search current owner-scoped knowledge with semantic retrieval
+      description: >
+        Embeds the query server-side and searches only the authenticated owner's active Notion connection,
+        active documents, current versions, indexed chunks, and compatible active embeddings. Results contain
+        bounded excerpts and normalized relevance, never provider credentials, object references, or raw vectors.
+      operationId: searchKnowledge
+      tags: [Knowledge]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/KnowledgeSearchRequest"}
+      responses:
+        "200": {description: Authorized semantic retrieval result., content: {application/json: {schema: {$ref: "#/components/schemas/KnowledgeSearchEnvelope"}}}}
+        "400": {description: "Invalid query, filters, purpose, or limit.", content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "403": {description: Missing or invalid CSRF token., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "503": {description: "Embedding, vector index, or retained object content unavailable.", content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
 components:
   securitySchemes:
     sessionCookie:
@@ -1573,7 +1702,7 @@ components:
       name: Idempotency-Key
       in: header
       required: true
-      description: Owner-scoped stable key for one repository synchronization command.
+      description: Owner-scoped stable key for one retry-safe mutation command.
       schema:
         type: string
         minLength: 1
@@ -2877,6 +3006,169 @@ components:
       required: [data, metadata]
       properties:
         data: {$ref: "#/components/schemas/DashboardSummary"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    ImportNotionKnowledgeRequest:
+      type: object
+      additionalProperties: false
+      required: [connectionId, providerPageId]
+      properties:
+        connectionId: {type: string, format: uuid}
+        providerPageId: {type: string, minLength: 1, maxLength: 255}
+    KnowledgeIngestionJob:
+      type: object
+      additionalProperties: false
+      required: [jobId, jobType, status, phase, progressPercent, attemptCount, maxAttempts, submittedAt, startedAt, completedAt, pollingUrl, resultResourceUrl, errorCode, errorMessage, retryable]
+      properties:
+        jobId: {type: string, format: uuid}
+        jobType: {type: string, enum: [KNOWLEDGE_INGESTION]}
+        status: {type: string, enum: [queued, running, succeeded, failed]}
+        phase: {type: string, enum: [QUEUED, COLLECTING, RETRY_WAIT, COMPLETED, FAILED]}
+        progressPercent: {type: integer, minimum: 0, maximum: 100}
+        attemptCount: {type: integer, minimum: 0}
+        maxAttempts: {type: integer, minimum: 1}
+        submittedAt: {type: string, format: date-time}
+        startedAt: {type: string, format: date-time, nullable: true}
+        completedAt: {type: string, format: date-time, nullable: true}
+        pollingUrl: {type: string}
+        resultResourceUrl: {type: string, nullable: true}
+        errorCode: {type: string, nullable: true}
+        errorMessage: {type: string, nullable: true}
+        retryable: {type: boolean}
+    KnowledgeIngestionJobEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/KnowledgeIngestionJob"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    KnowledgeDocument:
+      type: object
+      additionalProperties: false
+      required: [documentId, sourceType, sourceObjectId, title, status, currentVersionId, chunkCount, createdAt, updatedAt]
+      properties:
+        documentId: {type: string, format: uuid}
+        sourceType: {type: string, enum: [NOTION]}
+        sourceObjectId: {type: string}
+        title: {type: string, maxLength: 512}
+        status: {type: string, enum: [ACTIVE, ARCHIVED]}
+        currentVersionId: {type: string, format: uuid, nullable: true}
+        chunkCount: {type: integer, minimum: 0}
+        createdAt: {type: string, format: date-time}
+        updatedAt: {type: string, format: date-time}
+    KnowledgeDocumentEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/KnowledgeDocument"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    KnowledgeDocumentList:
+      type: object
+      additionalProperties: false
+      required: [documents]
+      properties:
+        documents: {type: array, items: {$ref: "#/components/schemas/KnowledgeDocument"}}
+    KnowledgeDocumentListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/KnowledgeDocumentList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    KnowledgeChunkSummary:
+      type: object
+      additionalProperties: false
+      required: [chunkId, position, heading, contentHash, tokenEstimate, status]
+      properties:
+        chunkId: {type: string, format: uuid}
+        position: {type: integer, minimum: 0}
+        heading: {type: string, nullable: true, maxLength: 512}
+        contentHash: {type: string, pattern: "^[a-f0-9]{64}$"}
+        tokenEstimate: {type: integer, minimum: 1}
+        status: {type: string, enum: [INDEXED, STALE, DELETED]}
+    KnowledgeChunkList:
+      type: object
+      additionalProperties: false
+      required: [chunks]
+      properties:
+        chunks: {type: array, items: {$ref: "#/components/schemas/KnowledgeChunkSummary"}}
+    KnowledgeChunkListEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/KnowledgeChunkList"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    KnowledgeSearchFilters:
+      type: object
+      additionalProperties: false
+      properties:
+        sourceTypes:
+          type: array
+          maxItems: 1
+          uniqueItems: true
+          items: {type: string, enum: [NOTION]}
+        documentIds:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: {type: string, format: uuid}
+    KnowledgeSearchRequest:
+      type: object
+      additionalProperties: false
+      required: [query]
+      properties:
+        query: {type: string, minLength: 1, maxLength: 500}
+        filters: {$ref: "#/components/schemas/KnowledgeSearchFilters"}
+        limit: {type: integer, minimum: 1, maximum: 20, default: 5}
+        contextPurpose: {type: string, enum: [USER_SEARCH], default: USER_SEARCH}
+    KnowledgeSearchAppliedFilters:
+      type: object
+      additionalProperties: false
+      required: [sourceTypes, documentIds]
+      properties:
+        sourceTypes:
+          type: array
+          items: {type: string, enum: [NOTION]}
+        documentIds:
+          type: array
+          items: {type: string, format: uuid}
+    KnowledgeSearchResult:
+      type: object
+      additionalProperties: false
+      required: [chunkId, documentId, documentTitle, sourceType, sourceObjectId, sourceUrl, heading, excerpt, relevance, tokenEstimate, freshness]
+      properties:
+        chunkId: {type: string, format: uuid}
+        documentId: {type: string, format: uuid}
+        documentTitle: {type: string, maxLength: 512}
+        sourceType: {type: string, enum: [NOTION]}
+        sourceObjectId: {type: string, maxLength: 255}
+        sourceUrl: {type: string, format: uri, nullable: true, maxLength: 2048}
+        heading: {type: string, nullable: true, maxLength: 512}
+        excerpt: {type: string, minLength: 1, maxLength: 500}
+        relevance: {type: number, format: double, minimum: 0, maximum: 1}
+        tokenEstimate: {type: integer, minimum: 1}
+        freshness: {type: string, enum: [FRESH]}
+    KnowledgeSearchResponse:
+      type: object
+      additionalProperties: false
+      required: [retrievalResultId, retrievalType, policyVersion, contextPurpose, appliedFilters, results, resultCount, durationMs, generatedAt]
+      properties:
+        retrievalResultId: {type: string, format: uuid}
+        retrievalType: {type: string, enum: [SEMANTIC]}
+        policyVersion: {type: string, enum: [knowledge-semantic-v1]}
+        contextPurpose: {type: string, enum: [USER_SEARCH]}
+        appliedFilters: {$ref: "#/components/schemas/KnowledgeSearchAppliedFilters"}
+        results: {type: array, maxItems: 20, items: {$ref: "#/components/schemas/KnowledgeSearchResult"}}
+        resultCount: {type: integer, minimum: 0, maximum: 20}
+        durationMs: {type: integer, format: int64, minimum: 0}
+        generatedAt: {type: string, format: date-time}
+    KnowledgeSearchEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/KnowledgeSearchResponse"}
         metadata: {$ref: "#/components/schemas/ApiMetadata"}
     CsrfToken:
       type: object

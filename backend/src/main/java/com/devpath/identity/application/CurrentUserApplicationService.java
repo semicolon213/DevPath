@@ -8,14 +8,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class CurrentUserApplicationService implements FindCurrentUserUseCase {
+public class CurrentUserApplicationService {
     private final UserRepositoryPort userRepository;
 
     public CurrentUserApplicationService(UserRepositoryPort userRepository) {
         this.userRepository = userRepository;
     }
 
-    @Override
     @Transactional(readOnly = true)
     public AuthenticatedUser find(UserId userId) {
         User user = userRepository.findById(userId).orElseThrow(UserNotFoundException::new);

@@ -12,7 +12,7 @@ import java.time.Instant;
 import java.util.Objects;
 
 @Service
-public class OAuthLoginApplicationService implements ProcessOAuthLoginUseCase {
+public class OAuthLoginApplicationService {
     private final UserRepositoryPort userRepository;
     private final ExternalIdentityRepositoryPort externalIdentityRepository;
     private final UserProfileRepositoryPort profileRepository;
@@ -36,7 +36,6 @@ public class OAuthLoginApplicationService implements ProcessOAuthLoginUseCase {
         this.clock = clock;
     }
 
-    @Override
     public AuthenticatedUser process(OAuthLoginCommand command) {
         return externalIdentityRepository
             .findByProviderAndSubject(command.provider(), command.providerSubject())

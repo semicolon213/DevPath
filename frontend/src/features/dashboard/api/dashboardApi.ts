@@ -49,5 +49,5 @@ export type DashboardSummary = {
 };
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  return (await apiRequest<DashboardSummary>("/api/v1/dashboard/summary")).data;
+  return apiRequest<DashboardSummary>("/api/v1/dashboard/summary");
 }

@@ -23,9 +23,9 @@ export type CareerProfile = CareerSummary & {
 };
 
 export async function getCareers() {
-  return (await apiRequest<CareerCatalog>("/api/v1/careers")).data;
+  return apiRequest<CareerCatalog>("/api/v1/careers");
 }
 
 export async function getCareer(careerId: string) {
-  return (await apiRequest<CareerProfile>(`/api/v1/careers/${careerId}`)).data;
+  return apiRequest<CareerProfile>(`/api/v1/careers/${careerId}`);
 }

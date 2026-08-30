@@ -73,25 +73,25 @@ type AnalysisHistoryPage = {
 };
 
 export async function getCurrentSkillMatrix() {
-  return (await apiRequest<SkillMatrix>("/api/v1/skill-matrices/current")).data;
+  return apiRequest<SkillMatrix>("/api/v1/skill-matrices/current");
 }
 
 export async function getSkillMatrix(skillMatrixId: string) {
-  return (await apiRequest<SkillMatrix>(`/api/v1/skill-matrices/${skillMatrixId}`)).data;
+  return apiRequest<SkillMatrix>(`/api/v1/skill-matrices/${skillMatrixId}`);
 }
 
 export async function getSkillMatrixComparison(skillMatrixIds: string[]) {
   const query = new URLSearchParams();
   skillMatrixIds.forEach(id => query.append("skillMatrixId", id));
-  return (await apiRequest<SkillMatrixComparison>(`/api/v1/skill-matrices/compare?${query}`)).data;
+  return apiRequest<SkillMatrixComparison>(`/api/v1/skill-matrices/compare?${query}`);
 }
 
 export async function getSkillDetail(skillId: string) {
-  return (await apiRequest<SkillDetail>(`/api/v1/skills/${skillId}`)).data;
+  return apiRequest<SkillDetail>(`/api/v1/skills/${skillId}`);
 }
 
 export async function getSkillEvidence(skillId: string) {
-  return (await apiRequest<SkillEvidenceList>(`/api/v1/skills/${skillId}/evidence`)).data;
+  return apiRequest<SkillEvidenceList>(`/api/v1/skills/${skillId}/evidence`);
 }
 
 export async function getSkillWorkspace(skillId: string): Promise<SkillWorkspace> {
@@ -102,7 +102,7 @@ export async function getSkillWorkspace(skillId: string): Promise<SkillWorkspace
 export async function getSkillHistoryPage(skillId: string, cursor: string | null = null): Promise<SkillHistoryPage> {
   const query = new URLSearchParams({ limit: "20" });
   if (cursor) query.set("cursor", cursor);
-  const history = (await apiRequest<AnalysisHistoryPage>(`/api/v1/analyses?${query}`)).data;
+  const history = await apiRequest<AnalysisHistoryPage>(`/api/v1/analyses?${query}`);
   const uniqueAnalyses = [...new Map(history.analyses.map(item => [item.skillMatrixId, item])).values()];
   const points = (await Promise.all(uniqueAnalyses.map(async analysis => {
     const matrix = await getSkillMatrix(analysis.skillMatrixId);

@@ -158,9 +158,9 @@ ADRs use qualitative criteria, not unsupported numerical scoring.
 | ADR-025 | Database Migration Tool | Data/Deployment | Accepted | Blocking | Reversible with Migration | Data/Ops | 00,09,11,15,16,17,19 | Accepted | ADR-020, ADR-024 | ADR-003 |
 | ADR-026 | Authentication and Session Model | Security | Accepted | Blocking | Difficult to Reverse | Security/Backend | 00,08,09,10,11,12,13,15,16,17,19 | Accepted | ADR-020, ADR-021 | ADR-005, ADR-034 |
 | ADR-027 | Background Job Technology | Backend/Deployment | Accepted | Blocking | Difficult to Reverse | Backend/Ops | 11,16 | Accepted | ADR-010, ADR-020, ADR-003 | ADR-004 |
-| ADR-028 | Vector Database | Data/AI | Proposed | Blocking | Difficult to Reverse | Knowledge/Data | 06,09,11,16 | Before knowledge implementation | ADR-003, ADR-014 | ADR-029 |
-| ADR-029 | Object Storage | Data/Deployment | Proposed | Blocking | Reversible with Migration | Ops/Data | 09,13,16 | Before artifact implementation | ADR-016 | ADR-014 |
-| ADR-030 | AI Provider SDK Strategy | AI/Integration | Proposed | Required Before MVP | Reversible with Migration | AI | 04,05,17 | Before AI adapter implementation | ADR-007, ADR-015 | ADR-006 |
+| ADR-028 | Vector Database | Data/AI | Accepted | Blocking | Difficult to Reverse | Knowledge/Data | 06,09,11,16 | Accepted | ADR-003, ADR-014 | ADR-029 |
+| ADR-029 | Object Storage | Data/Deployment | Accepted | Blocking | Reversible with Migration | Ops/Data | 09,13,16 | Accepted | ADR-016 | ADR-014 |
+| ADR-030 | AI Provider SDK Strategy | AI/Integration | Accepted | Required Before MVP | Reversible with Migration | AI | 04,05,17 | Accepted | ADR-007, ADR-015 | ADR-006 |
 | ADR-031 | Observability Technology | Observability | Proposed | Required Before MVP | Reversible with Migration | Ops | 14,16 | Before production readiness | ADR-017 | ADR-018 |
 | ADR-032 | Testing Toolchain | Testing | Accepted | Blocking | Reversible with Migration | QA | 15,17 | Accepted | ADR-020, ADR-021 | ADR-019 |
 | ADR-033 | Deployment Platform | Deployment | Proposed | Required Before MVP | Difficult to Reverse | Platform | 16 | Before staging | ADR-016, ADR-023 | ADR-031 |
@@ -179,7 +179,7 @@ ADRs use qualitative criteria, not unsupported numerical scoring.
 | Migration tool category | Accepted by ADR-025; schema evolution is Flyway-owned | Flyway versioned SQL policy | Data/deployment | No remaining decision delay |
 | Authentication/session model | Accepted by ADR-026; implementation must follow server-managed session controls | GitHub OAuth2 Login plus opaque server session | Identity/API/frontend | No remaining decision delay |
 | Background job execution model | Sync, analysis, AI, export depend on it | Queue/store/runtime strategy | Workers/schedulers | Lost or duplicated jobs |
-| Vector Database choice | Knowledge indexing/retrieval depends on it | pgvector vs dedicated vector store | Knowledge/AI/data | Re-index migration |
+| Vector retrieval store | Accepted by ADR-028; implementation must prove authorization filtering | PostgreSQL with pgvector and a replaceable Vector Search Port | Knowledge/AI/data | Re-index migration |
 | Object Storage choice | Artifact and export delivery depend on it | S3-compatible/cloud/local-dev strategy | Portfolio/export/storage | Storage migration |
 | AI SDK/provider abstraction | AI adapters and validators depend on it | SDK vs abstraction strategy | AI/prompt | Adapter rewrite |
 | Test framework categories | Quality gates depend on framework choices | Backend/frontend/E2E toolchain | All | Delayed CI |
@@ -852,40 +852,60 @@ ADRs use qualitative criteria, not unsupported numerical scoring.
 
 | Field | Entry |
 |---|---|
-| Status | Proposed |
+| Status | Accepted |
+| Decision Date / Last Review Date | 2026-08-29 / 2026-08-29 |
 | Owners / Reviewers | Knowledge/Data / AI, Security |
-| Problem Statement | Select vector storage/retrieval technology. |
+| Related Requirements / Documents | `06_Knowledge_Architecture.md`, `09_Database_Design.md`, `11_Backend_Architecture.md`, `16_Deployment_Guide.md` |
+| Context | Knowledge retrieval needs vector similarity search without creating a second authoritative data store or weakening owner-scoped authorization. |
+| Problem Statement | Select the initial vector storage/retrieval technology and define its authority, isolation, recovery, and replacement boundaries. |
+| Decision Drivers / Constraints | PostgreSQL remains canonical; authorization metadata filtering is mandatory; local/test/production behavior should match; indexes must be rebuildable; operational cost and premature distributed-system complexity should be minimized. |
 | Considered Options | PostgreSQL vector extension; dedicated managed vector DB; self-hosted vector DB; embedded local vector index for development only. |
 | Evaluation Criteria | Authorization metadata filtering, operations, cost, local dev, re-indexing, scale, backup, lock-in. |
-| Recommendation | Evaluate PostgreSQL vector extension first for MVP simplicity; dedicated vector DB remains future option. |
+| Decision / Rationale | Use PostgreSQL with pgvector as the initial physical vector retrieval store. Canonical knowledge documents, chunks, ownership, provenance, lifecycle, and embedding metadata remain ordinary relational records in PostgreSQL. The vector representation and search index are derived and rebuildable. Access remains behind a capability-specific Vector Search Port so storage can change without leaking pgvector types into domain or application contracts. |
+| Authorization and Isolation | Every index record and query must carry and enforce owner, source/document, lifecycle, and embedding-model/version scope. Retrieval must fail closed and must not return candidates outside the authorized scope. ADR-014 cross-user metadata-filter proof remains an implementation acceptance gate. |
+| Lifecycle and Recovery | Source deletion, ownership loss, stale document versions, or incompatible embedding-model changes must remove affected records from active retrieval or trigger a versioned re-index. Canonical relational data is the rebuild source; vector index snapshots may accelerate recovery but are not authoritative. |
+| Environment Strategy | Local development, automated integration tests, and production use PostgreSQL with the pgvector extension rather than a behaviorally divergent embedded vector store. Extension enablement and schema/index changes are owned by immutable Flyway migrations when implemented. |
+| Evolution Threshold | A dedicated vector database may be proposed only after measured scale, latency, metadata-filter capability, availability, backup, or operational evidence shows pgvector is inadequate. Such a move requires a new or superseding ADR plus export/import, dual-index, authorization-validation, and rollback planning. |
+| Positive Consequences | One operational database boundary initially; consistent local/test/production semantics; transactional proximity to authorization metadata; rebuildable derived indexes; reduced vendor lock-in through the port. |
+| Negative Consequences | Vector workloads share PostgreSQL capacity; indexing and query tuning require pgvector expertise; later extraction may require dual-index migration. |
+| Risks / Mitigations | Risk: similarity queries bypass or weaken owner filters. Mitigation: mandatory filtered-query adapter tests and cross-user integration tests. Risk: vector workload harms relational traffic. Mitigation: bounded ingestion/query concurrency, separate indexes and monitoring, capacity thresholds, and later ADR review. |
+| Security/Data/API/Frontend/Backend/Test/Deployment/Observability Impact | No public API or frontend contract is selected by this ADR. Backend uses the Vector Search Port; data migrations own extension/index changes; deployment provisions compatible PostgreSQL; tests prove filtering, deletion, model-version separation, rebuild, and failure behavior; observability tracks query latency, index size, re-index progress, and filter failures without logging private content or embeddings. |
+| Migration or Adoption Plan | Define the relational metadata and vector schema contract, add an immutable pgvector migration, implement the outbound adapter, and prove owner-scoped indexing/retrieval and deletion propagation before activating retrieval. |
+| Rollback or Reversal Strategy | Disable retrieval, rebuild the derived index from canonical records, or switch between versioned pgvector indexes. A future store migration uses the Vector Search Port and dual-index validation rather than changing domain contracts. |
+| Validation Criteria / Review Triggers | Cross-user retrieval fails closed; deleted/stale data is not returned; incompatible embedding versions are isolated; rebuild succeeds from canonical records; measured latency/capacity thresholds are recorded before reconsidering the store. |
 | Dependencies | ADR-003, ADR-014. |
-| Implementation May Proceed? | Knowledge implementation waits for accepted retrieval store. |
+| Supersedes / Superseded By / Related ADRs / Open Questions | Related ADR-003, ADR-007, ADR-014, ADR-025, ADR-027, ADR-029. ADR-OI-007 is resolved by the M37 real-pgvector owner/source/document/version/model filter suite. |
+| Implementation May Proceed? | Yes, within the requirements and milestone acceptance gates. This decision does not complete M36 or prove retrieval authorization. |
 
 ### 11.10 ADR-029: Object Storage
 
 | Field | Entry |
 |---|---|
-| Status | Proposed |
+| Status | Accepted |
+| Decision Date / Last Review Date | 2026-08-29 / 2026-08-29 |
 | Owners / Reviewers | Ops/Data / Security |
 | Problem Statement | Select artifact/export storage. |
 | Considered Options | S3-compatible storage; cloud-vendor-managed object storage; local filesystem for dev only; database binary storage. |
 | Evaluation Criteria | Private default, signed URLs, local dev, portability, cost, backup, generated artifacts. |
-| Recommendation | Use S3-compatible abstraction; local filesystem only for development substitute. |
+| Decision / Rationale | Use an S3-compatible Object Storage Port. Canonical ownership, lifecycle, version, and object-reference metadata remain in PostgreSQL; object content is private by default. Local and automated tests may use a filesystem-backed adapter with equivalent owner-scoped reference and deletion behavior. The production S3-compatible provider is selected with ADR-033. |
+| Risks / Mitigations | Risk: object references bypass ownership. Mitigation: references remain opaque and every read/delete is authorized through canonical PostgreSQL metadata. Risk: local substitute drifts. Mitigation: shared port contract tests and no public filesystem paths. |
 | Dependencies | ADR-016, ADR-033. |
-| Implementation May Proceed? | Artifact API design can proceed; production storage waits. |
+| Implementation May Proceed? | Yes behind the Object Storage Port; production provider activation waits for ADR-033. |
 
 ### 11.11 ADR-030: AI Provider SDK Strategy
 
 | Field | Entry |
 |---|---|
-| Status | Proposed |
+| Status | Accepted |
+| Decision Date / Last Review Date | 2026-08-29 / 2026-08-29 |
 | Owners / Reviewers | AI / Security, Backend |
 | Problem Statement | Decide how AI providers are integrated. |
 | Considered Options | Official SDKs behind adapters; multi-provider abstraction library; generic HTTP adapters; hybrid approach. |
 | Evaluation Criteria | Provider feature differences, structured output, streaming, error handling, config, dependency risk, testability. |
-| Recommendation | Use provider-specific adapters with official SDKs or HTTP where practical; avoid lowest-common-denominator abstraction. |
+| Decision / Rationale | Use capability-specific provider ports with provider-specific adapters. Each adapter may use an official SDK or direct HTTP according to provider capability and dependency risk. Provider SDK types, errors, and configuration never cross domain, application, or public API boundaries. Do not add a lowest-common-denominator multi-provider abstraction library. Embedding and generation use separate ports and policies. |
+| Risks / Mitigations | Risk: duplicated adapter logic. Mitigation: share only transport-neutral safety utilities. Risk: provider behavior leaks inward. Mitigation: normalized capability-specific results/errors and adapter contract tests. |
 | Dependencies | ADR-007, ADR-015. |
-| Implementation May Proceed? | Prompt/validator design can proceed; adapters wait. |
+| Implementation May Proceed? | Yes. Provider/model activation remains configuration-owned and AI output remains untrusted under ADR-015. |
 
 ### 11.12 ADR-031: Observability Technology
 
@@ -1140,8 +1160,8 @@ A decision is not fully adopted until affected documents are synchronized.
 | ADR-OI-004 | ADR-024 | ORM/query complexity proof | Data | Before persistence | Mapping rework | JPA/Hibernate with explicit domain mapping accepted | Resolved |
 | ADR-OI-005 | ADR-026 | Session/token security tradeoff | Security | Before auth | Security rework | GitHub OAuth2 Login plus opaque server session accepted | Resolved |
 | ADR-OI-006 | ADR-027 | Queue persistence and retry needs | Backend/Ops | Before workers | Job migration | PostgreSQL-backed durable jobs and transactional outbox | Resolved |
-| ADR-OI-007 | ADR-028 | Vector metadata filter proof | Knowledge | Before RAG | Re-index migration | Authorization metadata required | Open |
-| ADR-OI-008 | ADR-029 | Storage provider/cost | Ops | Before artifacts | Object migration | S3-compatible abstraction | Open |
+| ADR-OI-007 | ADR-028 | Real-pgvector owner/source/document/version/model filter proof | Knowledge | Before RAG | Re-index migration | Authorization metadata required | Resolved |
+| ADR-OI-008 | ADR-029 | Production S3-compatible provider and cost evidence | Ops | Before production artifacts | Provider activation remains blocked | Filesystem only for local/test; no silent production fallback | Open |
 | ADR-OI-009 | ADR-031 | Telemetry backend budget | Ops | Before staging | Observability gaps | Open-standard signal model | Open |
 | ADR-OI-010 | ADR-033 | Cloud/platform budget | Platform | Before staging | Deployment rework | Vendor-neutral deployment units | Open |
 | ADR-OI-011 | ADR-034 | Secret manager/platform | Security/Ops | Before environment setup | Secret exposure risk | No production secrets in code | Open |

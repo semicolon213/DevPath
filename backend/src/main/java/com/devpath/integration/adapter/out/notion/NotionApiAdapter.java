@@ -11,6 +11,7 @@ import com.devpath.integration.application.NotionConnectionPort;
 import com.devpath.integration.application.NotionIntegrationUnavailableException;
 import com.devpath.integration.application.NotionRateLimitExceededException;
 import com.devpath.integration.application.NotionWorkspaceListView;
+import com.devpath.integration.application.NotionPageContentView;
 import com.devpath.integration.application.NotionWorkspacePageView;
 import com.devpath.integration.application.NotionWorkspaceView;
 import com.devpath.integration.config.NotionIntegrationProperties;
@@ -96,6 +97,99 @@ public class NotionApiAdapter implements NotionConnectionPort {
         } catch (RestClientException exception) {
             throw unavailable(exception);
         }
+    }
+
+    @Override
+    public NotionPageContentView collectPage(UUID userId, String providerPageId, Instant now) {
+        if (providerPageId == null || providerPageId.isBlank() || providerPageId.length() > 255) {
+            throw new IllegalArgumentException("Notion page identifier is invalid");
+        }
+        StoredNotionCredential credential = credentials.findActive(userId)
+            .orElseThrow(NotionConnectionNotFoundException::new);
+        var owned = metadata.findOwned(userId, providerPageId)
+            .filter(page -> page.connectionId().equals(credential.connectionId()))
+            .orElseThrow(NotionConnectionNotFoundException::new);
+        try {
+            String content = collectBlocks(credential.accessToken(), providerPageId, 0, new int[]{0}).trim();
+            if (content.isBlank()) {
+                throw new NotionIntegrationUnavailableException("Notion page has no importable text content");
+            }
+            return new NotionPageContentView(credential.connectionId(), providerPageId,
+                owned.page().title(), owned.page().lastEditedAt(), content);
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode().value() == 429) {
+                throw new NotionRateLimitExceededException(retryAfter(exception));
+            }
+            if (exception.getStatusCode().value() == 401 || exception.getStatusCode().value() == 403) {
+                expire(credential, now);
+                throw new NotionConnectionNotFoundException();
+            }
+            throw unavailable(exception);
+        } catch (RestClientException exception) {
+            throw unavailable(exception);
+        }
+    }
+
+    @Override
+    public void verifyPageAccess(UUID userId, UUID connectionId, String providerPageId) {
+        if (connectionId == null || providerPageId == null || providerPageId.isBlank() || providerPageId.length() > 255) {
+            throw new IllegalArgumentException("Notion page selection is invalid");
+        }
+        StoredNotionCredential credential = credentials.findActive(userId)
+            .filter(item -> item.connectionId().equals(connectionId))
+            .orElseThrow(NotionConnectionNotFoundException::new);
+        metadata.findOwned(userId, providerPageId)
+            .filter(page -> page.connectionId().equals(credential.connectionId()))
+            .orElseThrow(NotionConnectionNotFoundException::new);
+    }
+
+    private String collectBlocks(String accessToken, String blockId, int depth, int[] total) {
+        if (depth > 8) throw new NotionIntegrationUnavailableException("Notion page nesting exceeds the safe limit");
+        StringBuilder content = new StringBuilder();
+        String cursor = null;
+        for (int pageNumber = 0; pageNumber < MAX_PAGE_COUNT; pageNumber++) {
+            var uri = UriComponentsBuilder.fromHttpUrl("https://api.notion.com/v1/blocks/" + blockId + "/children")
+                .queryParam("page_size", PAGE_SIZE);
+            if (cursor != null) uri.queryParam("start_cursor", cursor);
+            BlockChildrenResponse response = notion.get().uri(uri.build().encode().toUriString())
+                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken).retrieve().body(BlockChildrenResponse.class);
+            if (response == null || response.results() == null) {
+                throw new NotionIntegrationUnavailableException("Notion returned an invalid block response");
+            }
+            for (JsonNode block : response.results()) {
+                if (++total[0] > 1000) throw new NotionIntegrationUnavailableException("Notion page exceeds the safe block limit");
+                String text = blockText(block);
+                if (!text.isBlank()) content.append(text).append('\n');
+                if (block.path("has_children").asBoolean(false)) {
+                    content.append(collectBlocks(accessToken, requiredText(block, "id"), depth + 1, total));
+                }
+            }
+            if (!response.hasMore()) return content.toString();
+            if (response.nextCursor() == null || response.nextCursor().isBlank()) {
+                throw new NotionIntegrationUnavailableException("Notion block pagination cursor is unavailable");
+            }
+            cursor = response.nextCursor();
+        }
+        throw new NotionIntegrationUnavailableException("Notion block pagination exceeds the safe limit");
+    }
+
+    private String blockText(JsonNode block) {
+        String type = block.path("type").asText();
+        JsonNode value = block.path(type);
+        String text = richText(value.path("rich_text"));
+        if (text.isBlank() && ("child_page".equals(type) || "child_database".equals(type))) {
+            text = value.path("title").asText("").trim();
+        }
+        return switch (type) {
+            case "heading_1" -> text.isBlank() ? "" : "# " + text;
+            case "heading_2" -> text.isBlank() ? "" : "## " + text;
+            case "heading_3" -> text.isBlank() ? "" : "### " + text;
+            case "bulleted_list_item" -> text.isBlank() ? "" : "- " + text;
+            case "numbered_list_item" -> text.isBlank() ? "" : "1. " + text;
+            case "to_do" -> text.isBlank() ? "" : "- [" + (value.path("checked").asBoolean() ? "x" : " ") + "] " + text;
+            case "code" -> text.isBlank() ? "" : "```\n" + text + "\n```";
+            default -> text;
+        };
     }
 
     private NotionWorkspaceListView retryAfterRefresh(StoredNotionCredential credential, Instant now) {
@@ -222,5 +316,7 @@ public class NotionApiAdapter implements NotionConnectionPort {
         @JsonProperty("workspace_id") String workspaceId, @JsonProperty("workspace_name") String workspaceName,
         @JsonProperty("workspace_icon") String workspaceIcon) {}
     private record SearchResponse(List<JsonNode> results, @JsonProperty("has_more") boolean hasMore,
+        @JsonProperty("next_cursor") String nextCursor) {}
+    private record BlockChildrenResponse(List<JsonNode> results, @JsonProperty("has_more") boolean hasMore,
         @JsonProperty("next_cursor") String nextCursor) {}
 }

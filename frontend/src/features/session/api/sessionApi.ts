@@ -11,8 +11,7 @@ export type CurrentUser = {
 
 export async function getCurrentUser(): Promise<CurrentUser | null> {
   try {
-    const response = await apiRequest<CurrentUser>("/api/v1/users/me");
-    return response.data;
+    return await apiRequest<CurrentUser>("/api/v1/users/me");
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       return null;

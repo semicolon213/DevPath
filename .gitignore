@@ -74,6 +74,7 @@ backend/.gradle/
 backend/build/
 backend/out/
 backend/bin/
+backend/.devpath/
 
 *.class
 

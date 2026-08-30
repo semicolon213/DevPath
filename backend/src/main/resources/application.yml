@@ -68,16 +68,15 @@ devpath:
     analysis:
       poll-interval: ${DEVPATH_ANALYSIS_POLL_INTERVAL:1000}
       initial-delay: ${DEVPATH_ANALYSIS_INITIAL_DELAY:1500}
+    knowledge-ingestion:
+      poll-interval: ${DEVPATH_KNOWLEDGE_POLL_INTERVAL:1000}
+      initial-delay: ${DEVPATH_KNOWLEDGE_INITIAL_DELAY:2000}
   security:
     frontend-origin: ${DEVPATH_FRONTEND_ORIGIN}
     session-absolute-timeout: ${DEVPATH_SESSION_ABSOLUTE_TIMEOUT:12h}
     post-login-redirect: ${DEVPATH_POST_LOGIN_REDIRECT:/}
-  scaffold:
-    health-status: ok
   targets:
     version: v1
-    careers: [backend, frontend, ai-engineer, devops, security, game, embedded, mobile, data-engineer]
-    companies: [google, amazon, naver, kakao, toss, coupang]
   github:
     integration:
       connect-timeout: ${DEVPATH_GITHUB_CONNECT_TIMEOUT:5s}
@@ -96,3 +95,14 @@ devpath:
       redirect-uri: ${NOTION_INTEGRATION_REDIRECT_URI:http://localhost:8080/api/v1/integrations/notion/callback}
       credential-key: ${DEVPATH_PROVIDER_CREDENTIAL_KEY:}
       credential-key-version: ${DEVPATH_PROVIDER_CREDENTIAL_KEY_VERSION:local-v1}
+  knowledge:
+    object-storage-root: ${DEVPATH_OBJECT_STORAGE_ROOT:./.devpath/objects}
+    retrieval:
+      minimum-relevance: ${DEVPATH_RETRIEVAL_MINIMUM_RELEVANCE:0.25}
+    embedding:
+      base-url: ${DEVPATH_EMBEDDING_BASE_URL:http://localhost:11434}
+      model: ${DEVPATH_EMBEDDING_MODEL:nomic-embed-text}
+      model-version: ${DEVPATH_EMBEDDING_MODEL_VERSION:nomic-embed-text}
+      dimension: ${DEVPATH_EMBEDDING_DIMENSION:768}
+      connect-timeout: ${DEVPATH_EMBEDDING_CONNECT_TIMEOUT:5s}
+      read-timeout: ${DEVPATH_EMBEDDING_READ_TIMEOUT:60s}

@@ -7,7 +7,7 @@ import com.devpath.identity.application.UserProfileView;
 import com.devpath.identity.domain.CareerStage;
 import com.devpath.identity.domain.UserId;
 import com.devpath.integration.application.ConnectedAccountListView;
-import com.devpath.integration.application.ListConnectedAccountsUseCase;
+import com.devpath.integration.application.ProviderConnectionApplicationService;
 import com.devpath.shared.api.ApiResponse;
 import com.devpath.shared.api.RequestIds;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,11 +21,11 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/users/me")
 public class UserProfileController {
     private final UserProfileApplicationService service;
-    private final ListConnectedAccountsUseCase connectedAccounts;
+    private final ProviderConnectionApplicationService connectedAccounts;
 
     public UserProfileController(
         UserProfileApplicationService service,
-        ListConnectedAccountsUseCase connectedAccounts
+        ProviderConnectionApplicationService connectedAccounts
     ) {
         this.service = service;
         this.connectedAccounts = connectedAccounts;

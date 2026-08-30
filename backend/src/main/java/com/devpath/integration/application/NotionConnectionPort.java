@@ -7,5 +7,7 @@ public interface NotionConnectionPort {
     String authorizationUrl(String state);
     ConnectedAccountView complete(UUID userId, String code, Instant now);
     NotionWorkspaceListView discover(UUID userId, Instant now);
+    void verifyPageAccess(UUID userId, UUID connectionId, String providerPageId);
+    NotionPageContentView collectPage(UUID userId, String providerPageId, Instant now);
     ConnectedAccountView disconnect(UUID userId, Instant now);
 }

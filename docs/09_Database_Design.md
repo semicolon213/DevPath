@@ -64,7 +64,7 @@ DevPath uses multiple storage systems because different data types have differen
 |---|---|---|---|
 | PostgreSQL | Primary relational store for canonical business data and transactional history | Strong consistency for authoritative data | User, repository metadata, snapshots metadata, evaluations, careers, prompts, artifacts, audit |
 | Redis | Ephemeral cache, optional future session store, rate-limit coordination, temporary workflow state | Rebuildable and non-authoritative | Short-lived caches, locks, queue coordination, rate-limit counters; sessions only after a future scaling review |
-| Vector Database | Semantic retrieval index for knowledge chunks | Eventually consistent derived index | Embedding similarity search, hybrid retrieval support |
+| PostgreSQL pgvector | Semantic retrieval index for knowledge chunks inside the primary PostgreSQL platform | Eventually consistent derived index; not canonical business truth | Embedding similarity search, hybrid retrieval support |
 | Object Storage | Large binary/text content and generated files | Referenced by canonical metadata | Repository archives, documents, exports, PDFs, images, generated files |
 
 ### 2.2 Why Multiple Databases Exist
@@ -83,7 +83,7 @@ DevPath uses multiple storage systems because different data types have differen
 |---|---|
 | DB-ARCH-001 | PostgreSQL is the authoritative store for canonical business records and lifecycle states. |
 | DB-ARCH-002 | Redis must not be the sole storage for authoritative business data. |
-| DB-ARCH-003 | Vector Database stores retrieval indexes and vector representations only; it does not own business entities. |
+| DB-ARCH-003 | PostgreSQL pgvector stores derived retrieval indexes and vector representations only; ordinary relational PostgreSQL records own canonical knowledge identity, ownership, provenance, and lifecycle. |
 | DB-ARCH-004 | Object Storage stores large content and generated files; PostgreSQL stores the authoritative metadata and references. |
 | DB-ARCH-005 | Credentials must be stored through secure secret management references, not as ordinary relational fields. |
 | DB-ARCH-006 | Every derived data object must preserve references to its source canonical object, snapshot, or version. |
@@ -121,8 +121,8 @@ DevPath uses multiple storage systems because different data types have differen
 | Recommendation | PostgreSQL | Redis for active recommendation view cache | Recommendation priority and status are authoritative. |
 | LearningRoadmap | PostgreSQL | Redis for progress view cache | Roadmap progress is authoritative and user-owned. |
 | KnowledgeDocument | PostgreSQL | Object Storage for source content | Metadata and lifecycle are authoritative; content may be large. |
-| KnowledgeChunk | PostgreSQL for metadata | Vector Database for searchable vector representation | Chunk identity and provenance are relational; similarity search is vector-based. |
-| EmbeddingMetadata | PostgreSQL for metadata | Vector Database for vector index | Model/version/source traceability is relational. |
+| KnowledgeChunk | PostgreSQL for metadata | PostgreSQL pgvector for searchable vector representation | Chunk identity and provenance are relational; similarity search is vector-based. |
+| EmbeddingMetadata | PostgreSQL for metadata | PostgreSQL pgvector for vector index | Model/version/source traceability is relational. |
 | RetrievalResult | PostgreSQL for execution history where retained | Redis for short-lived retrieval cache | Retrieval result may be audited; cache is non-authoritative. |
 | PromptTemplate | PostgreSQL | None | Versioned prompt definition metadata and content are authoritative configuration. |
 | PromptContext | PostgreSQL for metadata and selected source references | Redis only for temporary pre-lock context candidate | Locked PromptContext is authoritative execution data. |
@@ -144,9 +144,9 @@ DevPath uses multiple storage systems because different data types have differen
 
 | Storage | Must Not Store |
 |---|---|
-| PostgreSQL | Raw embedding vectors when vector storage is used as the retrieval engine; large binary exports as ordinary relational values. |
+| PostgreSQL relational business tables | Embedding vectors outside the pgvector-owned retrieval schema/index; large binary exports as ordinary relational values. |
 | Redis | Official scores, completed evaluations, published artifact versions, audit records, long-term prompt contexts. |
-| Vector Database | User identity truth, recommendation priority, rule definitions, career/company profiles, prompt templates. |
+| PostgreSQL pgvector retrieval index | User identity truth, recommendation priority, rule definitions, career/company profiles, prompt templates. |
 | Object Storage | Ownership truth, authorization state, active version pointers, official score values as the only copy. |
 
 ## 4. Logical Database Design
@@ -230,6 +230,21 @@ connection record; reauthorization rotates that record. Expiry and disconnect re
 discarded ciphertext, and delete derived page metadata. Page body content, chunks, embeddings, and vector indexes are
 not stored by this migration and remain outside M35.
 
+The implemented `V22__create_knowledge_ingestion_schema.sql` enables pgvector and adds owner-scoped knowledge documents,
+immutable document versions, chunk metadata, derived 768-dimensional embedding records, and retry-safe ingestion jobs for
+FR-071~FR-078 and FR-091~FR-097. Composite foreign keys preserve owner alignment from the Notion connection through the
+document, version, chunk, embedding, and job boundaries. PostgreSQL remains canonical for identity, ownership, provenance,
+lifecycle, and object references; private source/chunk bodies live behind the ADR-029 object-storage port and vectors are
+rebuildable derived data. Re-indexing creates a new version even when content returns to a historical hash, so current
+source state never reactivates stale historical chunks in place.
+
+The implemented `V23__create_knowledge_retrieval_schema.sql` adds retained owner-scoped retrieval requests, result headers,
+and ordered result items for KR-008, KR-013, KR-016, KR-017, and KR-020. The raw query is not retained; only its SHA-256,
+bounded filter summary, selected canonical chunk/document references, normalized relevance, policy version, duration, and
+expiry are stored. Composite foreign keys keep request, result, chunk, and document ownership aligned. The migration also
+adds bounded JSON audit details so retrieval audit records can preserve filter category, result count, policy version, and
+context purpose without storing query text, excerpts, object references, or vectors.
+
 ### 5.3 Analysis and Rule Tables
 
 | Table | Purpose | Primary Key | Foreign Keys | Important Columns | Relationships | Lifecycle |
@@ -291,9 +306,10 @@ not stored by this migration and remain outside M35.
 | knowledge_documents | Stores knowledge document identity and metadata. | knowledge_document_id | user_id | source type, source reference, privacy class, freshness state, active version reference | One document has many versions | Discovered, ingested, indexed, stale, deleted |
 | knowledge_document_versions | Stores immutable knowledge content versions. | knowledge_document_version_id | knowledge_document_id | content hash, source update time, object content reference, version status | One version has many chunks | Created, indexed, superseded, deleted |
 | knowledge_chunks | Stores chunk metadata. | knowledge_chunk_id | knowledge_document_version_id | chunk position, content hash, token estimate, metadata, index status | One chunk may have embedding metadata | Created, embedded, indexed, stale, deleted |
-| embedding_records | Stores embedding metadata and vector references. | embedding_record_id | knowledge_chunk_id | provider, model, model version, vector reference, status | Vector Database stores actual search index | Pending, active, stale, deleted |
+| embedding_records | Stores embedding metadata and vector references. | embedding_record_id | knowledge_chunk_id | provider, model, model version, vector reference, status | PostgreSQL pgvector stores the derived search representation/index | Pending, active, stale, deleted |
 | retrieval_requests | Stores retained retrieval request metadata. | retrieval_request_id | user_id | request intent, filters summary, token budget, requested time | One request may have one result | Requested, completed, failed |
 | retrieval_results | Stores retained retrieval result metadata. | retrieval_result_id | retrieval_request_id | selected chunk references, ranking metadata, completed time | Consumed by PromptContext | Completed, expired |
+| retrieval_result_items | Stores the ordered authorized selections of a retained retrieval result. | retrieval_result_item_id | retrieval_result_id, knowledge_chunk_id | position, normalized relevance | Document provenance is derived through chunk → immutable version → document | Immutable until parent expiry |
 
 ### 5.7 Prompt Tables
 
@@ -713,7 +729,7 @@ Referential integrity must protect owner scope, source provenance, version repro
 |---|---|
 | PostgreSQL | Regular full and incremental backups for authoritative business data and history. |
 | Redis | No long-term backup requirement for ordinary cache; initial authentication does not depend on Redis. |
-| Vector Database | Rebuildable from KnowledgeChunk and EmbeddingMetadata where possible; snapshots may be used for faster recovery. |
+| PostgreSQL pgvector index | Rebuildable from canonical KnowledgeChunk and EmbeddingMetadata records; snapshots may be used for faster recovery but are not authoritative. |
 | Object Storage | Versioned or retained backups for source documents, archives, generated exports, and artifact content. |
 
 ### 13.2 Restore Strategy
@@ -801,7 +817,7 @@ Partitioning should be introduced for high-growth append-only areas:
 |---|---|
 | PostgreSQL | Historical records, audit volume, evaluation history, repository metadata volume. |
 | Redis | Cache size, rate-limit counters, temporary workflow state, and optional future session volume only after review. |
-| Vector Database | Chunk count, embedding dimensions, embedding model versions, metadata filters. |
+| PostgreSQL pgvector | Chunk count, embedding dimensions, embedding model versions, metadata filters, index size, and relational workload contention. |
 | Object Storage | Repository archives, Notion content copies, generated PDFs, resume exports, images. |
 
 ### 14.5 Future Multi-tenancy

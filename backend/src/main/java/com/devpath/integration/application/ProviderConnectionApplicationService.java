@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class ProviderConnectionApplicationService implements ListConnectedAccountsUseCase {
+public class ProviderConnectionApplicationService {
     private final ProviderCredentialSummaryPort credentials;
     private final Clock clock;
 
@@ -17,7 +17,6 @@ public class ProviderConnectionApplicationService implements ListConnectedAccoun
         this.clock = clock;
     }
 
-    @Override
     @Transactional(readOnly = true)
     public ConnectedAccountListView listFor(UUID userId) {
         var now = clock.instant();

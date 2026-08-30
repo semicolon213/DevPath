@@ -30,6 +30,8 @@ const previousSkillMatrix = {
 };
 
 type CapturedAnalysisRequest = { csrf?: string; idempotencyKey?: string; body: unknown };
+type CapturedKnowledgeRequest = { csrf?: string; idempotencyKey?: string; body: unknown };
+type CapturedKnowledgeSearch = { csrf?: string; body: unknown };
 
 test("profile and GitHub integration settings remain separate and accessible", async ({ page }) => {
   await installApiFixture(page, []);
@@ -42,8 +44,8 @@ test("profile and GitHub integration settings remain separate and accessible", a
   await expect(page.getByRole("combobox", { name: "목표 직무" })).toHaveValue("backend");
   await expectNoAccessibilityViolations(page);
 
-  await page.getByRole("link", { name: "GitHub 연결" }).click();
-  await expect(page.getByText("미연결")).toBeVisible();
+  await page.getByRole("link", { name: "외부 서비스 연결" }).click();
+  await expect(page.getByLabel("외부 서비스 연결").getByText("미연결")).toBeVisible();
   await expect(page.getByRole("button", { name: "GitHub 저장소 연결" })).toBeVisible();
   await expectNoAccessibilityViolations(page);
 });
@@ -56,6 +58,42 @@ test("completed onboarding hands the first analysis journey to result workspaces
   await expect(page.getByLabel("전체 8단계 중 7단계 완료")).toBeVisible();
   await expect(page.getByRole("list", { name: "온보딩 단계" })).toContainText("목표 회사");
   await expect(page.getByRole("link", { name: "Skill Matrix" })).toHaveAttribute("href", "/skills");
+  await expectNoAccessibilityViolations(page);
+});
+
+test("shared Notion page becomes a recoverable knowledge ingestion job", async ({ page }) => {
+  const captured: CapturedKnowledgeRequest[] = [];
+  const searches: CapturedKnowledgeSearch[] = [];
+  await installApiFixture(page, [], captured, searches);
+  await page.goto("/knowledge");
+
+  await expect(page.getByRole("heading", { name: "지식 작업 공간" })).toBeVisible();
+  await expect(page.getByLabel("Notion 페이지 가져오기").getByRole("heading", { name: "백엔드 학습 노트" })).toBeVisible();
+  await expectNoAccessibilityViolations(page);
+
+  await page.getByRole("button", { name: "지식으로 가져오기" }).click();
+  await expect(page).toHaveURL(/job=knowledge-job-id/);
+  await expect(page.getByText("지식 문서 수집 완료")).toBeVisible();
+  await expect(page.getByRole("link", { name: "수집된 문서 보기" })).toHaveAttribute("href", "/knowledge/knowledge-document-id");
+  expect(captured).toHaveLength(1);
+  expect(captured[0]).toMatchObject({
+    csrf: "e2e-csrf-token",
+    body: { connectionId: "notion-connection-id", providerPageId: "notion-page-id" }
+  });
+  expect(captured[0].idempotencyKey).toBeTruthy();
+
+  await page.reload();
+  await expect(page.getByText("지식 문서 수집 완료")).toBeVisible();
+  await page.getByRole("textbox", { name: "검색어" }).fill("회귀 방지");
+  await page.getByRole("combobox", { name: "문서 범위" }).selectOption("knowledge-document-id");
+  await page.getByRole("button", { name: "지식 검색" }).click();
+  await expect(page.getByText("변경 전후 자동화 테스트를 실행합니다.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Notion 원문 열기" })).toHaveAttribute("href", "https://www.notion.so/notion-page-id");
+  expect(searches).toHaveLength(1);
+  expect(searches[0]).toMatchObject({ csrf: "e2e-csrf-token", body: {
+    query: "회귀 방지", filters: { sourceTypes: ["NOTION"], documentIds: ["knowledge-document-id"] },
+    limit: 5, contextPurpose: "USER_SEARCH"
+  }});
   await expectNoAccessibilityViolations(page);
 });
 
@@ -214,7 +252,12 @@ test("reduced-motion users keep the keyboard journey without nonessential transi
   await expectNoAccessibilityViolations(page);
 });
 
-async function installApiFixture(page: Page, captured: CapturedAnalysisRequest[]) {
+async function installApiFixture(
+  page: Page,
+  captured: CapturedAnalysisRequest[],
+  capturedKnowledge: CapturedKnowledgeRequest[] = [],
+  capturedSearch: CapturedKnowledgeSearch[] = []
+) {
   await page.route("http://localhost:8080/api/v1/**", async route => {
     const request = route.request();
     const key = `${request.method()} ${new URL(request.url()).pathname}`;
@@ -224,6 +267,16 @@ async function installApiFixture(page: Page, captured: CapturedAnalysisRequest[]
         idempotencyKey: request.headers()["idempotency-key"],
         body: request.postDataJSON()
       });
+    }
+    if (key === "POST /api/v1/knowledge-documents/imports/notion") {
+      capturedKnowledge.push({
+        csrf: request.headers()["x-xsrf-token"],
+        idempotencyKey: request.headers()["idempotency-key"],
+        body: request.postDataJSON()
+      });
+    }
+    if (key === "POST /api/v1/knowledge-search") {
+      capturedSearch.push({ csrf: request.headers()["x-xsrf-token"], body: request.postDataJSON() });
     }
     if (!(key in responses)) {
       await route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: key }) });
@@ -236,7 +289,44 @@ async function installApiFixture(page: Page, captured: CapturedAnalysisRequest[]
 const responses: Record<string, unknown> = {
   "GET /api/v1/users/me/profile": { profileId: "profile-id", displayName: "개발자", careerStage: "JUNIOR", bio: "백엔드", updatedAt: timestamp },
   "GET /api/v1/users/me/preferences": { careerId: "backend", companyId: null, updatedAt: timestamp },
-  "GET /api/v1/users/me/connections": { connections: [] },
+  "GET /api/v1/users/me/connections": { connections: [{
+    connectionId: "notion-connection-id", provider: "NOTION", status: "ACTIVE",
+    scopes: ["read_content"], connectedAt: timestamp, expiresAt: null
+  }] },
+  "GET /api/v1/integrations/notion/workspaces": { workspaces: [{
+    connectionId: "notion-connection-id", workspaceId: "notion-workspace-id", workspaceName: "개발 노트",
+    workspaceIconUrl: null, status: "ACTIVE", connectedAt: timestamp, discoveredAt: timestamp,
+    pages: [{ providerPageId: "notion-page-id", title: "백엔드 학습 노트", objectType: "PAGE",
+      url: "https://www.notion.so/notion-page-id", lastEditedAt: timestamp, inTrash: false }]
+  }] },
+  "GET /api/v1/knowledge-documents": { documents: [{
+    documentId: "knowledge-document-id", sourceType: "NOTION", sourceObjectId: "notion-page-id",
+    title: "백엔드 학습 노트", status: "ACTIVE", currentVersionId: "knowledge-version-id", chunkCount: 1,
+    createdAt: timestamp, updatedAt: timestamp
+  }] },
+  "POST /api/v1/knowledge-documents/imports/notion": {
+    jobId: "knowledge-job-id", jobType: "KNOWLEDGE_INGESTION", status: "queued", phase: "QUEUED",
+    progressPercent: 0, attemptCount: 0, maxAttempts: 3, submittedAt: timestamp, startedAt: null,
+    completedAt: null, pollingUrl: "/api/v1/knowledge-ingestion-jobs/knowledge-job-id",
+    resultResourceUrl: null, errorCode: null, errorMessage: null, retryable: true
+  },
+  "GET /api/v1/knowledge-ingestion-jobs/knowledge-job-id": {
+    jobId: "knowledge-job-id", jobType: "KNOWLEDGE_INGESTION", status: "succeeded", phase: "COMPLETED",
+    progressPercent: 100, attemptCount: 1, maxAttempts: 3, submittedAt: timestamp, startedAt: timestamp,
+    completedAt: timestamp, pollingUrl: "/api/v1/knowledge-ingestion-jobs/knowledge-job-id",
+    resultResourceUrl: "/api/v1/knowledge-documents/knowledge-document-id",
+    errorCode: null, errorMessage: null, retryable: false
+  },
+  "POST /api/v1/knowledge-search": {
+    retrievalResultId: "retrieval-result-id", retrievalType: "SEMANTIC", policyVersion: "knowledge-semantic-v1",
+    contextPurpose: "USER_SEARCH", appliedFilters: { sourceTypes: ["NOTION"], documentIds: ["knowledge-document-id"] },
+    resultCount: 1, durationMs: 4, generatedAt: timestamp, results: [{
+      chunkId: "knowledge-chunk-id", documentId: "knowledge-document-id", documentTitle: "백엔드 학습 노트",
+      sourceType: "NOTION", sourceObjectId: "notion-page-id", sourceUrl: "https://www.notion.so/notion-page-id",
+      heading: "회귀 방지", excerpt: "변경 전후 자동화 테스트를 실행합니다.", relevance: 0.91,
+      tokenEstimate: 20, freshness: "FRESH"
+    }]
+  },
   "GET /api/v1/careers": { careers: [{ careerId: "backend", localizedName: "백엔드 개발자", profileVersion: "career-v2" }] },
   "GET /api/v1/companies": { companies: [{ companyId: "naver", localizedName: "네이버", profileVersion: "company-v1" }] },
   "GET /api/v1/users/me/onboarding-progress": {

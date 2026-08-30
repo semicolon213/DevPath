@@ -32,7 +32,7 @@ class IdentityPersistenceIntegrationTest {
     private static final Instant NOW = Instant.parse("2026-07-27T00:00:00Z");
 
     @Container
-    static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>("postgres:16-alpine");
+    static final PostgreSQLContainer<?> POSTGRES = new com.devpath.test.PgVectorPostgreSQLContainer();
 
     @DynamicPropertySource
     static void configureDatabase(DynamicPropertyRegistry registry) {

@@ -5,4 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 interface NotionPageMetadataJpaRepository extends JpaRepository<NotionPageMetadataJpaEntity, UUID> {
     void deleteAllByConnectionId(UUID connectionId);
+    java.util.Optional<NotionPageMetadataJpaEntity> findFirstByUserIdAndProviderPageIdAndInTrashFalse(
+        UUID userId, String providerPageId
+    );
 }

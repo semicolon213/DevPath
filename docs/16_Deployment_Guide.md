@@ -16,7 +16,7 @@ Deployment MUST preserve deterministic business authority. Deployment mechanisms
 | Backend API | Modular monolith runtime, configuration, health/readiness, traffic admission, graceful shutdown |
 | Workers | Repository sync, analysis, knowledge ingestion, embedding, AI generation, portfolio/resume/export workers |
 | Scheduler | Periodic synchronization, cleanup, re-index, retention, maintenance tasks |
-| Data Stores | PostgreSQL, Redis, Vector Database, Object Storage |
+| Data Stores | PostgreSQL with pgvector, Redis, Object Storage |
 | Configuration | Application settings, feature flags, provider routing, rule/profile/prompt activation |
 | Secrets | OAuth secrets, provider keys, database/cache/storage credentials, signing/webhook/encryption secrets |
 | AI | Provider configuration, model routing, prompt-template versions, validators, fallback policies |
@@ -79,14 +79,13 @@ These constraints MUST NOT be converted into unsupported availability, capacity,
 flowchart LR
   Browser["User Browser"] --> Frontend["Frontend Hosting"]
   Browser --> API["Backend API Runtime"]
-  API --> PG["PostgreSQL"]
+  API --> PG["PostgreSQL + pgvector"]
   API --> Redis["Redis"]
   API --> Obj["Object Storage"]
   API --> Workers["Worker Runtime"]
   Scheduler["Scheduler Runtime"] --> Workers
   Workers --> PG
   Workers --> Redis
-  Workers --> VDB["Vector Database"]
   Workers --> Obj
   Workers --> GitHub["GitHub"]
   Workers --> Notion["Notion"]
@@ -112,7 +111,7 @@ flowchart LR
 | Scheduler runtime | Initiates periodic and maintenance workflows |
 | PostgreSQL | Source-of-truth relational data store |
 | Redis | Non-authoritative cache, locks, rate limits, and transient coordination |
-| Vector Database | Knowledge embeddings and retrieval indexes |
+| PostgreSQL pgvector | Derived knowledge embeddings and retrieval indexes; relational records remain canonical |
 | Object Storage | Generated artifacts, exports, uploaded/derived objects |
 | GitHub/Notion | External data providers through controlled integrations |
 | AI providers | LLM and embedding providers or local model runtime |
@@ -455,6 +454,8 @@ Redis remains non-authoritative.
 
 ## 18. Vector Database and Knowledge Index Deployment
 
+ADR-028 selects PostgreSQL with pgvector for the initial deployment. It is provisioned as part of the PostgreSQL platform, not as a separate vector service. Extension enablement and schema/index changes are delivered through immutable Flyway migrations. Local, integration-test, and production environments must exercise compatible pgvector behavior.
+
 | Concern | Requirement |
 |---|---|
 | Index creation | New indexes MUST include metadata schema and authorization fields |
@@ -471,6 +472,10 @@ Redis remains non-authoritative.
 | Active index switch | Switch MUST be explicit, audited where production-sensitive, and verifiable |
 
 ## 19. Object Storage Deployment
+
+ADR-029 fixes the application boundary as S3-compatible. The current implementation supplies an owner-scoped filesystem
+adapter for local development and automated tests. Production must replace it with the S3-compatible provider selected
+with ADR-033 and must not silently fall back to local disk.
 
 | Concern | Requirement |
 |---|---|
@@ -611,7 +616,7 @@ No deployment SHOULD begin without explicit rollback criteria.
 | Required secrets | Required for affected runtime |
 | Database compatibility | Required for API/workers |
 | Cache availability | Optional or degraded depending on feature |
-| Vector Database availability | Required for retrieval; optional for non-AI core paths |
+| PostgreSQL pgvector capability | Required for retrieval; retrieval remains optional for non-AI core paths and must fail without weakening authorization |
 | Object Storage availability | Required for uploads/exports/artifacts |
 | External providers | Should not always make entire app unready |
 | Telemetry exporter | Usually optional; audit exceptions may fail closed |
@@ -730,7 +735,7 @@ Contractual RPO/RTO values are not defined.
 | AI-generation workers | Provider quotas, token budgets, fallback capacity, cost controls |
 | Database connections | Pool sizing, worker/API concurrency, migration impact |
 | Redis | Memory, eviction, lock/rate-limit safety |
-| Vector Database | Index size, query latency, re-index cost |
+| PostgreSQL pgvector | Index size, query latency, re-index cost, and impact on relational workloads |
 | Object Storage | Upload/download throughput, export growth |
 | External provider quotas | Backpressure, rate-limit awareness, retry safety |
 
@@ -805,7 +810,7 @@ A deployment is not complete until ownership is transferred and verification is 
 | Redis | Local or isolated cache substitute |
 | Authentication session | In-memory session is allowed only for local single-instance development; restart logout is expected and documented |
 | Migration | Local/test startup may apply Flyway to an isolated PostgreSQL database; production execution behavior must not be simulated as silent runtime migration |
-| Vector Database | Local/test vector store or substitute |
+| PostgreSQL pgvector | Local/test PostgreSQL with a compatible pgvector extension; no behaviorally divergent embedded substitute |
 | Object Storage substitute | Local/test storage compatible with required behavior |
 | GitHub/Notion sandbox | Sandbox credentials only when needed |
 | AI stubs/local models | Prefer stubs for deterministic local tests; local models optional |
@@ -902,8 +907,8 @@ Release records MUST be immutable through normal application workflows.
 | DEP-OI-006 | Redis deployment | Managed, self-hosted, embedded dev | Decide per environment; not required for initial authentication under ADR-026 | Cache ops | Ops | Open | Yes |
 | DEP-OI-020 | Persistence and migration tooling | JPA/jOOQ/JDBC; Flyway/Liquibase | JPA/Hibernate and Flyway accepted by ADR-024/025 | Data deployment | Data/Ops | Resolved | ADR-024, ADR-025 |
 | DEP-OI-021 | Authentication session deployment | Memory, JDBC, Redis | Local memory and MVP JDBC-backed PostgreSQL accepted; Redis deferred by ADR-026 | Identity deployment | Security/Ops | Resolved | ADR-026 |
-| DEP-OI-007 | Vector DB selection | pgvector, dedicated vector DB, managed | Align with DB/knowledge strategy | Retrieval | Knowledge/Data | Open | Yes |
-| DEP-OI-008 | Object Storage | Cloud object storage, self-hosted | Choose with cost/security review | Artifacts/backup | Ops | Open | Yes |
+| DEP-OI-007 | Vector DB selection | PostgreSQL pgvector initially; dedicated store after measured limits only | ADR-028 accepted pgvector as part of the PostgreSQL platform | Retrieval | Knowledge/Data | Resolved | ADR-028 |
+| DEP-OI-008 | Production S3-compatible provider | Cloud object storage, self-hosted S3-compatible service | Choose with cost/security and ADR-033 review; filesystem is local/test only | Artifacts/backup | Ops | Open | ADR-029/033 |
 | DEP-OI-009 | Secret manager | Managed, self-hosted, env-only dev | Managed/restricted for production | Security | Security/Ops | Open | Yes |
 | DEP-OI-010 | Artifact registry | CI-native, container registry, package registry | Select with build approach | Release traceability | Platform | Open | Yes |
 | DEP-OI-011 | CI/CD platform | GitHub Actions, other | TBD | Automation | Platform | Open | Yes |

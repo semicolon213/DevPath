@@ -22,7 +22,7 @@ import com.devpath.identity.adapter.in.security.NonPersistingOAuth2AuthorizedCli
 import com.devpath.identity.application.AuthenticatedUser;
 import com.devpath.identity.application.AuthenticationAuditEvent;
 import com.devpath.identity.application.AuthenticationAuditPort;
-import com.devpath.identity.application.FindCurrentUserUseCase;
+import com.devpath.identity.application.CurrentUserApplicationService;
 import com.devpath.identity.application.UserProfileApplicationService;
 import com.devpath.identity.application.UserProfileView;
 import com.devpath.identity.application.UserPreferenceView;
@@ -33,7 +33,7 @@ import com.devpath.identity.domain.OAuthProvider;
 import com.devpath.identity.domain.UserId;
 import com.devpath.integration.application.ConnectedAccountListView;
 import com.devpath.integration.application.ConnectedAccountView;
-import com.devpath.integration.application.ListConnectedAccountsUseCase;
+import com.devpath.integration.application.ProviderConnectionApplicationService;
 import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
@@ -66,7 +66,7 @@ class IdentitySecurityIntegrationTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private FindCurrentUserUseCase findCurrentUser;
+    private CurrentUserApplicationService findCurrentUser;
 
     @MockBean
     private GitHubOAuth2UserService oAuth2UserService;
@@ -75,7 +75,7 @@ class IdentitySecurityIntegrationTest {
     private UserProfileApplicationService userProfileService;
 
     @MockBean
-    private ListConnectedAccountsUseCase connectedAccounts;
+    private ProviderConnectionApplicationService connectedAccounts;
 
     @MockBean
     private AuthenticationAuditPort authenticationAuditPort;

@@ -27,7 +27,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @DataJpaTest(properties={"spring.jpa.hibernate.ddl-auto=validate","spring.flyway.enabled=true","spring.flyway.locations=classpath:db/migration"})
 @AutoConfigureTestDatabase(replace=AutoConfigureTestDatabase.Replace.NONE) @Testcontainers(disabledWithoutDocker=true)
 class RecommendationPolicyPersistenceIntegrationTest {
-    @Container static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:16-alpine");
+    @Container static final PostgreSQLContainer<?> POSTGRES=new com.devpath.test.PgVectorPostgreSQLContainer();
     @DynamicPropertySource static void database(DynamicPropertyRegistry registry){registry.add("spring.datasource.url",POSTGRES::getJdbcUrl);registry.add("spring.datasource.username",POSTGRES::getUsername);registry.add("spring.datasource.password",POSTGRES::getPassword);}
     @Autowired RecommendationPolicyJpaRepository policies;@Autowired RecommendationTemplateJpaRepository templates;
     @Autowired RecommendationSetJpaRepository sets;@Autowired RecommendationJpaRepository recommendations;@Autowired RecommendationEvidenceJpaRepository evidence;

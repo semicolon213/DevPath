@@ -5,7 +5,10 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "audit_records")
@@ -35,6 +38,10 @@ class AuditRecordJpaEntity {
     @Column(name = "occurred_at", nullable = false, updatable = false)
     private Instant occurredAt;
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "details", nullable = false, updatable = false, columnDefinition = "jsonb")
+    private Map<String, Object> details;
+
     protected AuditRecordJpaEntity() {
     }
 
@@ -46,7 +53,8 @@ class AuditRecordJpaEntity {
         String resourceId,
         String privacyClass,
         String outcome,
-        Instant occurredAt
+        Instant occurredAt,
+        Map<String, Object> details
     ) {
         this.id = id;
         this.actorUserId = actorUserId;
@@ -56,5 +64,6 @@ class AuditRecordJpaEntity {
         this.privacyClass = privacyClass;
         this.outcome = outcome;
         this.occurredAt = occurredAt;
+        this.details = Map.copyOf(details);
     }
 }

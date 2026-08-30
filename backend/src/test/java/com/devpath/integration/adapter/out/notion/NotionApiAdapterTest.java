@@ -14,6 +14,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.devpath.integration.adapter.out.persistence.EncryptedNotionCredentialStore;
 import com.devpath.integration.adapter.out.persistence.NotionPageMetadataStore;
 import com.devpath.integration.adapter.out.persistence.StoredNotionCredential;
+import com.devpath.integration.application.NotionWorkspacePageView;
 import com.devpath.integration.application.IntegrationAuditEvent;
 import com.devpath.integration.application.IntegrationAuditPort;
 import com.devpath.integration.config.NotionIntegrationProperties;
@@ -131,6 +132,31 @@ class NotionApiAdapterTest {
 
         assertThat(result.status()).isEqualTo("REVOKED");
         verify(metadata).delete(stored.connectionId());
+        server.verify();
+    }
+
+    @Test
+    void collectsOnlyAnOwnedDiscoveredPageAndNormalizesNestedBlocks() {
+        var builder=RestClient.builder(); var server=MockRestServiceServer.bindTo(builder).build();
+        var credentials=mock(EncryptedNotionCredentialStore.class); var metadata=mock(NotionPageMetadataStore.class);
+        var adapter=new NotionApiAdapter(properties(),credentials,metadata,mock(IntegrationAuditPort.class),builder);
+        UUID userId=UUID.randomUUID(); Instant now=Instant.parse("2026-08-30T00:00:00Z"); var stored=stored(userId,now);
+        var page=new NotionWorkspacePageView("page-1","회고","PAGE",null,now,false);
+        when(credentials.findActive(userId)).thenReturn(Optional.of(stored));
+        when(metadata.findOwned(userId,"page-1")).thenReturn(Optional.of(new NotionPageMetadataStore.OwnedNotionPage(stored.connectionId(),page)));
+        server.expect(once(),requestTo("https://api.notion.com/v1/blocks/page-1/children?page_size=100"))
+            .andRespond(withSuccess("""
+                {"results":[{"id":"heading","type":"heading_1","has_children":false,"heading_1":{"rich_text":[{"plain_text":"Sprint"}]}},{"id":"nested","type":"paragraph","has_children":true,"paragraph":{"rich_text":[{"plain_text":"Learned"}]}}],"has_more":false,"next_cursor":null}
+                """,MediaType.APPLICATION_JSON));
+        server.expect(once(),requestTo("https://api.notion.com/v1/blocks/nested/children?page_size=100"))
+            .andRespond(withSuccess("""
+                {"results":[{"id":"todo","type":"to_do","has_children":false,"to_do":{"checked":true,"rich_text":[{"plain_text":"Ship"}]}}],"has_more":false,"next_cursor":null}
+                """,MediaType.APPLICATION_JSON));
+
+        var result=adapter.collectPage(userId,"page-1",now);
+
+        assertThat(result.connectionId()).isEqualTo(stored.connectionId());
+        assertThat(result.normalizedContent()).contains("# Sprint","Learned","- [x] Ship");
         server.verify();
     }
 

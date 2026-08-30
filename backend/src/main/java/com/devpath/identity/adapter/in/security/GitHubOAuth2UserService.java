@@ -1,7 +1,7 @@
 package com.devpath.identity.adapter.in.security;
 
 import com.devpath.identity.application.OAuthLoginCommand;
-import com.devpath.identity.application.ProcessOAuthLoginUseCase;
+import com.devpath.identity.application.OAuthLoginApplicationService;
 import com.devpath.identity.domain.OAuthProvider;
 import com.devpath.identity.domain.ProviderSubject;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
@@ -17,9 +17,9 @@ import java.util.Map;
 @Component
 public class GitHubOAuth2UserService implements OAuth2UserService<OAuth2UserRequest, OAuth2User> {
     private final DefaultOAuth2UserService delegate = new DefaultOAuth2UserService();
-    private final ProcessOAuthLoginUseCase processOAuthLogin;
+    private final OAuthLoginApplicationService processOAuthLogin;
 
-    public GitHubOAuth2UserService(ProcessOAuthLoginUseCase processOAuthLogin) {
+    public GitHubOAuth2UserService(OAuthLoginApplicationService processOAuthLogin) {
         this.processOAuthLogin = processOAuthLogin;
     }
 

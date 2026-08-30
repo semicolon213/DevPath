@@ -24,7 +24,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Testcontainers(disabledWithoutDocker=true)
 class AnalysisHistoryPersistenceIntegrationTest {
-    @Container static final PostgreSQLContainer<?> POSTGRES=new PostgreSQLContainer<>("postgres:16-alpine");
+  @Container static final PostgreSQLContainer<?> POSTGRES=new com.devpath.test.PgVectorPostgreSQLContainer();
     @DynamicPropertySource static void database(DynamicPropertyRegistry registry){registry.add("spring.datasource.url",POSTGRES::getJdbcUrl);registry.add("spring.datasource.username",POSTGRES::getUsername);registry.add("spring.datasource.password",POSTGRES::getPassword);}
     @Autowired AnalysisResultJpaRepository results;
 

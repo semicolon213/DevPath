@@ -46,33 +46,33 @@ export type NotionWorkspace = {
 type NotionWorkspaceList = { workspaces: NotionWorkspace[] };
 type OAuthAuthorization = { authorizationUrl: string };
 export async function getConnections() {
-  return (await apiRequest<ConnectedAccountList>("/api/v1/users/me/connections")).data;
+  return apiRequest<ConnectedAccountList>("/api/v1/users/me/connections");
 }
 
 export async function authorizeGitHub() {
-  return (await apiRequest<OAuthAuthorization>("/api/v1/integrations/github/authorize",
-    await withCsrf({ method: "POST" }))).data;
+  return apiRequest<OAuthAuthorization>("/api/v1/integrations/github/authorize",
+    await withCsrf({ method: "POST" }));
 }
 
 export async function getGitHubRepositories() {
-  return (await apiRequest<GitHubRepositoryList>("/api/v1/integrations/github/repositories")).data;
+  return apiRequest<GitHubRepositoryList>("/api/v1/integrations/github/repositories");
 }
 
 export async function disconnectGitHub() {
-  return (await apiRequest<ConnectedAccount>("/api/v1/integrations/github",
-    await withCsrf({ method: "DELETE" }))).data;
+  return apiRequest<ConnectedAccount>("/api/v1/integrations/github",
+    await withCsrf({ method: "DELETE" }));
 }
 
 export async function authorizeNotion() {
-  return (await apiRequest<OAuthAuthorization>("/api/v1/integrations/notion/authorize",
-    await withCsrf({ method: "POST" }))).data;
+  return apiRequest<OAuthAuthorization>("/api/v1/integrations/notion/authorize",
+    await withCsrf({ method: "POST" }));
 }
 
 export async function getNotionWorkspaces() {
-  return (await apiRequest<NotionWorkspaceList>("/api/v1/integrations/notion/workspaces")).data;
+  return apiRequest<NotionWorkspaceList>("/api/v1/integrations/notion/workspaces");
 }
 
 export async function disconnectNotion() {
-  return (await apiRequest<ConnectedAccount>("/api/v1/integrations/notion",
-    await withCsrf({ method: "DELETE" }))).data;
+  return apiRequest<ConnectedAccount>("/api/v1/integrations/notion",
+    await withCsrf({ method: "DELETE" }));
 }

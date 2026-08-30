@@ -142,7 +142,7 @@ DevPath initially uses a modular monolith with Domain-Driven Design, Hexagonal A
 | AI Providers | LLM providers for natural-language generation. | External provider boundary; prompt and response validation required. |
 | PostgreSQL | Authoritative relational persistence. | Trusted infrastructure boundary with least privilege. |
 | Redis | Cache/session/rate-limit/job state support. | Non-authoritative; no business truth. |
-| Vector Database | Semantic retrieval index. | Derived index; no business entity ownership. |
+| PostgreSQL pgvector | Initial semantic retrieval index behind the Vector Search Port. | Derived index; no business entity ownership; owner-scoped filtering is mandatory. |
 | Object Storage | Large content and export storage. | Content storage behind secure references. |
 | Email/Notification Provider | Delivers notifications where configured. | External provider boundary. |
 | Administrative User | Privileged operator. | Requires privileged authorization and audit. |
@@ -365,7 +365,7 @@ Domain services must not directly call databases, HTTP providers, caches, object
 | Rule Configuration Port | Read active rule versions. | Rule | Config lookup | Strong for activation | PostgreSQL/cache adapter | Fail closed |
 | Career Profile Port | Read career profile versions. | Career | Config lookup | Strong for assessment | PostgreSQL/cache adapter | Fail closed |
 | Knowledge Store Port | Persist knowledge docs/chunks. | Knowledge | Knowledge metadata | Strong | PostgreSQL/object adapter | Mark job failed |
-| Vector Search Port | Search/index embeddings. | Knowledge | Similarity index | Eventually consistent | Vector DB adapter | Retrieval degraded |
+| Vector Search Port | Search/index embeddings. | Knowledge | Similarity index | Eventually consistent | PostgreSQL pgvector adapter initially | Retrieval degraded |
 | Prompt Template Port | Read prompt versions. | Prompt | Template lookup | Strong for execution | PostgreSQL/cache adapter | Fail closed |
 | AI Provider Port | Invoke LLM providers. | AI | Completion/generation | External | OpenAI/Anthropic/Gemini/Ollama adapters | Timeout/fallback |
 | Object Storage Port | Store large content/exports. | Artifact/Knowledge | Blob storage | Metadata strong; content external | Object storage adapter | Mark content unavailable |
@@ -1019,7 +1019,7 @@ No canonical object has multiple write owners.
 | Dashboard queries | Projections, cache, read replicas. | Freshness lag. |
 | PostgreSQL | Indexing, partitioning, read replicas, query tuning. | Write bottlenecks for append-heavy data. |
 | Redis | Cache clustering and TTL discipline. | Non-authoritative only. |
-| Vector Database | Metadata filtering, index partitioning, reindex strategy. | Privacy and model-version compatibility. |
+| PostgreSQL pgvector | Metadata filtering, index partitioning, relational workload isolation, reindex strategy. | Privacy, model-version compatibility, and shared database capacity. |
 | Object Storage | Offload large content and exports. | Content availability and retention policy. |
 
 ## 46. Microservice Extraction Strategy
@@ -1070,7 +1070,7 @@ Detailed infrastructure belongs to DevOps Architecture.
 | BE-OPEN-002 | Job processing technology. | DB-backed jobs, message broker, managed queue. | DB-backed/outbox first. | Reliability and operations. | Backend/DevOps | Open | ADR-BE-002 |
 | BE-OPEN-003 | Message broker necessity. | None, later broker, immediate broker. | Avoid broker until throughput requires. | Complexity. | Architecture | Open | ADR-BE-003 |
 | BE-OPEN-004 | Transactional outbox implementation. | DB table dispatcher, library, broker transaction. | DB outbox first. | Event reliability. | Backend | Open | ADR-BE-004 |
-| BE-OPEN-005 | Vector database selection. | pgvector, dedicated vector DB, hybrid. | Decide in storage implementation. | Knowledge retrieval. | Data/AI | Open | ADR-BE-005 |
+| BE-OPEN-005 | Vector database selection. | PostgreSQL pgvector initially; dedicated store only after measured limits and a superseding ADR. | ADR-028 accepted pgvector behind the Vector Search Port. | Knowledge retrieval. | Data/AI | Resolved | ADR-028 |
 | BE-OPEN-006 | AI streaming support. | Non-streaming, streaming with validation, staged streaming. | Non-streaming initially. | UX and validation. | AI/API | Open | ADR-BE-006 |
 | BE-OPEN-007 | Application-level encryption. | Storage encryption only, app encryption for sensitive fields, hybrid. | Evaluate in Security Architecture. | Privacy and complexity. | Security | Open | ADR-BE-007 |
 | BE-OPEN-008 | Event schema registry. | Documented schemas, lightweight registry, formal registry. | Documented schemas initially. | Event compatibility. | Backend | Open | ADR-BE-008 |

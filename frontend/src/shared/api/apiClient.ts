@@ -20,21 +20,12 @@ export class ApiError extends Error {
   }
 }
 
-type ApiEnvelope<T> = {
-  data: T;
-  metadata: {
-    requestId: string;
-    apiVersion: string;
-    timestamp: string;
-  };
-};
-
 type CsrfToken = { headerName: string; token: string };
 
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {}
-): Promise<ApiEnvelope<T>> {
+): Promise<T> {
   const response = await fetch(`${getApiBaseUrl()}${path}`, {
     ...init,
     credentials: "include",
@@ -58,14 +49,14 @@ export async function apiRequest<T>(
     );
   }
 
-  return response.json() as Promise<ApiEnvelope<T>>;
+  return ((await response.json()) as { data: T }).data;
 }
 
 export async function withCsrf(init: RequestInit = {}): Promise<RequestInit> {
   const csrf = await apiRequest<CsrfToken>("/api/v1/csrf");
   return {
     ...init,
-    headers: { ...init.headers, [csrf.data.headerName]: csrf.data.token }
+    headers: { ...init.headers, [csrf.headerName]: csrf.token }
   };
 }
 

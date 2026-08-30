@@ -1,6 +1,8 @@
 package com.devpath.integration.adapter.in.web;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -48,6 +50,7 @@ import org.springframework.test.web.servlet.MockMvc;
 })
 class NotionIntegrationSecurityTest {
     private static final UUID USER_ID = UUID.fromString("e046a279-9c82-4bbf-9d8f-0737b222fa97");
+    private static final UUID OTHER_USER_ID = UUID.fromString("ad4c199f-8795-47be-937a-8fd7830bc994");
     @Autowired MockMvc mockMvc;
     @MockBean NotionIntegrationApplicationService service;
     @MockBean GitHubOAuth2UserService oAuth2UserService;
@@ -84,8 +87,29 @@ class NotionIntegrationSecurityTest {
         verify(service).complete(USER_ID, "temporary-code");
     }
 
+    @Test
+    void callbackRejectsStateCreatedByAnotherUser() throws Exception {
+        when(service.authorizationUrl(anyString())).thenReturn("https://api.notion.com/v1/oauth/authorize");
+        var state = ArgumentCaptor.forClass(String.class);
+        var initiated = mockMvc.perform(post("/api/v1/integrations/notion/authorize")
+            .with(oauth2Login().oauth2User(principal(USER_ID))).with(csrf())).andReturn();
+        verify(service).authorizationUrl(state.capture());
+        MockHttpSession session = (MockHttpSession) initiated.getRequest().getSession(false);
+
+        mockMvc.perform(get("/api/v1/integrations/notion/callback").session(session)
+            .with(oauth2Login().oauth2User(principal(OTHER_USER_ID))).param("state", state.getValue())
+            .param("code", "temporary-code"))
+            .andExpect(status().isFound())
+            .andExpect(header().string("Location", "http://localhost:5173/settings/integrations?notionConnection=failed"));
+        verify(service, never()).complete(any(UUID.class), anyString());
+    }
+
     private DevPathOAuth2User principal() {
-        var user = new AuthenticatedUser(USER_ID, "DevPath User", null, AccountStatus.ACTIVE,
+        return principal(USER_ID);
+    }
+
+    private DevPathOAuth2User principal(UUID userId) {
+        var user = new AuthenticatedUser(userId, "DevPath User", null, AccountStatus.ACTIVE,
             OAuthProvider.GITHUB, Instant.parse("2026-07-27T00:00:00Z"));
         return new DevPathOAuth2User(user, Map.of("id", "1849102", "login", "devpath-user"));
     }
