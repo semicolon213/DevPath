@@ -1,5 +1,7 @@
 package com.devpath.knowledge.application;
 
+import com.devpath.shared.application.ObjectContentPort;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;

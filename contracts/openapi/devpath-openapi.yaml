@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: DevPath Implemented API
-  version: 0.26.0
+  version: 0.27.0
   description: >
     Implemented contract for authenticated identity, repository synchronization, deterministic analysis,
     rule evaluation, Skill Matrix, career catalog, career readiness, deterministic recommendation,
@@ -1683,6 +1683,87 @@ paths:
         "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
         "403": {description: Missing or invalid CSRF token., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
         "503": {description: "Embedding, vector index, or retained object content unavailable.", content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/generation-requests:
+    post:
+      x-api-id: API-AI-001
+      summary: Request a grounded skill analysis explanation
+      operationId: createGenerationRequest
+      tags: [AI]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - $ref: "#/components/parameters/IdempotencyKeyHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CreateGenerationRequest"}
+      responses:
+        "202": {description: Generation job accepted., content: {application/json: {schema: {$ref: "#/components/schemas/GenerationJobEnvelope"}}}}
+        "400": {description: Invalid or unsupported generation request., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "403": {description: Missing or invalid CSRF token., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Source skill matrix not found in owner scope., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "409": {description: Idempotency conflict., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/generation-jobs/{jobId}:
+    get:
+      x-api-id: API-AI-002
+      summary: Retrieve an owner-scoped generation job
+      operationId: getGenerationJob
+      tags: [AI]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: jobId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Generation job status., content: {application/json: {schema: {$ref: "#/components/schemas/GenerationJobEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Generation job not found in owner scope., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/generation-jobs/{jobId}/cancel:
+    post:
+      x-api-id: API-AI-003
+      summary: Cancel an owner-scoped generation job
+      operationId: cancelGenerationJob
+      tags: [AI]
+      security: [{sessionCookie: []}]
+      parameters:
+        - $ref: "#/components/parameters/CsrfHeader"
+        - {name: jobId, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CancelJobRequest"}
+      responses:
+        "200": {description: Canceled or already terminal generation job., content: {application/json: {schema: {$ref: "#/components/schemas/GenerationJobEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "403": {description: Missing or invalid CSRF token., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Generation job not found in owner scope., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/generated-artifacts/{artifactId}:
+    get:
+      x-api-id: API-AI-005
+      summary: Retrieve a validated owner-scoped generated artifact
+      operationId: getGeneratedArtifact
+      tags: [AI]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: artifactId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Validated generated artifact., content: {application/json: {schema: {$ref: "#/components/schemas/GeneratedArtifactEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Artifact not found in owner scope., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+  /api/v1/generated-artifacts/{artifactId}/validation:
+    get:
+      x-api-id: API-AI-007
+      summary: Retrieve generated artifact validation provenance
+      operationId: getGeneratedArtifactValidation
+      tags: [AI]
+      security: [{sessionCookie: []}]
+      parameters:
+        - {name: artifactId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        "200": {description: Artifact validation result., content: {application/json: {schema: {$ref: "#/components/schemas/ResponseValidationEnvelope"}}}}
+        "401": {description: No valid session., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
+        "404": {description: Artifact not found in owner scope., content: {application/json: {schema: {$ref: "#/components/schemas/ErrorEnvelope"}}}}
 components:
   securitySchemes:
     sessionCookie:
@@ -3169,6 +3250,110 @@ components:
       required: [data, metadata]
       properties:
         data: {$ref: "#/components/schemas/KnowledgeSearchResponse"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    CreateGenerationRequest:
+      type: object
+      additionalProperties: false
+      required: [taskType, sourceResourceRefs, outputType]
+      properties:
+        taskType: {type: string, enum: [SKILL_ANALYSIS_EXPLANATION]}
+        sourceResourceRefs:
+          type: array
+          minItems: 1
+          maxItems: 1
+          uniqueItems: true
+          items: {type: string, format: uuid}
+        outputType: {type: string, enum: [SKILL_EXPLANATION]}
+    CancelJobRequest:
+      type: object
+      additionalProperties: false
+    GenerationJob:
+      type: object
+      additionalProperties: false
+      required: [jobId, status, validationStatus, createdAt]
+      properties:
+        jobId: {type: string, format: uuid}
+        status: {type: string, enum: [QUEUED, RUNNING, SUCCEEDED, FAILED, CANCELED]}
+        validationStatus: {type: string, enum: [PENDING, PASSED, REJECTED]}
+        artifactUrl: {type: string, nullable: true}
+        failureCode: {type: string, nullable: true}
+        createdAt: {type: string, format: date-time}
+        completedAt: {type: string, format: date-time, nullable: true}
+    GenerationJobEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/GenerationJob"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    SkillExplanationItem:
+      type: object
+      additionalProperties: false
+      required: [skillKey, explanation, evidenceIds]
+      properties:
+        skillKey: {type: string, minLength: 1, maxLength: 128}
+        explanation: {type: string, minLength: 1, maxLength: 1000}
+        evidenceIds:
+          type: array
+          maxItems: 20
+          uniqueItems: true
+          items: {type: string, format: uuid}
+    SkillExplanationContent:
+      type: object
+      additionalProperties: false
+      required: [summary, strengths, improvementAreas]
+      properties:
+        summary: {type: string, minLength: 1, maxLength: 2000}
+        strengths: {type: array, maxItems: 20, items: {$ref: "#/components/schemas/SkillExplanationItem"}}
+        improvementAreas: {type: array, maxItems: 20, items: {$ref: "#/components/schemas/SkillExplanationItem"}}
+    ArtifactProvenance:
+      type: object
+      additionalProperties: false
+      required: [skillMatrixId, promptContextId, templateVersion, provider, model, contextHash, generatedAt]
+      properties:
+        skillMatrixId: {type: string, format: uuid}
+        promptContextId: {type: string, format: uuid}
+        templateVersion: {type: string}
+        provider: {type: string, enum: [OLLAMA]}
+        model: {type: string}
+        contextHash: {type: string, pattern: "^[a-f0-9]{64}$"}
+        generatedAt: {type: string, format: date-time}
+    GeneratedArtifact:
+      type: object
+      additionalProperties: false
+      required: [artifactId, type, status, provenance, validation, contentRef, content]
+      properties:
+        artifactId: {type: string, format: uuid}
+        type: {type: string, enum: [SKILL_EXPLANATION]}
+        status: {type: string, enum: [VALIDATED]}
+        provenance: {$ref: "#/components/schemas/ArtifactProvenance"}
+        validation: {$ref: "#/components/schemas/ResponseValidation"}
+        contentRef: {type: string, description: Owner-authorized API resource path; never an object-storage reference.}
+        content: {$ref: "#/components/schemas/SkillExplanationContent"}
+    GeneratedArtifactEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/GeneratedArtifact"}
+        metadata: {$ref: "#/components/schemas/ApiMetadata"}
+    ResponseValidation:
+      type: object
+      additionalProperties: false
+      required: [status, validatorVersion, validatedAt, violations]
+      properties:
+        status: {type: string, enum: [PASSED, REJECTED]}
+        validatorVersion: {type: string, enum: [skill-explanation-validator-v1]}
+        validatedAt: {type: string, format: date-time}
+        violations:
+          type: array
+          items: {type: string}
+    ResponseValidationEnvelope:
+      type: object
+      additionalProperties: false
+      required: [data, metadata]
+      properties:
+        data: {$ref: "#/components/schemas/ResponseValidation"}
         metadata: {$ref: "#/components/schemas/ApiMetadata"}
     CsrfToken:
       type: object

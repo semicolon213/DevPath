@@ -131,6 +131,7 @@ a {
 .skill-summary strong { font-size: 2rem; }
 .skill-summary span { color: #c9d4e8; }
 .analysis-notice, .skill-next-action { align-items: center; background: #eff5ff; border: 1px solid #b9cef8; border-radius: 16px; display: flex; gap: 24px; justify-content: space-between; margin: 0 0 32px; padding: 20px 22px; }
+.skill-explanation { background:#fff;border:1px solid #dce3ef;border-radius:18px;margin:0 0 32px;padding:22px; }.skill-explanation__result>p { font-size:1.05rem; }.skill-explanation__result ul { display:grid;gap:12px;list-style:none;padding:0; }.skill-explanation__result li { background:#f6f8fb;border-radius:12px;padding:14px; }.skill-explanation__result li p { margin:6px 0; }
 .analysis-notice h2, .analysis-notice p, .skill-next-action h2, .skill-next-action p { margin: 0; }
 .analysis-notice p, .skill-next-action p { color: #536176; margin-top: 6px; }
 .analysis-notice time { color: #18499f; flex: 0 0 auto; font-weight: 700; }

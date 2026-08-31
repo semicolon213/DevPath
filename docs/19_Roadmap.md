@@ -857,6 +857,21 @@ Flow: `Verified Analysis Result ??Authorized Context ??Prompt Construction ??Pro
 | Evaluation dataset | Golden analysis results and adversarial examples |
 | Evidence | AI eval report, validator tests, UI screenshot |
 
+The current first AI vertical capability implements AI-001/AI-003 and API-AI-001/002/003/005/007 for one
+`SKILL_ANALYSIS_EXPLANATION` flow. It builds an immutable owner-scoped PromptContext from an existing Rule Engine Skill
+Matrix, uses the active versioned no-score-calculation template, dispatches bounded requests through an Ollama generation
+adapter, records provider/model/latency/token attempt metadata, retries at most twice, and permits safe queued/running
+cancellation. A strict validator rejects malformed schemas, unknown skill or evidence references, numeric claims, and
+unsafe rendered content before a private object reference and `VALIDATED` GeneratedArtifact are persisted. The Skills UI
+polls the server job and renders only validator-approved plain text with explicit AI labeling, cancellation, rejection,
+and retry states. Automated prompt, adversarial validator, recorded-provider, owner/CSRF API, persistence, frontend,
+contract, architecture, and security checks provide local implementation evidence.
+
+This does not declare M38-M42 complete. A live configured Ollama/model exercise, retained-response privacy review,
+production S3-compatible adapter, ADR-031 production telemetry, manual UI/accessibility evidence, and owner approval remain
+required. Multi-provider routing, streaming, prompt administration APIs, general PromptContext APIs, artifact listing,
+manual retry API, knowledge-RAG context, career/company context, and every other generation task remain outside this slice.
+
 ## 43. AI Feature Expansion Plan
 
 | Feature | Inputs | Knowledge | Output Schema | Validation Complexity | Security Risk | User Value | Priority | Evaluation |

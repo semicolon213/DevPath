@@ -9,6 +9,8 @@ import com.devpath.repository.application.RepositoryAuditEvent;
 import com.devpath.repository.application.RepositoryAuditPort;
 import com.devpath.analysis.application.AnalysisAuditEvent;
 import com.devpath.analysis.application.AnalysisAuditPort;
+import com.devpath.ai.application.AiAuditEvent;
+import com.devpath.ai.application.AiAuditPort;
 import com.devpath.dashboard.application.DashboardAuditEvent;
 import com.devpath.dashboard.application.DashboardAuditPort;
 import com.devpath.learning.application.LearningAuditEvent;
@@ -29,7 +31,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 class DurableAuditRecordAdapter implements AuthenticationAuditPort, IntegrationAuditPort, RepositoryAuditPort,
     AnalysisAuditPort, DashboardAuditPort, LearningAuditPort, SkillMatrixAuditPort, OnboardingAuditPort,
-    KnowledgeAuditPort {
+    KnowledgeAuditPort, AiAuditPort {
     private static final String PRIVACY_CLASS = "AUDIT_RESTRICTED";
     private final AuditRecordJpaRepository repository;
 
@@ -128,6 +130,14 @@ class DurableAuditRecordAdapter implements AuthenticationAuditPort, IntegrationA
                 "policyVersion", details.policyVersion(),
                 "contextPurpose", details.contextPurpose()
             ));
+    }
+
+    @Override
+    public void record(AiAuditEvent event, UUID userId, UUID resourceId, Instant occurredAt) {
+        String resourceType = event == AiAuditEvent.GENERATED_ARTIFACT_VIEWED
+            || event == AiAuditEvent.GENERATION_COMPLETED ? "GENERATED_ARTIFACT" : "AI_TASK";
+        String outcome = event == AiAuditEvent.GENERATION_FAILED ? "FAILED" : "SUCCEEDED";
+        save(event.name(), userId, resourceType, resourceId.toString(), outcome, occurredAt);
     }
 
     private void save(

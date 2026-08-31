@@ -71,6 +71,9 @@ devpath:
     knowledge-ingestion:
       poll-interval: ${DEVPATH_KNOWLEDGE_POLL_INTERVAL:1000}
       initial-delay: ${DEVPATH_KNOWLEDGE_INITIAL_DELAY:2000}
+    ai-generation:
+      poll-interval: ${DEVPATH_AI_POLL_INTERVAL:1000}
+      initial-delay: ${DEVPATH_AI_INITIAL_DELAY:2500}
   security:
     frontend-origin: ${DEVPATH_FRONTEND_ORIGIN}
     session-absolute-timeout: ${DEVPATH_SESSION_ABSOLUTE_TIMEOUT:12h}
@@ -106,3 +109,10 @@ devpath:
       dimension: ${DEVPATH_EMBEDDING_DIMENSION:768}
       connect-timeout: ${DEVPATH_EMBEDDING_CONNECT_TIMEOUT:5s}
       read-timeout: ${DEVPATH_EMBEDDING_READ_TIMEOUT:60s}
+  ai:
+    generation:
+      base-url: ${DEVPATH_AI_BASE_URL:http://localhost:11434}
+      model: ${DEVPATH_AI_MODEL:qwen2.5:7b}
+      connect-timeout: ${DEVPATH_AI_CONNECT_TIMEOUT:5s}
+      read-timeout: ${DEVPATH_AI_READ_TIMEOUT:90s}
+      max-attempts: ${DEVPATH_AI_MAX_ATTEMPTS:2}

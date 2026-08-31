@@ -1,5 +1,7 @@
 package com.devpath.knowledge.adapter.out.objectstorage;
 
+import com.devpath.shared.infrastructure.FilesystemObjectContentAdapter;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

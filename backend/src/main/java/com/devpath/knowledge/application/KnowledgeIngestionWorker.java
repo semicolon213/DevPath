@@ -6,6 +6,7 @@ import com.devpath.integration.application.NotionIntegrationUnavailableException
 import com.devpath.integration.application.NotionRateLimitExceededException;
 import com.devpath.knowledge.domain.KnowledgeIngestionJob;
 import com.devpath.shared.infrastructure.WorkerShutdownGate;
+import com.devpath.shared.application.ObjectContentPort;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.util.ArrayList;

@@ -1,6 +1,6 @@
-package com.devpath.knowledge.adapter.out.objectstorage;
+package com.devpath.shared.infrastructure;
 
-import com.devpath.knowledge.application.ObjectContentPort;
+import com.devpath.shared.application.ObjectContentPort;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -20,8 +20,8 @@ public class FilesystemObjectContentAdapter implements ObjectContentPort {
     }
 
     @Override
-    public String put(UUID ownerId, UUID documentId, UUID versionId, String name, String content) {
-        Path target = resolve(ownerId, documentId, versionId, name);
+    public String put(UUID ownerId, UUID resourceId, UUID versionId, String name, String content) {
+        Path target = resolve(ownerId, resourceId, versionId, name);
         try {
             Files.createDirectories(target.getParent());
             Path temporary = Files.createTempFile(target.getParent(), ".pending-", ".tmp");
@@ -31,36 +31,35 @@ public class FilesystemObjectContentAdapter implements ObjectContentPort {
             } catch (java.nio.file.AtomicMoveNotSupportedException ignored) {
                 Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
             }
-            return PREFIX + ownerId + "/" + documentId + "/" + versionId + "/" + normalizeName(name);
+            return PREFIX + ownerId + "/" + resourceId + "/" + versionId + "/" + normalizeName(name);
         } catch (IOException exception) {
-            throw new IllegalStateException("Knowledge object content could not be stored", exception);
+            throw new IllegalStateException("Object content could not be stored", exception);
         }
     }
 
     @Override
     public String read(UUID ownerId, String objectReference) {
-        String relative = reference(ownerId, objectReference);
-        Path target = safe(root.resolve(relative));
+        Path target = safe(root.resolve(reference(ownerId, objectReference)));
         try {
             return Files.readString(target, StandardCharsets.UTF_8);
         } catch (IOException exception) {
-            throw new IllegalStateException("Knowledge object content is unavailable", exception);
+            throw new IllegalStateException("Object content is unavailable", exception);
         }
     }
 
     @Override
-    public void deleteVersion(UUID ownerId, UUID documentId, UUID versionId) {
-        Path directory = resolve(ownerId, documentId, versionId, "placeholder").getParent();
+    public void deleteVersion(UUID ownerId, UUID resourceId, UUID versionId) {
+        Path directory = resolve(ownerId, resourceId, versionId, "placeholder").getParent();
         if (!Files.exists(directory)) return;
         try (var paths = Files.walk(directory)) {
             for (Path path : paths.sorted(java.util.Comparator.reverseOrder()).toList()) Files.deleteIfExists(path);
         } catch (IOException exception) {
-            throw new IllegalStateException("Knowledge object content could not be deleted", exception);
+            throw new IllegalStateException("Object content could not be deleted", exception);
         }
     }
 
-    private Path resolve(UUID ownerId, UUID documentId, UUID versionId, String name) {
-        return safe(root.resolve(ownerId.toString()).resolve(documentId.toString()).resolve(versionId.toString())
+    private Path resolve(UUID ownerId, UUID resourceId, UUID versionId, String name) {
+        return safe(root.resolve(ownerId.toString()).resolve(resourceId.toString()).resolve(versionId.toString())
             .resolve(normalizeName(name)));
     }
 

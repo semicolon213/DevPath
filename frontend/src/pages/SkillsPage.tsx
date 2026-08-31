@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { SkillAssessment } from "../features/skills/api/skillMatrixApi";
 import { useCurrentSkillMatrix } from "../features/skills/model/useSkillMatrix";
 import { ApiError } from "../shared/api/apiClient";
+import { SkillExplanationPanel } from "../features/ai/ui/SkillExplanationPanel";
 
 export function SkillsPage() {
   const query = useCurrentSkillMatrix();
@@ -44,6 +45,8 @@ export function SkillsPage() {
         </div>
         <time dateTime={matrix.generatedAt}>{formatDateTime(matrix.generatedAt)} 생성</time>
       </section>
+
+      <SkillExplanationPanel skillMatrixId={matrix.skillMatrixId} />
 
       <section aria-labelledby="skill-list-title">
         <div className="section-heading">

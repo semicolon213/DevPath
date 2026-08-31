@@ -1,5 +1,7 @@
 package com.devpath.knowledge.application;
 
+import com.devpath.shared.application.ObjectContentPort;
+
 import java.time.Clock;
 import java.util.ArrayList;
 import java.util.List;
