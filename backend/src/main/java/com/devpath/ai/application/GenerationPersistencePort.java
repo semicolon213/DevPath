@@ -13,7 +13,7 @@ public interface GenerationPersistencePort {
     Optional<GenerationJob> findByOwnerAndIdempotencyKey(UUID userId, String idempotencyKey);
     GenerationJob saveJob(GenerationJob job);
     Optional<GenerationJob> findJob(UUID userId, UUID jobId);
-    UUID findSkillMatrixId(UUID promptContextId);
+    UUID findSourceResourceId(UUID promptContextId);
     Optional<GenerationWorkItem> claim(Instant now);
     UUID saveSubmittedExecution(GenerationWorkItem item, String provider, String model, Instant submittedAt);
     void completeExecution(UUID executionId, long latencyMs, Integer promptTokens, Integer completionTokens, Instant now);

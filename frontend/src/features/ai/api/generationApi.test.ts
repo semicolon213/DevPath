@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cancelGenerationJob, getGeneratedSkillExplanation, getGenerationJob, requestSkillExplanation } from "./generationApi";
+import { cancelGenerationJob, getGeneratedSkillExplanation, getGenerationJob, requestRepositoryReview, requestSkillExplanation } from "./generationApi";
 
 describe("generationApi", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -35,6 +35,19 @@ describe("generationApi", () => {
       .resolves.toMatchObject({ artifactId: "artifact-id" });
     expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/api/v1/generated-artifacts/artifact-id"),
       expect.objectContaining({ credentials: "include" }));
+  });
+
+  it("requests a repository review from an analysis", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json({ headerName: "X-CSRF-TOKEN", token: "csrf" }))
+      .mockResolvedValueOnce(json({ jobId: "job-id", status: "QUEUED" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await requestRepositoryReview("analysis-id");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(2, expect.stringContaining("/api/v1/generation-requests"),
+      expect.objectContaining({ body: JSON.stringify({ taskType: "REPOSITORY_REVIEW",
+        sourceResourceRefs: ["analysis-id"], outputType: "REPOSITORY_REVIEW" }) }));
   });
 });
 

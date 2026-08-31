@@ -3,6 +3,9 @@ package com.devpath.ai.adapter.out.persistence;
 import com.devpath.ai.application.ArtifactRecord;
 import com.devpath.ai.application.GenerationPersistencePort;
 import com.devpath.ai.application.GenerationWorkItem;
+import com.devpath.ai.application.AiGenerationApplicationService;
+import com.devpath.ai.application.RepositoryReviewValidator;
+import com.devpath.ai.application.SkillExplanationValidator;
 import com.devpath.ai.application.StoredPromptContext;
 import com.devpath.ai.domain.GenerationJob;
 import com.devpath.ai.domain.GenerationJobStatus;
@@ -15,7 +18,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
-    static final String VALIDATOR_VERSION = "skill-explanation-validator-v1";
     private final PromptTemplateVersionJpaRepository templates;
     private final PromptContextJpaRepository contexts;
     private final AiTaskJpaRepository tasks;
@@ -68,8 +70,9 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
     }
 
     @Override
-    public UUID findSkillMatrixId(UUID promptContextId) {
-        return contexts.findById(promptContextId).orElseThrow().skillMatrixId;
+    public UUID findSourceResourceId(UUID promptContextId) {
+        PromptContextJpaEntity context = contexts.findById(promptContextId).orElseThrow();
+        return context.analysisId == null ? context.skillMatrixId : context.analysisId;
     }
 
     @Override
@@ -78,7 +81,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
             GenerationJob started = saveJob(toDomain(entity).start(now));
             PromptContextJpaEntity context = contexts.findById(started.promptContextId())
                 .orElseThrow(() -> new IllegalStateException("Prompt context is unavailable"));
-            return new GenerationWorkItem(started, context.skillMatrixId, context.providerPrompt);
+            return new GenerationWorkItem(started, context.skillMatrixId, context.analysisId, context.providerPrompt);
         });
     }
 
@@ -112,7 +115,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
         GenerationWorkItem item, UUID executionId, String contentReference, List<String> violations, Instant now
     ) {
         AiResponseJpaEntity response = response(item, executionId, contentReference, "REJECTED", now);
-        validation(response.id, "REJECTED", violations, now);
+        validation(response.id, "REJECTED", validatorVersion(item), violations, now);
     }
 
     @Override
@@ -121,10 +124,13 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
         Instant now
     ) {
         AiResponseJpaEntity response = response(item, executionId, contentReference, "PASSED", now);
-        validation(response.id, "PASSED", List.of(), now);
+        validation(response.id, "PASSED", validatorVersion(item), List.of(), now);
         var artifact = new GeneratedArtifactJpaEntity();
         artifact.id = artifactId; artifact.userId = item.job().userId(); artifact.responseId = response.id;
-        artifact.promptContextId = item.job().promptContextId(); artifact.artifactType = "SKILL_EXPLANATION";
+        artifact.promptContextId = item.job().promptContextId();
+        artifact.artifactType = AiGenerationApplicationService.REPOSITORY_REVIEW_TASK.equals(item.job().taskType())
+            ? AiGenerationApplicationService.REPOSITORY_REVIEW_OUTPUT
+            : AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT;
         artifact.status = "VALIDATED"; artifact.contentReference = contentReference; artifact.createdAt = now;
         artifacts.save(artifact);
         saveJob(item.job().succeed(now));
@@ -143,7 +149,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
             AiResponseJpaEntity response = responses.findById(artifact.responseId).orElseThrow();
             ModelExecutionJpaEntity execution = executions.findById(response.modelExecutionId).orElseThrow();
             ResponseValidationResultJpaEntity validation = validations.findByResponseId(response.id).orElseThrow();
-            return new ArtifactRecord(artifact.id, artifact.promptContextId, context.skillMatrixId,
+            return new ArtifactRecord(artifact.id, artifact.promptContextId, context.skillMatrixId, context.analysisId,
                 artifact.artifactType, artifact.contentReference, template.versionLabel, execution.provider,
                 execution.model, context.contextHash, validation.status, validation.validatorVersion,
                 validation.violations, validation.validatedAt, artifact.createdAt);
@@ -160,11 +166,18 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
         return responses.save(response);
     }
 
-    private void validation(UUID responseId, String status, List<String> violations, Instant now) {
+    private void validation(
+        UUID responseId, String status, String validatorVersion, List<String> violations, Instant now
+    ) {
         var value = new ResponseValidationResultJpaEntity();
         value.id = UUID.randomUUID(); value.responseId = responseId; value.status = status;
-        value.validatorVersion = VALIDATOR_VERSION; value.violations = List.copyOf(violations); value.validatedAt = now;
+        value.validatorVersion = validatorVersion; value.violations = List.copyOf(violations); value.validatedAt = now;
         validations.save(value);
+    }
+
+    private static String validatorVersion(GenerationWorkItem item) {
+        return AiGenerationApplicationService.REPOSITORY_REVIEW_TASK.equals(item.job().taskType())
+            ? RepositoryReviewValidator.VERSION : SkillExplanationValidator.VERSION;
     }
 
     private GenerationJob toDomain(AiTaskJpaEntity value) {

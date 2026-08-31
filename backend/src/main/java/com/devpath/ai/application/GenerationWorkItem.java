@@ -4,5 +4,5 @@ import com.devpath.ai.domain.GenerationJob;
 import java.util.UUID;
 
 public record GenerationWorkItem(
-    GenerationJob job, UUID skillMatrixId, String prompt
+    GenerationJob job, UUID skillMatrixId, UUID analysisId, String prompt
 ) {}

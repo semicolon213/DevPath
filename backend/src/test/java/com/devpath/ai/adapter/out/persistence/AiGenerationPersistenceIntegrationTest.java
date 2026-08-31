@@ -39,7 +39,7 @@ class AiGenerationPersistenceIntegrationTest {
         insertUser(owner, now); insertUser(other, now);
         insertMatrix(matrix, owner, now);
         var template = persistence.loadActiveTemplate("SKILL_ANALYSIS_EXPLANATION");
-        persistence.saveContext(new StoredPromptContext(context, owner, template.id(), matrix,
+        persistence.saveContext(new StoredPromptContext(context, owner, template.id(), matrix, null,
             "SKILL_ANALYSIS_EXPLANATION", 4096, "a".repeat(64), "{}", "safe prompt", now));
         var queued = persistence.saveJob(GenerationJob.queue(owner, context, "key", "SKILL_ANALYSIS_EXPLANATION", now));
 
@@ -60,6 +60,31 @@ class AiGenerationPersistenceIntegrationTest {
             Integer.class)).isEqualTo(1);
     }
 
+    @Test
+    void repositoryReviewKeepsItsOwnedAnalysisProvenance() {
+        Instant now = Instant.parse("2026-08-31T00:00:00Z");
+        UUID owner = UUID.randomUUID(), matrix = UUID.randomUUID(), analysis = UUID.randomUUID(), context = UUID.randomUUID();
+        insertUser(owner, now);
+        insertMatrix(matrix, owner, now);
+        insertAnalysis(analysis, matrix, owner, now);
+        var template = persistence.loadActiveTemplate("REPOSITORY_REVIEW");
+        persistence.saveContext(new StoredPromptContext(context, owner, template.id(), matrix, analysis,
+            "REPOSITORY_REVIEW", 8192, "b".repeat(64), "{}", "safe review prompt", now));
+        persistence.saveJob(GenerationJob.queue(owner, context, "review-key", "REPOSITORY_REVIEW", now));
+
+        var item = persistence.claim(now.plusSeconds(1)).orElseThrow();
+        UUID execution = persistence.saveSubmittedExecution(item, "OLLAMA", "qwen-test", now.plusSeconds(1));
+        persistence.completeExecution(execution, 12, 10, 5, now.plusSeconds(2));
+        UUID artifact = UUID.randomUUID();
+        persistence.saveValidatedArtifact(item, execution, artifact, "object://review", now.plusSeconds(2));
+
+        assertThat(persistence.findArtifact(owner, artifact)).isPresent().get().satisfies(value -> {
+            assertThat(value.analysisId()).isEqualTo(analysis);
+            assertThat(value.artifactType()).isEqualTo("REPOSITORY_REVIEW");
+            assertThat(value.validatorVersion()).isEqualTo("repository-review-validator-v1");
+        });
+    }
+
     private void insertUser(UUID id, Instant now) {
         var timestamp = java.sql.Timestamp.from(now);
         jdbc.update("insert into users(user_id,account_status,display_name,created_at,updated_at,version) values (?,?,?,?,?,0)",
@@ -72,6 +97,17 @@ class AiGenerationPersistenceIntegrationTest {
             jdbc.update("insert into skill_matrices(skill_matrix_id,user_id,evaluation_id,skill_matrix_policy_id,policy_version,rule_set_version,status,generated_at,version) values (?,?,?,?,?,?,?,?,0)",
                 id, owner, UUID.randomUUID(), UUID.randomUUID(), "skill-v1", "rule-v1", "CURRENT",
                 java.sql.Timestamp.from(now));
+        } finally {
+            jdbc.execute("set session_replication_role = origin");
+        }
+    }
+
+    private void insertAnalysis(UUID id, UUID matrix, UUID owner, Instant now) {
+        jdbc.execute("set session_replication_role = replica");
+        try {
+            jdbc.update("insert into analysis_results(analysis_id,job_id,user_id,repository_id,snapshot_id,evaluation_id,skill_matrix_id,analysis_scope,completed_at) values (?,?,?,?,?,?,?,?,?)",
+                id, UUID.randomUUID(), owner, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), matrix,
+                "REPOSITORY_BASELINE", java.sql.Timestamp.from(now));
         } finally {
             jdbc.execute("set session_replication_role = origin");
         }

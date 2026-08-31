@@ -22,6 +22,7 @@ export type GeneratedSkillExplanation = {
   status: "VALIDATED";
   provenance: {
     skillMatrixId: string;
+    analysisId?: string | null;
     promptContextId: string;
     templateVersion: string;
     provider: "OLLAMA";
@@ -43,16 +44,34 @@ export type GeneratedSkillExplanation = {
   };
 };
 
+export type GeneratedRepositoryReview = {
+  artifactId: string;
+  type: "REPOSITORY_REVIEW";
+  status: "VALIDATED";
+  provenance: Omit<GeneratedSkillExplanation["provenance"], "analysisId"> & { analysisId: string };
+  validation: {
+    status: "PASSED";
+    validatorVersion: "repository-review-validator-v1";
+    validatedAt: string;
+    violations: string[];
+  };
+  contentRef: string;
+  content: {
+    summary: string;
+    sections: Array<{
+      category: "ARCHITECTURE" | "TESTING" | "DEVOPS" | "DOCUMENTATION" | "COLLABORATION";
+      review: string;
+      evidenceIds: string[];
+    }>;
+  };
+};
+
 export async function requestSkillExplanation(skillMatrixId: string) {
-  return apiRequest<GenerationJob>("/api/v1/generation-requests", await withCsrf({
-    method: "POST",
-    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
-    body: JSON.stringify({
-      taskType: "SKILL_ANALYSIS_EXPLANATION",
-      sourceResourceRefs: [skillMatrixId],
-      outputType: "SKILL_EXPLANATION"
-    })
-  }));
+  return requestGeneration("SKILL_ANALYSIS_EXPLANATION", skillMatrixId, "SKILL_EXPLANATION");
+}
+
+export async function requestRepositoryReview(analysisId: string) {
+  return requestGeneration("REPOSITORY_REVIEW", analysisId, "REPOSITORY_REVIEW");
 }
 
 export async function getGenerationJob(jobId: string) {
@@ -69,4 +88,16 @@ export async function cancelGenerationJob(jobId: string) {
 
 export async function getGeneratedSkillExplanation(artifactUrl: string) {
   return apiRequest<GeneratedSkillExplanation>(artifactUrl);
+}
+
+export async function getGeneratedRepositoryReview(artifactUrl: string) {
+  return apiRequest<GeneratedRepositoryReview>(artifactUrl);
+}
+
+async function requestGeneration(taskType: string, sourceResourceRef: string, outputType: string) {
+  return apiRequest<GenerationJob>("/api/v1/generation-requests", await withCsrf({
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Idempotency-Key": crypto.randomUUID() },
+    body: JSON.stringify({ taskType, sourceResourceRefs: [sourceResourceRef], outputType })
+  }));
 }

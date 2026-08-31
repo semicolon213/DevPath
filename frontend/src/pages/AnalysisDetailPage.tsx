@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import type { RuleCategoryScore, RuleEvidence, RuleResult } from "../features/analysis/api/analysisApi";
 import { useAnalysisDetail } from "../features/analysis/model/useAnalysis";
 import { ApiError } from "../shared/api/apiClient";
+import { RepositoryReviewPanel } from "../features/ai/ui/RepositoryReviewPanel";
 
 export function AnalysisDetailPage() {
   const { analysisId } = useParams();
@@ -60,6 +61,8 @@ export function AnalysisDetailPage() {
       {evaluation.warnings.length > 0 ? (
         <section className="analysis-warning" role="status"><h2>분석 경고</h2><ul>{evaluation.warnings.map(value => <li key={value}>{value}</li>)}</ul></section>
       ) : null}
+
+      <RepositoryReviewPanel analysisId={result.analysisId} />
 
       <section aria-labelledby="category-results-title">
         <div className="section-heading"><div><h2 id="category-results-title">영역별 공식 결과</h2><p>규칙을 펼치면 어떤 관찰값이 어떤 공식과 가중치로 반영됐는지 확인할 수 있습니다.</p></div></div>

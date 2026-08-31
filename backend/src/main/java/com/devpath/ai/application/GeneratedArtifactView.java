@@ -5,10 +5,10 @@ import java.util.UUID;
 
 public record GeneratedArtifactView(
     UUID artifactId, String type, String status, Provenance provenance,
-    ResponseValidationView validation, String contentRef, SkillExplanationContent content
+    ResponseValidationView validation, String contentRef, Object content
 ) {
     public record Provenance(
-        UUID skillMatrixId, UUID promptContextId, String templateVersion, String provider,
+        UUID skillMatrixId, UUID analysisId, UUID promptContextId, String templateVersion, String provider,
         String model, String contextHash, Instant generatedAt
     ) {}
 }

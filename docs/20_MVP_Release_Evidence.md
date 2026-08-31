@@ -187,8 +187,8 @@ provider permission-edge-case test, token revocation exercise, or owner approval
 - ADR-031 remains Proposed, so no telemetry backend, metrics store, trace backend, retention, dashboard, or alert product is selected.
 - ADR-033 and ADR-034 remain Proposed, so staging/production deployment and production secret management are blocked.
 - The local request log is operational telemetry only; durable audit records remain the audit authority.
-- Notion registration, knowledge ingestion/retrieval, and the first Skill Analysis Explanation implementation still lack
-  their required live-provider exercises and owner approval; portfolio, resume, interview, administration, and production
+- Notion registration, knowledge ingestion/retrieval, Skill Analysis Explanation, and Repository Review still lack their
+  required live-provider exercises and owner approval; portfolio, resume, interview, administration, and production
   deployment workflows are not implemented.
 - Dashboard APIs 002 through 010, company readiness, artifact summaries, charts, filters, and export remain outside the implemented MVP subset.
 - Two catalog database tests require an explicit `DEVPATH_DB_URL`; Testcontainers-backed PostgreSQL suites cover the portable default path, including the owner-scoped analysis comparison query.

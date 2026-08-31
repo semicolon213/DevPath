@@ -9,9 +9,17 @@ import static org.mockito.Mockito.when;
 
 import com.devpath.ai.config.AiGenerationProperties;
 import com.devpath.ai.domain.GenerationJob;
+import com.devpath.analysis.application.AnalysisApplicationService;
+import com.devpath.analysis.application.AnalysisResultView;
 import com.devpath.prompt.application.PromptPackage;
 import com.devpath.prompt.application.PromptTemplateVersion;
+import com.devpath.prompt.application.RepositoryReviewPromptBuilder;
 import com.devpath.prompt.application.SkillExplanationPromptBuilder;
+import com.devpath.repository.application.RepositoryApplicationService;
+import com.devpath.repository.application.RepositoryView;
+import com.devpath.rule.application.CompletedRuleEvaluationApplicationService;
+import com.devpath.rule.application.RuleEvidenceListView;
+import com.devpath.rule.application.RuleEvaluationView;
 import com.devpath.rule.application.SkillMatrixApplicationService;
 import com.devpath.rule.application.SkillMatrixView;
 import com.devpath.shared.application.ObjectContentPort;
@@ -37,6 +45,11 @@ class AiGenerationApplicationServiceTest {
     @Mock SkillMatrixApplicationService matrices;
     @Mock SkillExplanationPromptBuilder prompts;
     @Mock SkillExplanationValidator validator;
+    @Mock AnalysisApplicationService analyses;
+    @Mock RepositoryApplicationService repositories;
+    @Mock CompletedRuleEvaluationApplicationService evaluations;
+    @Mock RepositoryReviewPromptBuilder reviewPrompts;
+    @Mock RepositoryReviewValidator reviewValidator;
     @Mock ObjectContentPort objects;
     @Mock AiAuditPort audit;
     @Mock AiGenerationTransactionService transactions;
@@ -44,7 +57,8 @@ class AiGenerationApplicationServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new AiGenerationApplicationService(persistence, matrices, prompts, validator, objects,
+        service = new AiGenerationApplicationService(persistence, matrices, prompts, validator, analyses, repositories,
+            evaluations, reviewPrompts, reviewValidator, objects,
             new AiGenerationProperties("http://localhost", "qwen-test", Duration.ofSeconds(1),
                 Duration.ofSeconds(2), 2), audit, transactions, new ObjectMapper(), Clock.fixed(NOW, ZoneOffset.UTC));
     }
@@ -55,20 +69,21 @@ class AiGenerationApplicationServiceTest {
         SkillMatrixView matrix = org.mockito.Mockito.mock(SkillMatrixView.class);
         when(persistence.findByOwnerAndIdempotencyKey(owner, "key")).thenReturn(Optional.empty());
         when(matrices.get(owner, matrixId)).thenReturn(matrix);
-        when(persistence.loadActiveTemplate(AiGenerationApplicationService.TASK_TYPE)).thenReturn(
-            new PromptTemplateVersion(templateId, AiGenerationApplicationService.TASK_TYPE, "v1",
+        when(persistence.loadActiveTemplate(AiGenerationApplicationService.SKILL_EXPLANATION_TASK)).thenReturn(
+            new PromptTemplateVersion(templateId, AiGenerationApplicationService.SKILL_EXPLANATION_TASK, "v1",
                 "Never calculate scores.", "Return JSON."));
         when(prompts.build(eq(matrix), any())).thenReturn(new PromptPackage("{}", "prompt", "a".repeat(64), 4096));
         when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
 
-        GenerationJobView result = service.request(owner, AiGenerationApplicationService.TASK_TYPE,
-            List.of(matrixId), AiGenerationApplicationService.OUTPUT_TYPE, "key");
+        GenerationJobView result = service.request(owner, AiGenerationApplicationService.SKILL_EXPLANATION_TASK,
+            List.of(matrixId), AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT, "key");
 
         ArgumentCaptor<StoredPromptContext> context = ArgumentCaptor.forClass(StoredPromptContext.class);
         verify(persistence).saveContext(context.capture());
         assertThat(context.getValue().userId()).isEqualTo(owner);
         assertThat(context.getValue().skillMatrixId()).isEqualTo(matrixId);
+        assertThat(context.getValue().analysisId()).isNull();
         assertThat(context.getValue().templateVersionId()).isEqualTo(templateId);
         assertThat(result.status()).isEqualTo("QUEUED");
     }
@@ -76,9 +91,9 @@ class AiGenerationApplicationServiceTest {
     @Test
     void persistsAnArtifactOnlyAfterValidationPasses() {
         UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrix = UUID.randomUUID(), execution = UUID.randomUUID();
-        GenerationJob running = GenerationJob.queue(owner, context, "key", AiGenerationApplicationService.TASK_TYPE,
+        GenerationJob running = GenerationJob.queue(owner, context, "key", AiGenerationApplicationService.SKILL_EXPLANATION_TASK,
             NOW.minusSeconds(1)).start(NOW.minusMillis(500));
-        GenerationWorkItem item = new GenerationWorkItem(running, matrix, "prompt");
+        GenerationWorkItem item = new GenerationWorkItem(running, matrix, null, "prompt");
         SkillMatrixView matrixView = org.mockito.Mockito.mock(SkillMatrixView.class);
         var content = new SkillExplanationContent("grounded", List.of(), List.of());
         when(transactions.providerCompleted(item, execution,
@@ -96,5 +111,64 @@ class AiGenerationApplicationServiceTest {
 
         verify(transactions).validated(eq(item), eq(execution), any(), eq("object://owner/artifact"), any(), eq(NOW));
         verify(persistence, never()).recordRejectedResponse(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void createsRepositoryReviewContextFromOwnedAnalysis() {
+        UUID owner = UUID.randomUUID(), analysisId = UUID.randomUUID(), repositoryId = UUID.randomUUID();
+        UUID evaluationId = UUID.randomUUID(), matrixId = UUID.randomUUID(), templateId = UUID.randomUUID();
+        var analysis = new AnalysisResultView(analysisId, repositoryId, UUID.randomUUID(), evaluationId,
+            matrixId, "REPOSITORY_BASELINE", true, NOW);
+        RepositoryView repository = org.mockito.Mockito.mock(RepositoryView.class);
+        RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
+        var evidence = new RuleEvidenceListView(evaluationId, List.of());
+        when(persistence.findByOwnerAndIdempotencyKey(owner, "review-key")).thenReturn(Optional.empty());
+        when(persistence.loadActiveTemplate(AiGenerationApplicationService.REPOSITORY_REVIEW_TASK)).thenReturn(
+            new PromptTemplateVersion(templateId, AiGenerationApplicationService.REPOSITORY_REVIEW_TASK, "v1",
+                "Never calculate scores.", "Return JSON."));
+        when(analyses.getResult(owner, analysisId)).thenReturn(analysis);
+        when(repositories.get(owner, repositoryId)).thenReturn(repository);
+        when(evaluations.getEvaluation(owner, evaluationId)).thenReturn(evaluation);
+        when(evaluations.getEvidence(owner, evaluationId)).thenReturn(evidence);
+        when(reviewPrompts.build(repository, analysis, evaluation, evidence,
+            new PromptTemplateVersion(templateId, AiGenerationApplicationService.REPOSITORY_REVIEW_TASK, "v1",
+                "Never calculate scores.", "Return JSON.")))
+            .thenReturn(new PromptPackage("{}", "review prompt", "b".repeat(64), 8192));
+        when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+
+        service.request(owner, AiGenerationApplicationService.REPOSITORY_REVIEW_TASK, List.of(analysisId),
+            AiGenerationApplicationService.REPOSITORY_REVIEW_OUTPUT, "review-key");
+
+        ArgumentCaptor<StoredPromptContext> context = ArgumentCaptor.forClass(StoredPromptContext.class);
+        verify(persistence).saveContext(context.capture());
+        assertThat(context.getValue().analysisId()).isEqualTo(analysisId);
+        assertThat(context.getValue().skillMatrixId()).isEqualTo(matrixId);
+    }
+
+    @Test
+    void persistsRepositoryReviewOnlyAfterGroundingValidation() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrix = UUID.randomUUID();
+        UUID analysisId = UUID.randomUUID(), evaluationId = UUID.randomUUID(), execution = UUID.randomUUID();
+        GenerationJob running = GenerationJob.queue(owner, context, "review-key",
+            AiGenerationApplicationService.REPOSITORY_REVIEW_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
+        GenerationWorkItem item = new GenerationWorkItem(running, matrix, analysisId, "prompt");
+        var analysis = new AnalysisResultView(analysisId, UUID.randomUUID(), UUID.randomUUID(), evaluationId,
+            matrix, "REPOSITORY_BASELINE", true, NOW);
+        var evidence = new RuleEvidenceListView(evaluationId, List.of());
+        var content = new RepositoryReviewContent("grounded", List.of());
+        when(transactions.providerCompleted(item, execution, new GenerationProviderResult("raw", 10, 5), 12, NOW))
+            .thenReturn(Optional.of(running));
+        when(analyses.getResult(owner, analysisId)).thenReturn(analysis);
+        when(evaluations.getEvidence(owner, evaluationId)).thenReturn(evidence);
+        when(reviewValidator.validate("raw", evidence)).thenReturn(new RepositoryReviewValidation(content, List.of()));
+        when(objects.put(eq(owner), any(), eq(running.id()), eq("repository-review.json"), any()))
+            .thenReturn("object://owner/review");
+        when(transactions.validated(eq(item), eq(execution), any(), eq("object://owner/review"), any(), eq(NOW)))
+            .thenReturn(true);
+
+        service.providerSucceeded(item, execution, new GenerationProviderResult("raw", 10, 5), 12);
+
+        verify(transactions).validated(eq(item), eq(execution), any(), eq("object://owner/review"), any(), eq(NOW));
     }
 }

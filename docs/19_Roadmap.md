@@ -886,6 +886,14 @@ manual retry API, knowledge-RAG context, career/company context, and every other
 | Learning | Gaps/roadmap | Notes optional | Plan | Medium | Low | High | 2 | Completeness |
 | Architecture Review | Repo architecture evidence | Docs | Review | High | Medium | Medium | 4 | Grounding |
 
+The `REPOSITORY_REVIEW` priority-one capability now reuses the same bounded generation job, Ollama adapter, cancellation,
+retry, audit, private content storage, and validated-artifact retrieval path as Skill Analysis Explanation. Its immutable
+PromptContext is owner-linked to a completed Analysis and includes only repository metadata, deterministic category
+findings, and normalized evaluation evidence. The validator requires exactly the architecture, testing, DevOps,
+documentation, and collaboration sections, rejects unknown evidence IDs, numeric claims, unsafe text, and malformed
+schemas, and the analysis detail UI renders only validated plain text. Live-provider grounding evaluation and owner
+approval remain required; this implementation does not complete M43 or authorize the lower-priority task types.
+
 Do not implement all prompt categories simultaneously.
 
 ## 44. Generated Artifact Foundation
