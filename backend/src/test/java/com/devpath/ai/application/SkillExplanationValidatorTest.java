@@ -50,6 +50,47 @@ class SkillExplanationValidatorTest {
             "UNSUPPORTED_SKILL_CLAIM").doesNotContain("UNSUPPORTED_EVIDENCE_REFERENCE");
     }
 
+    @Test
+    void appendsConcreteGroundedAdviceToImprovementAreas() {
+        UUID commitEvidence = UUID.randomUUID(), evaluationId = UUID.randomUUID();
+        var activity = new SkillAssessmentView(UUID.randomUUID(), UUID.randomUUID(), "development-activity", "Activity",
+            "ACTIVITY", BigDecimal.ONE, "FOUNDATIONAL", BigDecimal.ONE, false, true, "STABLE", "activity-result",
+            List.of(commitEvidence), List.of(), List.of(), "rule-v1");
+        var delivery = new SkillAssessmentView(UUID.randomUUID(), UUID.randomUUID(), "delivery-operations", "Delivery",
+            "DEVOPS", BigDecimal.ZERO, "FOUNDATIONAL", BigDecimal.ONE, false, true, "STABLE", "delivery-result",
+            List.of(), List.of(), List.of(), "rule-v1");
+        var weakMatrix = new SkillMatrixView(UUID.randomUUID(), evaluationId, "skill-v1", "rule-v1", "CURRENT",
+            List.of(activity, delivery), List.of(), List.of("development-activity", "delivery-operations"),
+            Instant.parse("2026-08-31T00:00:00Z"));
+        var commitRule = new RuleResultView("COMMIT_COUNT", "v1", "PARTIAL", BigDecimal.ONE, BigDecimal.ONE,
+            BigDecimal.ONE, "COUNT_CAP", "trace", List.of());
+        var workflowRule = new RuleResultView("CI_WORKFLOWS", "v1", "FAILED", BigDecimal.ZERO, BigDecimal.ZERO,
+            BigDecimal.ONE, "PRESENCE", "trace", List.of());
+        var evaluation = new RuleEvaluationView(evaluationId, UUID.randomUUID(), UUID.randomUUID(), "rule-v1",
+            "formula-v1", "extractor-v1", BigDecimal.ONE, BigDecimal.ONE, new RuleEvidenceSummaryView(1, 1, 0),
+            List.of(
+                new RuleCategoryScoreView("ACTIVITY", BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE,
+                    List.of(commitRule), List.of()),
+                new RuleCategoryScoreView("DEVOPS", BigDecimal.ZERO, BigDecimal.ONE, BigDecimal.ONE,
+                    List.of(workflowRule), List.of())),
+            List.of(), Instant.parse("2026-08-31T00:00:00Z"));
+        var evidence = new RuleEvidenceListView(evaluationId, List.of(new RuleEvidenceView(commitEvidence,
+            "COMMIT_COUNT", "DIRECT", "SNAPSHOT_SIGNAL", "snapshot:signal:COMMIT_COUNT", "commits", BigDecimal.ONE)));
+        String response = """
+            {"summary":"Grounded advice","strengths":[],"improvementAreas":[
+            {"skillKey":"development-activity","explanation":"Activity needs attention.","evidenceIds":[]},
+            {"skillKey":"delivery-operations","explanation":"Delivery needs attention.","evidenceIds":[]}]}
+            """;
+
+        SkillExplanationValidation result = validator.validate(response, weakMatrix, evaluation, evidence);
+
+        assertThat(result.passed()).isTrue();
+        assertThat(result.content().improvementAreas()).filteredOn(item -> item.skillKey().equals("development-activity"))
+            .singleElement().satisfies(item -> assertThat(item.explanation()).contains("커밋으로 나누어", "추가 커밋 이력"));
+        assertThat(result.content().improvementAreas()).filteredOn(item -> item.skillKey().equals("delivery-operations"))
+            .singleElement().satisfies(item -> assertThat(item.explanation()).contains("CI 워크플로 설정 파일", "워크플로 설정이 감지"));
+    }
+
     private static SkillMatrixView matrix(UUID evidenceId) {
         var skill = new SkillAssessmentView(UUID.randomUUID(), UUID.randomUUID(), "testing-discipline", "Testing",
             "TESTING", BigDecimal.valueOf(80), "STRONG", BigDecimal.valueOf(90), true, false, "STABLE", "rule-result", List.of(evidenceId),

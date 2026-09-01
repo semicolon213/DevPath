@@ -21,7 +21,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SkillExplanationValidator {
-    public static final String VERSION = "skill-explanation-validator-v2";
+    public static final String VERSION = "skill-explanation-validator-v3";
     private static final int GROUNDED_EVIDENCE_LIMIT = 2;
     private static final Pattern NUMBER = Pattern.compile("\\p{N}");
     private static final Pattern UNSAFE = Pattern.compile("(?i)<|javascript:|on(?:click|error|load)\\s*=");
@@ -100,8 +100,32 @@ public class SkillExplanationValidator {
                 .map(RuleEvidenceView::evidenceId).collect(Collectors.toSet());
             List<UUID> evidenceIds = source == null ? List.of() : source.evidenceIds().stream()
                 .filter(relevantEvidenceIds::contains).limit(GROUNDED_EVIDENCE_LIMIT).toList();
-            return new SkillExplanationContent.Item(item.skillKey(), item.explanation(), evidenceIds);
+            return new SkillExplanationContent.Item(item.skillKey(),
+                item.explanation() + groundedAdvice(source, statuses), evidenceIds);
         }).toList();
+    }
+
+    private static String groundedAdvice(SkillAssessmentView source, Map<String, String> statuses) {
+        if (source == null || !source.weakness()) return "";
+        return statuses.entrySet().stream().sorted(Map.Entry.comparingByKey())
+            .filter(entry -> Set.of("PARTIAL", "FAILED").contains(entry.getValue()))
+            .map(entry -> advice(entry.getKey())).filter(value -> !value.isEmpty()).distinct()
+            .map(value -> " " + value).collect(Collectors.joining());
+    }
+
+    private static String advice(String ruleId) {
+        return switch (ruleId) {
+            case "COMMIT_COUNT" -> "조언: 의미 있는 변경을 커밋으로 나누어 기록하세요. 확인 기준: 다음 저장소 동기화에서 추가 커밋 이력이 수집됩니다.";
+            case "CONTRIBUTOR_COUNT" -> "조언: 협업 변경의 작성자 이력을 보존하세요. 확인 기준: 다음 저장소 동기화에서 기여자 이력이 수집됩니다.";
+            case "BRANCH_COUNT" -> "조언: 독립 작업은 브랜치 이력으로 남기세요. 확인 기준: 다음 저장소 동기화에서 브랜치 이력이 수집됩니다.";
+            case "CI_WORKFLOWS", "CI_WORKFLOW_METADATA" -> "조언: 변경 검증을 실행하는 CI 워크플로 설정 파일을 저장소에 추가하세요. 확인 기준: 다음 분석에서 워크플로 설정이 감지됩니다.";
+            case "CONTAINER_CONFIGURATION" -> "조언: 재현 가능한 실행을 위한 컨테이너 설정을 저장소에 추가하세요. 확인 기준: 다음 분석에서 컨테이너 설정이 감지됩니다.";
+            case "INFRASTRUCTURE_AS_CODE" -> "조언: 인프라 구성을 코드 자산으로 저장소에 기록하세요. 확인 기준: 다음 분석에서 인프라 코드가 감지됩니다.";
+            case "DEPLOYMENT_CONFIGURATION" -> "조언: 배포 절차를 실행 가능한 설정으로 저장소에 기록하세요. 확인 기준: 다음 분석에서 배포 설정이 감지됩니다.";
+            case "TEST_FILES" -> "조언: 변경 동작을 검증하는 자동화 테스트 파일을 추가하세요. 확인 기준: 다음 분석에서 테스트 파일이 감지됩니다.";
+            case "TEST_FRAMEWORKS" -> "조언: 저장소의 테스트 실행 구성을 명시하세요. 확인 기준: 다음 분석에서 테스트 프레임워크 근거가 감지됩니다.";
+            default -> "";
+        };
     }
 
     private static void validateCoverage(
