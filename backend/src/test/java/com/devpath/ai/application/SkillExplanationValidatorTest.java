@@ -69,7 +69,10 @@ class SkillExplanationValidatorTest {
     }
 
     private RuleEvidenceListView evidence() {
-        return new RuleEvidenceListView(matrix.evaluationId(), List.of(new RuleEvidenceView(evidenceId,
-            "TEST_FILES", "DIRECT", "REPOSITORY_PATH", "snapshot:path:test", "test path", BigDecimal.ONE)));
+        return new RuleEvidenceListView(matrix.evaluationId(), List.of(
+            new RuleEvidenceView(evidenceId, "TEST_FILES", "DIRECT", "REPOSITORY_PATH",
+                "snapshot:path:test", "test path", BigDecimal.ONE),
+            new RuleEvidenceView(evidenceId, "OTHER_RULE", "SUPPORTING", "REPOSITORY_PATH",
+                "snapshot:path:test", "test path", BigDecimal.ONE)));
     }
 }

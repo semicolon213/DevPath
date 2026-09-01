@@ -87,8 +87,6 @@ public class SkillExplanationValidator {
             .collect(Collectors.toMap(SkillAssessmentView::skillKey, value -> value));
         Map<String, RuleCategoryScoreView> categories = evaluation.categoryScores().stream()
             .collect(Collectors.toMap(RuleCategoryScoreView::category, value -> value));
-        Map<UUID, RuleEvidenceView> evidenceById = evidence.evidence().stream()
-            .collect(Collectors.toMap(RuleEvidenceView::evidenceId, value -> value));
         return items.stream().map(item -> {
             SkillAssessmentView source = skills.get(item.skillKey());
             RuleCategoryScoreView category = source == null ? null : categories.get(source.category());
@@ -96,11 +94,12 @@ public class SkillExplanationValidator {
                 .collect(Collectors.toMap(rule -> rule.ruleId(), rule -> rule.status()));
             Set<String> relevant = source != null && source.strength()
                 ? Set.of("PASSED") : Set.of("PARTIAL", "FAILED");
+            Set<UUID> relevantEvidenceIds = evidence.evidence().stream()
+                .filter(value -> statuses.containsKey(value.ruleId())
+                    && relevant.contains(statuses.get(value.ruleId())))
+                .map(RuleEvidenceView::evidenceId).collect(Collectors.toSet());
             List<UUID> evidenceIds = source == null ? List.of() : source.evidenceIds().stream()
-                .filter(id -> {
-                    RuleEvidenceView value = evidenceById.get(id);
-                    return value != null && relevant.contains(statuses.get(value.ruleId()));
-                }).limit(GROUNDED_EVIDENCE_LIMIT).toList();
+                .filter(relevantEvidenceIds::contains).limit(GROUNDED_EVIDENCE_LIMIT).toList();
             return new SkillExplanationContent.Item(item.skillKey(), item.explanation(), evidenceIds);
         }).toList();
     }

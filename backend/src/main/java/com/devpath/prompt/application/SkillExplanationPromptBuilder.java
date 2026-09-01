@@ -16,7 +16,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
@@ -48,9 +47,9 @@ public class SkillExplanationPromptBuilder {
         }
         try {
             Map<String, RuleCategoryScoreView> categories = evaluation.categoryScores().stream()
-                .collect(Collectors.toMap(RuleCategoryScoreView::category, Function.identity()));
-            Map<UUID, RuleEvidenceView> evidenceById = evidence.evidence().stream()
-                .collect(Collectors.toMap(RuleEvidenceView::evidenceId, Function.identity(), (first, duplicate) -> first));
+                .collect(Collectors.toMap(RuleCategoryScoreView::category, value -> value));
+            Map<UUID, List<RuleEvidenceView>> evidenceById = evidence.evidence().stream()
+                .collect(Collectors.groupingBy(RuleEvidenceView::evidenceId));
             String context = mapper.writeValueAsString(Map.of(
                 "skillMatrixId", matrix.skillMatrixId(),
                 "policyVersion", matrix.policyVersion(),
@@ -82,7 +81,7 @@ public class SkillExplanationPromptBuilder {
 
     private static Map<String, Object> skillContext(
         SkillAssessmentView skill, Map<String, RuleCategoryScoreView> categories,
-        Map<UUID, RuleEvidenceView> evidenceById
+        Map<UUID, List<RuleEvidenceView>> evidenceById
     ) {
         RuleCategoryScoreView category = categories.get(skill.category());
         if (category == null) throw new IllegalArgumentException("Prompt context is missing rule outcomes");
@@ -90,12 +89,13 @@ public class SkillExplanationPromptBuilder {
             .collect(Collectors.toMap(rule -> rule.ruleId(), rule -> rule.status()));
         Set<String> relevantStatuses = skill.strength() ? Set.of("PASSED") : Set.of("PARTIAL", "FAILED");
         List<Map<String, Object>> facts = skill.evidenceIds().stream().map(id -> {
-            RuleEvidenceView value = evidenceById.get(id);
-            if (value == null) throw new IllegalArgumentException("Prompt context is missing evidence");
-            return value;
-        }).filter(value -> relevantStatuses.contains(statuses.get(value.ruleId()))).limit(EVIDENCE_LIMIT)
+            List<RuleEvidenceView> values = evidenceById.get(id);
+            if (values == null) throw new IllegalArgumentException("Prompt context is missing evidence");
+            return values;
+        }).flatMap(List::stream).filter(value -> statuses.containsKey(value.ruleId())
+            && relevantStatuses.contains(statuses.get(value.ruleId())))
             .map(value -> Map.<String, Object>of(
-                "evidenceType", value.evidenceType(), "fact", fact(value))).toList();
+                "evidenceType", value.evidenceType(), "fact", fact(value))).distinct().limit(EVIDENCE_LIMIT).toList();
         return Map.of(
             "skillKey", skill.skillKey(),
             "skillName", skill.skillName(),

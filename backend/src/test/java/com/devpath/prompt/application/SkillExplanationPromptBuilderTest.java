@@ -79,6 +79,8 @@ class SkillExplanationPromptBuilderTest {
         return new RuleEvidenceListView(matrix.evaluationId(), List.of(
             new RuleEvidenceView(ids.getFirst(), "TEST_FILES", "DIRECT", "REPOSITORY_PATH",
                 "snapshot:value:path:backend/src/test/java/ExampleTest.java", "stored path", BigDecimal.ONE),
+            new RuleEvidenceView(ids.getFirst(), "CI_WORKFLOW_METADATA", "SUPPORTING", "REPOSITORY_PATH",
+                "snapshot:value:path:backend/src/test/java/ExampleTest.java", "stored path", BigDecimal.ONE),
             new RuleEvidenceView(ids.get(1), "TEST_FILES", "SUPPORTING", "SNAPSHOT_SIGNAL",
                 "snapshot:value:signal:TEST_FRAMEWORKS", "stored signal", BigDecimal.ONE)
         ));
