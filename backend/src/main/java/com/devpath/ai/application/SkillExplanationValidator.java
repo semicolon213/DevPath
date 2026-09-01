@@ -1,5 +1,9 @@
 package com.devpath.ai.application;
 
+import com.devpath.rule.application.RuleCategoryScoreView;
+import com.devpath.rule.application.RuleEvidenceListView;
+import com.devpath.rule.application.RuleEvidenceView;
+import com.devpath.rule.application.RuleEvaluationView;
 import com.devpath.rule.application.SkillAssessmentView;
 import com.devpath.rule.application.SkillMatrixView;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -17,7 +21,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SkillExplanationValidator {
-    public static final String VERSION = "skill-explanation-validator-v1";
+    public static final String VERSION = "skill-explanation-validator-v2";
+    private static final int GROUNDED_EVIDENCE_LIMIT = 2;
     private static final Pattern NUMBER = Pattern.compile("\\p{N}");
     private static final Pattern UNSAFE = Pattern.compile("(?i)<|javascript:|on(?:click|error|load)\\s*=");
     private final ObjectMapper mapper;
@@ -26,7 +31,9 @@ public class SkillExplanationValidator {
         this.mapper = mapper;
     }
 
-    public SkillExplanationValidation validate(String raw, SkillMatrixView matrix) {
+    public SkillExplanationValidation validate(
+        String raw, SkillMatrixView matrix, RuleEvaluationView evaluation, RuleEvidenceListView evidence
+    ) {
         List<String> violations = new ArrayList<>();
         if (raw == null || raw.isBlank() || raw.length() > 20_000) {
             return new SkillExplanationValidation(null, List.of("MALFORMED_OR_EMPTY_RESPONSE"));
@@ -42,7 +49,10 @@ public class SkillExplanationValidator {
             validateItems(content.improvementAreas(), matrix, SkillAssessmentView::weakness, violations);
             validateCoverage(content.strengths(), matrix, SkillAssessmentView::strength, violations);
             validateCoverage(content.improvementAreas(), matrix, SkillAssessmentView::weakness, violations);
-            return new SkillExplanationValidation(content, violations.stream().distinct().toList());
+            return new SkillExplanationValidation(new SkillExplanationContent(content.summary(),
+                ground(content.strengths(), matrix, evaluation, evidence),
+                ground(content.improvementAreas(), matrix, evaluation, evidence)),
+                violations.stream().distinct().toList());
         } catch (RuntimeException | com.fasterxml.jackson.core.JsonProcessingException exception) {
             return new SkillExplanationValidation(null, List.of("INVALID_RESPONSE_SCHEMA"));
         }
@@ -62,12 +72,37 @@ public class SkillExplanationValidator {
                 violations.add("UNSUPPORTED_SKILL_CLAIM");
             }
             validateText(item.explanation(), 1000, violations);
-            if (item.evidenceIds().size() > 20 || source == null
-                || !source.evidenceIds().isEmpty() && item.evidenceIds().isEmpty()
-                || !new HashSet<>(source.evidenceIds()).containsAll(item.evidenceIds())) {
-                violations.add("UNSUPPORTED_EVIDENCE_REFERENCE");
-            }
         }
+    }
+
+    private static List<SkillExplanationContent.Item> ground(
+        List<SkillExplanationContent.Item> items, SkillMatrixView matrix,
+        RuleEvaluationView evaluation, RuleEvidenceListView evidence
+    ) {
+        if (!matrix.evaluationId().equals(evaluation.evaluationId())
+            || !matrix.evaluationId().equals(evidence.evaluationId())) {
+            throw new IllegalArgumentException("Grounding context does not match the Skill Matrix");
+        }
+        Map<String, SkillAssessmentView> skills = matrix.skills().stream()
+            .collect(Collectors.toMap(SkillAssessmentView::skillKey, value -> value));
+        Map<String, RuleCategoryScoreView> categories = evaluation.categoryScores().stream()
+            .collect(Collectors.toMap(RuleCategoryScoreView::category, value -> value));
+        Map<UUID, RuleEvidenceView> evidenceById = evidence.evidence().stream()
+            .collect(Collectors.toMap(RuleEvidenceView::evidenceId, value -> value));
+        return items.stream().map(item -> {
+            SkillAssessmentView source = skills.get(item.skillKey());
+            RuleCategoryScoreView category = source == null ? null : categories.get(source.category());
+            Map<String, String> statuses = category == null ? Map.of() : category.ruleResults().stream()
+                .collect(Collectors.toMap(rule -> rule.ruleId(), rule -> rule.status()));
+            Set<String> relevant = source != null && source.strength()
+                ? Set.of("PASSED") : Set.of("PARTIAL", "FAILED");
+            List<UUID> evidenceIds = source == null ? List.of() : source.evidenceIds().stream()
+                .filter(id -> {
+                    RuleEvidenceView value = evidenceById.get(id);
+                    return value != null && relevant.contains(statuses.get(value.ruleId()));
+                }).limit(GROUNDED_EVIDENCE_LIMIT).toList();
+            return new SkillExplanationContent.Item(item.skillKey(), item.explanation(), evidenceIds);
+        }).toList();
     }
 
     private static void validateCoverage(

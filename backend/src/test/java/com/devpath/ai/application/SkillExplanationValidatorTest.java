@@ -2,6 +2,12 @@ package com.devpath.ai.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.devpath.rule.application.RuleCategoryScoreView;
+import com.devpath.rule.application.RuleEvidenceListView;
+import com.devpath.rule.application.RuleEvidenceSummaryView;
+import com.devpath.rule.application.RuleEvidenceView;
+import com.devpath.rule.application.RuleEvaluationView;
+import com.devpath.rule.application.RuleResultView;
 import com.devpath.rule.application.SkillAssessmentView;
 import com.devpath.rule.application.SkillMatrixView;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,11 +26,11 @@ class SkillExplanationValidatorTest {
     void acceptsOnlyGroundedNonNumericPlainText() {
         String response = """
             {"summary":"테스트 근거가 강점으로 확인됩니다.","strengths":[{"skillKey":"testing-discipline",
-            "explanation":"자동화된 테스트 근거가 일관된 검증 습관을 보여 줍니다.","evidenceIds":["%s"]}],
+            "explanation":"자동화된 테스트 근거가 일관된 검증 습관을 보여 줍니다.","evidenceIds":[]}],
             "improvementAreas":[]}
-            """.formatted(evidenceId);
+            """;
 
-        SkillExplanationValidation result = validator.validate(response, matrix);
+        SkillExplanationValidation result = validator.validate(response, matrix, evaluation(), evidence());
 
         assertThat(result.passed()).isTrue();
         assertThat(result.content().strengths()).singleElement()
@@ -32,16 +38,16 @@ class SkillExplanationValidatorTest {
     }
 
     @Test
-    void rejectsUntraceableNumbersUnsupportedReferencesAndUnsafeMarkup() {
+    void replacesUntrustedEvidenceAndRejectsUnsafeClaims() {
         String response = """
             {"summary":"점수 99 <script>alert</script>","strengths":[{"skillKey":"invented",
             "explanation":"근거 없는 설명","evidenceIds":["%s"]}],"improvementAreas":[]}
             """.formatted(UUID.randomUUID());
 
-        SkillExplanationValidation result = validator.validate(response, matrix);
+        SkillExplanationValidation result = validator.validate(response, matrix, evaluation(), evidence());
 
         assertThat(result.violations()).contains("UNTRACEABLE_NUMERIC_CLAIM", "UNSAFE_RENDERED_CONTENT",
-            "UNSUPPORTED_SKILL_CLAIM", "UNSUPPORTED_EVIDENCE_REFERENCE");
+            "UNSUPPORTED_SKILL_CLAIM").doesNotContain("UNSUPPORTED_EVIDENCE_REFERENCE");
     }
 
     private static SkillMatrixView matrix(UUID evidenceId) {
@@ -50,5 +56,20 @@ class SkillExplanationValidatorTest {
             List.of(UUID.randomUUID()), List.of(), "rule-v1");
         return new SkillMatrixView(UUID.randomUUID(), UUID.randomUUID(), "skill-v1", "rule-v1", "CURRENT",
             List.of(skill), List.of("testing-discipline"), List.of(), Instant.parse("2026-08-31T00:00:00Z"));
+    }
+
+    private RuleEvaluationView evaluation() {
+        var rule = new RuleResultView("TEST_FILES", "v1", "PASSED", BigDecimal.ONE, BigDecimal.ONE,
+            BigDecimal.ONE, "PRESENCE", "trace", List.of());
+        var category = new RuleCategoryScoreView("TESTING", BigDecimal.ONE, BigDecimal.ONE, BigDecimal.ONE,
+            List.of(rule), List.of());
+        return new RuleEvaluationView(matrix.evaluationId(), UUID.randomUUID(), UUID.randomUUID(), "rule-v1",
+            "formula-v1", "extractor-v1", BigDecimal.ONE, BigDecimal.ONE,
+            new RuleEvidenceSummaryView(1, 1, 0), List.of(category), List.of(), Instant.parse("2026-08-31T00:00:00Z"));
+    }
+
+    private RuleEvidenceListView evidence() {
+        return new RuleEvidenceListView(matrix.evaluationId(), List.of(new RuleEvidenceView(evidenceId,
+            "TEST_FILES", "DIRECT", "REPOSITORY_PATH", "snapshot:path:test", "test path", BigDecimal.ONE)));
     }
 }

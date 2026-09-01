@@ -65,14 +65,23 @@ class AiGenerationApplicationServiceTest {
 
     @Test
     void createsOneLockedContextFromAnOwnerScopedSkillMatrix() {
-        UUID owner = UUID.randomUUID(), matrixId = UUID.randomUUID(), templateId = UUID.randomUUID();
+        UUID owner = UUID.randomUUID(), matrixId = UUID.randomUUID(), evaluationId = UUID.randomUUID();
+        UUID templateId = UUID.randomUUID();
         SkillMatrixView matrix = org.mockito.Mockito.mock(SkillMatrixView.class);
+        RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
+        var evidence = new RuleEvidenceListView(evaluationId, List.of());
         when(persistence.findByOwnerAndIdempotencyKey(owner, "key")).thenReturn(Optional.empty());
         when(matrices.get(owner, matrixId)).thenReturn(matrix);
+        when(matrix.evaluationId()).thenReturn(evaluationId);
+        when(evaluations.getEvaluation(owner, evaluationId)).thenReturn(evaluation);
+        when(evaluations.getEvidence(owner, evaluationId)).thenReturn(evidence);
         when(persistence.loadActiveTemplate(AiGenerationApplicationService.SKILL_EXPLANATION_TASK)).thenReturn(
             new PromptTemplateVersion(templateId, AiGenerationApplicationService.SKILL_EXPLANATION_TASK, "v1",
                 "Never calculate scores.", "Return JSON."));
-        when(prompts.build(eq(matrix), any())).thenReturn(new PromptPackage("{}", "prompt", "a".repeat(64), 4096));
+        when(prompts.build(matrix, evaluation, evidence,
+            new PromptTemplateVersion(templateId, AiGenerationApplicationService.SKILL_EXPLANATION_TASK, "v1",
+                "Never calculate scores.", "Return JSON.")))
+            .thenReturn(new PromptPackage("{}", "prompt", "a".repeat(64), 4096));
         when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
 
@@ -95,12 +104,19 @@ class AiGenerationApplicationServiceTest {
             NOW.minusSeconds(1)).start(NOW.minusMillis(500));
         GenerationWorkItem item = new GenerationWorkItem(running, matrix, null, "prompt");
         SkillMatrixView matrixView = org.mockito.Mockito.mock(SkillMatrixView.class);
+        UUID evaluationId = UUID.randomUUID();
+        RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
+        var evidence = new RuleEvidenceListView(evaluationId, List.of());
         var content = new SkillExplanationContent("grounded", List.of(), List.of());
         when(transactions.providerCompleted(item, execution,
             new GenerationProviderResult("raw", 10, 5), 12, NOW))
             .thenReturn(Optional.of(running));
         when(matrices.get(owner, matrix)).thenReturn(matrixView);
-        when(validator.validate("raw", matrixView)).thenReturn(new SkillExplanationValidation(content, List.of()));
+        when(matrixView.evaluationId()).thenReturn(evaluationId);
+        when(evaluations.getEvaluation(owner, evaluationId)).thenReturn(evaluation);
+        when(evaluations.getEvidence(owner, evaluationId)).thenReturn(evidence);
+        when(validator.validate("raw", matrixView, evaluation, evidence))
+            .thenReturn(new SkillExplanationValidation(content, List.of()));
         when(objects.put(eq(owner), any(), eq(running.id()), eq("skill-explanation.json"), any()))
             .thenReturn("object://owner/artifact");
         when(transactions.validated(eq(item), eq(execution), any(), eq("object://owner/artifact"), any(), eq(NOW)))

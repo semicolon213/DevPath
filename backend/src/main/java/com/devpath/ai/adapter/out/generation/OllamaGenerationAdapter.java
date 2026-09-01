@@ -31,6 +31,7 @@ public class OllamaGenerationAdapter implements GenerationProviderPort {
                 "model", properties.model(),
                 "stream", false,
                 "format", "json",
+                "options", Map.of("num_predict", 768, "temperature", 0),
                 "messages", List.of(Map.of("role", "user", "content", prompt))
             )).retrieve().body(OllamaResponse.class);
             if (response == null || response.message() == null || response.message().content() == null

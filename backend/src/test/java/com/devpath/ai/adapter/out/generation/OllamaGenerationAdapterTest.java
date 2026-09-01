@@ -1,6 +1,7 @@
 package com.devpath.ai.adapter.out.generation;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.content;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
@@ -16,7 +17,9 @@ class OllamaGenerationAdapterTest {
     void normalizesARecordedStructuredResponse() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://ollama.test");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("http://ollama.test/api/chat")).andRespond(withSuccess(
+        server.expect(requestTo("http://ollama.test/api/chat"))
+            .andExpect(content().json("{\"options\":{\"num_predict\":768,\"temperature\":0}}"))
+            .andRespond(withSuccess(
             "{\"message\":{\"content\":\"{\\\"summary\\\":\\\"grounded\\\"}\"},\"prompt_eval_count\":12,\"eval_count\":7}",
             MediaType.APPLICATION_JSON));
         var adapter = new OllamaGenerationAdapter(builder.build(), new AiGenerationProperties(

@@ -81,7 +81,9 @@ public class AiGenerationApplicationService {
         var template = persistence.loadActiveTemplate(taskType);
         if (SKILL_EXPLANATION_TASK.equals(taskType)) {
             matrixId = sourceId;
-            prompt = prompts.build(matrices.get(userId, matrixId), template);
+            var matrix = matrices.get(userId, matrixId);
+            var evidence = evaluations.getEvidence(userId, matrix.evaluationId());
+            prompt = prompts.build(matrix, evaluations.getEvaluation(userId, matrix.evaluationId()), evidence, template);
         } else {
             var analysis = analyses.getResult(userId, sourceId);
             analysisId = analysis.analysisId();
@@ -152,7 +154,10 @@ public class AiGenerationApplicationService {
                 evaluations.getEvidence(item.job().userId(), analysis.evaluationId()));
             content = validation.content(); violations = validation.violations(); fileName = "repository-review.json";
         } else {
-            var validation = validator.validate(result.content(), matrices.get(item.job().userId(), item.skillMatrixId()));
+            var matrix = matrices.get(item.job().userId(), item.skillMatrixId());
+            var evaluation = evaluations.getEvaluation(item.job().userId(), matrix.evaluationId());
+            var validation = validator.validate(result.content(), matrix, evaluation,
+                evaluations.getEvidence(item.job().userId(), matrix.evaluationId()));
             content = validation.content(); violations = validation.violations(); fileName = "skill-explanation.json";
         }
         if (content == null || !violations.isEmpty()) {
