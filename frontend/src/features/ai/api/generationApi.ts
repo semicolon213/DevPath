@@ -66,12 +66,37 @@ export type GeneratedRepositoryReview = {
   };
 };
 
+export type GeneratedCareerAdvice = {
+  artifactId: string;
+  type: "CAREER_ADVICE";
+  status: "VALIDATED";
+  provenance: GeneratedSkillExplanation["provenance"] & { careerReadinessId: string };
+  validation: {
+    status: "PASSED";
+    validatorVersion: "career-advice-validator-v1";
+    validatedAt: string;
+    violations: string[];
+  };
+  contentRef: string;
+  content: {
+    readinessSummary: string;
+    strengthExplanation: string;
+    gapExplanation: string;
+    nextSteps: Array<{ recommendationId: string; advice: string }>;
+    confidenceNotice: string;
+  };
+};
+
 export async function requestSkillExplanation(skillMatrixId: string) {
   return requestGeneration("SKILL_ANALYSIS_EXPLANATION", skillMatrixId, "SKILL_EXPLANATION");
 }
 
 export async function requestRepositoryReview(analysisId: string) {
   return requestGeneration("REPOSITORY_REVIEW", analysisId, "REPOSITORY_REVIEW");
+}
+
+export async function requestCareerCoaching(careerReadinessId: string) {
+  return requestGeneration("CAREER_COACHING", careerReadinessId, "CAREER_ADVICE");
 }
 
 export async function getGenerationJob(jobId: string) {
@@ -92,6 +117,10 @@ export async function getGeneratedSkillExplanation(artifactUrl: string) {
 
 export async function getGeneratedRepositoryReview(artifactUrl: string) {
   return apiRequest<GeneratedRepositoryReview>(artifactUrl);
+}
+
+export async function getGeneratedCareerAdvice(artifactUrl: string) {
+  return apiRequest<GeneratedCareerAdvice>(artifactUrl);
 }
 
 async function requestGeneration(taskType: string, sourceResourceRef: string, outputType: string) {

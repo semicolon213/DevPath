@@ -4,10 +4,13 @@ import com.devpath.ai.config.AiGenerationProperties;
 import com.devpath.ai.domain.GenerationJob;
 import com.devpath.ai.domain.GenerationJobStatus;
 import com.devpath.analysis.application.AnalysisApplicationService;
+import com.devpath.career.application.CareerReadinessApplicationService;
+import com.devpath.prompt.application.CareerCoachingPromptBuilder;
 import com.devpath.prompt.application.SkillExplanationPromptBuilder;
 import com.devpath.prompt.application.RepositoryReviewPromptBuilder;
 import com.devpath.prompt.application.PromptPackage;
 import com.devpath.repository.application.RepositoryApplicationService;
+import com.devpath.recommendation.application.RecommendationApplicationService;
 import com.devpath.rule.application.CompletedRuleEvaluationApplicationService;
 import com.devpath.rule.application.SkillMatrixApplicationService;
 import com.devpath.shared.application.ObjectContentPort;
@@ -28,6 +31,8 @@ public class AiGenerationApplicationService {
     public static final String SKILL_EXPLANATION_OUTPUT = "SKILL_EXPLANATION";
     public static final String REPOSITORY_REVIEW_TASK = "REPOSITORY_REVIEW";
     public static final String REPOSITORY_REVIEW_OUTPUT = "REPOSITORY_REVIEW";
+    public static final String CAREER_COACHING_TASK = "CAREER_COACHING";
+    public static final String CAREER_COACHING_OUTPUT = "CAREER_ADVICE";
     private static final Pattern IDEMPOTENCY_KEY = Pattern.compile("^[A-Za-z0-9._:-]{1,128}$");
     private final GenerationPersistencePort persistence;
     private final SkillMatrixApplicationService matrices;
@@ -38,6 +43,10 @@ public class AiGenerationApplicationService {
     private final CompletedRuleEvaluationApplicationService evaluations;
     private final RepositoryReviewPromptBuilder reviewPrompts;
     private final RepositoryReviewValidator reviewValidator;
+    private final CareerReadinessApplicationService readiness;
+    private final RecommendationApplicationService recommendations;
+    private final CareerCoachingPromptBuilder coachingPrompts;
+    private final CareerAdviceValidator adviceValidator;
     private final ObjectContentPort objects;
     private final AiGenerationProperties properties;
     private final AiAuditPort audit;
@@ -50,13 +59,17 @@ public class AiGenerationApplicationService {
         SkillExplanationPromptBuilder prompts, SkillExplanationValidator validator,
         AnalysisApplicationService analyses, RepositoryApplicationService repositories,
         CompletedRuleEvaluationApplicationService evaluations, RepositoryReviewPromptBuilder reviewPrompts,
-        RepositoryReviewValidator reviewValidator, ObjectContentPort objects,
+        RepositoryReviewValidator reviewValidator, CareerReadinessApplicationService readiness,
+        RecommendationApplicationService recommendations, CareerCoachingPromptBuilder coachingPrompts,
+        CareerAdviceValidator adviceValidator, ObjectContentPort objects,
         AiGenerationProperties properties, AiAuditPort audit, AiGenerationTransactionService transactions,
         ObjectMapper mapper, Clock clock
     ) {
         this.persistence = persistence; this.matrices = matrices; this.prompts = prompts; this.validator = validator;
         this.analyses = analyses; this.repositories = repositories; this.evaluations = evaluations;
         this.reviewPrompts = reviewPrompts; this.reviewValidator = reviewValidator;
+        this.readiness = readiness; this.recommendations = recommendations;
+        this.coachingPrompts = coachingPrompts; this.adviceValidator = adviceValidator;
         this.objects = objects; this.properties = properties; this.audit = audit; this.transactions = transactions;
         this.mapper = mapper; this.clock = clock;
     }
@@ -77,6 +90,7 @@ public class AiGenerationApplicationService {
         }
         UUID matrixId;
         UUID analysisId = null;
+        UUID careerReadinessId = null;
         PromptPackage prompt;
         var template = persistence.loadActiveTemplate(taskType);
         if (SKILL_EXPLANATION_TASK.equals(taskType)) {
@@ -84,17 +98,32 @@ public class AiGenerationApplicationService {
             var matrix = matrices.get(userId, matrixId);
             var evidence = evaluations.getEvidence(userId, matrix.evaluationId());
             prompt = prompts.build(matrix, evaluations.getEvaluation(userId, matrix.evaluationId()), evidence, template);
-        } else {
+        } else if (REPOSITORY_REVIEW_TASK.equals(taskType)) {
             var analysis = analyses.getResult(userId, sourceId);
             analysisId = analysis.analysisId();
             matrixId = analysis.skillMatrixId();
             var evaluation = evaluations.getEvaluation(userId, analysis.evaluationId());
             prompt = reviewPrompts.build(repositories.get(userId, analysis.repositoryId()), analysis, evaluation,
                 evaluations.getEvidence(userId, analysis.evaluationId()), template);
+        } else {
+            var careerReadiness = readiness.get(userId, sourceId);
+            if (!"COMPLETED".equals(careerReadiness.status())) {
+                throw new IllegalArgumentException("Career coaching requires completed readiness");
+            }
+            var recommendationSet = recommendations.listRecommendationSets(userId).recommendationSets().stream()
+                .filter(value -> value.careerReadinessId().equals(sourceId)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Career recommendations are unavailable"));
+            var roadmap = recommendations.listRoadmaps(userId).roadmaps().stream()
+                .filter(value -> value.recommendationSetId().equals(recommendationSet.recommendationSetId())).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Career roadmap is unavailable"));
+            matrixId = careerReadiness.skillMatrixId();
+            careerReadinessId = sourceId;
+            prompt = coachingPrompts.build(careerReadiness, recommendationSet, roadmap, template);
         }
         Instant now = clock.instant();
         UUID contextId = UUID.randomUUID();
-        persistence.saveContext(new StoredPromptContext(contextId, userId, template.id(), matrixId, analysisId, taskType,
+        persistence.saveContext(new StoredPromptContext(contextId, userId, template.id(), matrixId, analysisId,
+            careerReadinessId, taskType,
             prompt.tokenBudget(), prompt.contextHash(), prompt.contextPayload(), prompt.prompt(), now));
         GenerationJob job = persistence.saveJob(GenerationJob.queue(userId, contextId, idempotencyKey, taskType, now));
         audit.record(AiAuditEvent.GENERATION_REQUESTED, userId, job.id(), now);
@@ -153,6 +182,12 @@ public class AiGenerationApplicationService {
             var validation = reviewValidator.validate(result.content(),
                 evaluations.getEvidence(item.job().userId(), analysis.evaluationId()));
             content = validation.content(); violations = validation.violations(); fileName = "repository-review.json";
+        } else if (CAREER_COACHING_TASK.equals(item.job().taskType())) {
+            var recommendationSet = recommendations.listRecommendationSets(item.job().userId()).recommendationSets().stream()
+                .filter(value -> value.careerReadinessId().equals(item.careerReadinessId())).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Career recommendations are unavailable"));
+            var validation = adviceValidator.validate(result.content(), recommendationSet);
+            content = validation.content(); violations = validation.violations(); fileName = "career-advice.json";
         } else {
             var matrix = matrices.get(item.job().userId(), item.skillMatrixId());
             var evaluation = evaluations.getEvaluation(item.job().userId(), matrix.evaluationId());
@@ -221,7 +256,8 @@ public class AiGenerationApplicationService {
 
     private GeneratedArtifactView artifactView(ArtifactRecord value, Object content) {
         return new GeneratedArtifactView(value.artifactId(), value.artifactType(), "VALIDATED",
-            new GeneratedArtifactView.Provenance(value.skillMatrixId(), value.analysisId(), value.promptContextId(),
+            new GeneratedArtifactView.Provenance(value.skillMatrixId(), value.analysisId(), value.careerReadinessId(),
+                value.promptContextId(),
                 value.templateVersion(), value.provider(), value.model(), value.contextHash(), value.createdAt()),
             validationView(value), "/api/v1/generated-artifacts/" + value.artifactId(), content);
     }
@@ -237,9 +273,11 @@ public class AiGenerationApplicationService {
     }
 
     private Object read(String value, String artifactType) {
-        try { return REPOSITORY_REVIEW_OUTPUT.equals(artifactType)
-            ? mapper.readValue(value, RepositoryReviewContent.class)
-            : mapper.readValue(value, SkillExplanationContent.class); }
+        try { return switch (artifactType) {
+            case REPOSITORY_REVIEW_OUTPUT -> mapper.readValue(value, RepositoryReviewContent.class);
+            case CAREER_COACHING_OUTPUT -> mapper.readValue(value, CareerAdviceContent.class);
+            default -> mapper.readValue(value, SkillExplanationContent.class);
+        }; }
         catch (JsonProcessingException exception) { throw new IllegalStateException("Artifact content is invalid", exception); }
     }
 
@@ -247,7 +285,8 @@ public class AiGenerationApplicationService {
         String taskType, List<UUID> sourceResourceRefs, String outputType, String idempotencyKey
     ) {
         boolean supported = SKILL_EXPLANATION_TASK.equals(taskType) && SKILL_EXPLANATION_OUTPUT.equals(outputType)
-            || REPOSITORY_REVIEW_TASK.equals(taskType) && REPOSITORY_REVIEW_OUTPUT.equals(outputType);
+            || REPOSITORY_REVIEW_TASK.equals(taskType) && REPOSITORY_REVIEW_OUTPUT.equals(outputType)
+            || CAREER_COACHING_TASK.equals(taskType) && CAREER_COACHING_OUTPUT.equals(outputType);
         if (!supported || sourceResourceRefs == null
             || sourceResourceRefs.size() != 1 || sourceResourceRefs.getFirst() == null || idempotencyKey == null
             || !IDEMPOTENCY_KEY.matcher(idempotencyKey).matches()) {

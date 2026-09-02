@@ -3256,14 +3256,14 @@ components:
       additionalProperties: false
       required: [taskType, sourceResourceRefs, outputType]
       properties:
-        taskType: {type: string, enum: [SKILL_ANALYSIS_EXPLANATION, REPOSITORY_REVIEW]}
+        taskType: {type: string, enum: [SKILL_ANALYSIS_EXPLANATION, REPOSITORY_REVIEW, CAREER_COACHING]}
         sourceResourceRefs:
           type: array
           minItems: 1
           maxItems: 1
           uniqueItems: true
           items: {type: string, format: uuid}
-        outputType: {type: string, enum: [SKILL_EXPLANATION, REPOSITORY_REVIEW]}
+        outputType: {type: string, enum: [SKILL_EXPLANATION, REPOSITORY_REVIEW, CAREER_ADVICE]}
     CancelJobRequest:
       type: object
       additionalProperties: false
@@ -3329,6 +3329,26 @@ components:
           minItems: 5
           maxItems: 5
           items: {$ref: "#/components/schemas/RepositoryReviewSection"}
+    CareerAdviceNextStep:
+      type: object
+      additionalProperties: false
+      required: [recommendationId, advice]
+      properties:
+        recommendationId: {type: string, format: uuid}
+        advice: {type: string, minLength: 1, maxLength: 2000}
+    CareerAdviceContent:
+      type: object
+      additionalProperties: false
+      required: [readinessSummary, strengthExplanation, gapExplanation, nextSteps, confidenceNotice]
+      properties:
+        readinessSummary: {type: string, minLength: 1, maxLength: 2000}
+        strengthExplanation: {type: string, minLength: 1, maxLength: 2000}
+        gapExplanation: {type: string, minLength: 1, maxLength: 2000}
+        nextSteps:
+          type: array
+          maxItems: 3
+          items: {$ref: "#/components/schemas/CareerAdviceNextStep"}
+        confidenceNotice: {type: string, minLength: 1, maxLength: 2000}
     ArtifactProvenance:
       type: object
       additionalProperties: false
@@ -3336,6 +3356,7 @@ components:
       properties:
         skillMatrixId: {type: string, format: uuid}
         analysisId: {type: string, format: uuid, nullable: true}
+        careerReadinessId: {type: string, format: uuid, nullable: true}
         promptContextId: {type: string, format: uuid}
         templateVersion: {type: string}
         provider: {type: string, enum: [OLLAMA]}
@@ -3348,7 +3369,7 @@ components:
       required: [artifactId, type, status, provenance, validation, contentRef, content]
       properties:
         artifactId: {type: string, format: uuid}
-        type: {type: string, enum: [SKILL_EXPLANATION, REPOSITORY_REVIEW]}
+        type: {type: string, enum: [SKILL_EXPLANATION, REPOSITORY_REVIEW, CAREER_ADVICE]}
         status: {type: string, enum: [VALIDATED]}
         provenance: {$ref: "#/components/schemas/ArtifactProvenance"}
         validation: {$ref: "#/components/schemas/ResponseValidation"}
@@ -3357,6 +3378,7 @@ components:
           oneOf:
             - $ref: "#/components/schemas/SkillExplanationContent"
             - $ref: "#/components/schemas/RepositoryReviewContent"
+            - $ref: "#/components/schemas/CareerAdviceContent"
     GeneratedArtifactEnvelope:
       type: object
       additionalProperties: false
@@ -3370,7 +3392,7 @@ components:
       required: [status, validatorVersion, validatedAt, violations]
       properties:
         status: {type: string, enum: [PASSED, REJECTED]}
-        validatorVersion: {type: string, enum: [skill-explanation-validator-v1, repository-review-validator-v1]}
+        validatorVersion: {type: string, enum: [skill-explanation-validator-v1, repository-review-validator-v1, career-advice-validator-v1]}
         validatedAt: {type: string, format: date-time}
         violations:
           type: array

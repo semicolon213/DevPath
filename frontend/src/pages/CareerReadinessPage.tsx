@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { CareerCoachingPanel } from "../features/ai/ui/CareerCoachingPanel";
 import type { ReadinessLevel, RuleCategory, SkillGap } from "../features/readiness/api/careerReadinessApi";
 import { useCurrentCareerReadiness } from "../features/readiness/model/useCareerReadiness";
 import { ApiError } from "../shared/api/apiClient";
@@ -23,6 +24,7 @@ export function CareerReadinessPage() {
       <div className="section-heading"><div><h2 id="gap-list-title">역량 비교</h2><p>모든 필수 범주를 격차 상태, 직무 가중치, 범주 순서로 보여줍니다. 추천 우선순위는 포함하지 않습니다.</p></div></div>
       <div className="readiness-gap-list">{result.skillGaps.map(gap => <GapCard key={gap.skillGapId} gap={gap} />)}</div>
     </section>
+    {!incomplete && <CareerCoachingPanel careerReadinessId={result.careerReadinessId} />}
     <section className="skill-next-action"><div><h2>결정론적 다음 단계</h2><p>충분 미만의 gap은 승인된 추천 정책과 선행 순서에 따라 로드맵으로 구성됩니다.</p></div><Link className="button-link" to="/roadmap">추천 로드맵 보기</Link></section>
   </Shell>;
 }

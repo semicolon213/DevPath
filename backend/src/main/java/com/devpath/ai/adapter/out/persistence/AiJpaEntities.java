@@ -32,6 +32,7 @@ class PromptContextJpaEntity {
     @Column(name = "prompt_template_version_id", nullable = false) UUID templateVersionId;
     @Column(name = "skill_matrix_id", nullable = false) UUID skillMatrixId;
     @Column(name = "analysis_id") UUID analysisId;
+    @Column(name = "career_readiness_id") UUID careerReadinessId;
     @Column(name = "task_type", nullable = false) String taskType;
     @Column(name = "token_budget", nullable = false) int tokenBudget;
     @Column(name = "context_hash", nullable = false) String contextHash;
@@ -42,7 +43,8 @@ class PromptContextJpaEntity {
     protected PromptContextJpaEntity() {}
     PromptContextJpaEntity(com.devpath.ai.application.StoredPromptContext value) {
         id = value.id(); userId = value.userId(); templateVersionId = value.templateVersionId();
-        skillMatrixId = value.skillMatrixId(); analysisId = value.analysisId(); taskType = value.taskType();
+        skillMatrixId = value.skillMatrixId(); analysisId = value.analysisId();
+        careerReadinessId = value.careerReadinessId(); taskType = value.taskType();
         tokenBudget = value.tokenBudget();
         contextHash = value.contextHash(); contextPayload = value.contextPayload(); providerPrompt = value.prompt();
         status = "LOCKED"; lockedAt = value.lockedAt();

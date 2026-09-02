@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cancelGenerationJob, getGeneratedSkillExplanation, getGenerationJob, requestRepositoryReview, requestSkillExplanation } from "./generationApi";
+import { cancelGenerationJob, getGeneratedSkillExplanation, getGenerationJob, requestCareerCoaching, requestRepositoryReview, requestSkillExplanation } from "./generationApi";
 
 describe("generationApi", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -48,6 +48,19 @@ describe("generationApi", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(2, expect.stringContaining("/api/v1/generation-requests"),
       expect.objectContaining({ body: JSON.stringify({ taskType: "REPOSITORY_REVIEW",
         sourceResourceRefs: ["analysis-id"], outputType: "REPOSITORY_REVIEW" }) }));
+  });
+
+  it("requests career coaching from a readiness result", async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(json({ headerName: "X-CSRF-TOKEN", token: "csrf" }))
+      .mockResolvedValueOnce(json({ jobId: "job-id", status: "QUEUED" }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await requestCareerCoaching("readiness-id");
+
+    expect(fetchMock).toHaveBeenNthCalledWith(2, expect.stringContaining("/api/v1/generation-requests"),
+      expect.objectContaining({ body: JSON.stringify({ taskType: "CAREER_COACHING",
+        sourceResourceRefs: ["readiness-id"], outputType: "CAREER_ADVICE" }) }));
   });
 });
 

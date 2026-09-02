@@ -11,12 +11,20 @@ import com.devpath.ai.config.AiGenerationProperties;
 import com.devpath.ai.domain.GenerationJob;
 import com.devpath.analysis.application.AnalysisApplicationService;
 import com.devpath.analysis.application.AnalysisResultView;
+import com.devpath.career.application.CareerReadinessApplicationService;
+import com.devpath.career.application.CareerReadinessView;
+import com.devpath.learning.application.LearningRoadmapListView;
+import com.devpath.learning.application.LearningRoadmapView;
+import com.devpath.prompt.application.CareerCoachingPromptBuilder;
 import com.devpath.prompt.application.PromptPackage;
 import com.devpath.prompt.application.PromptTemplateVersion;
 import com.devpath.prompt.application.RepositoryReviewPromptBuilder;
 import com.devpath.prompt.application.SkillExplanationPromptBuilder;
 import com.devpath.repository.application.RepositoryApplicationService;
 import com.devpath.repository.application.RepositoryView;
+import com.devpath.recommendation.application.RecommendationApplicationService;
+import com.devpath.recommendation.application.RecommendationSetListView;
+import com.devpath.recommendation.application.RecommendationSetView;
 import com.devpath.rule.application.CompletedRuleEvaluationApplicationService;
 import com.devpath.rule.application.RuleEvidenceListView;
 import com.devpath.rule.application.RuleEvaluationView;
@@ -50,6 +58,10 @@ class AiGenerationApplicationServiceTest {
     @Mock CompletedRuleEvaluationApplicationService evaluations;
     @Mock RepositoryReviewPromptBuilder reviewPrompts;
     @Mock RepositoryReviewValidator reviewValidator;
+    @Mock CareerReadinessApplicationService readiness;
+    @Mock RecommendationApplicationService recommendations;
+    @Mock CareerCoachingPromptBuilder coachingPrompts;
+    @Mock CareerAdviceValidator adviceValidator;
     @Mock ObjectContentPort objects;
     @Mock AiAuditPort audit;
     @Mock AiGenerationTransactionService transactions;
@@ -58,7 +70,7 @@ class AiGenerationApplicationServiceTest {
     @BeforeEach
     void setUp() {
         service = new AiGenerationApplicationService(persistence, matrices, prompts, validator, analyses, repositories,
-            evaluations, reviewPrompts, reviewValidator, objects,
+            evaluations, reviewPrompts, reviewValidator, readiness, recommendations, coachingPrompts, adviceValidator, objects,
             new AiGenerationProperties("http://localhost", "qwen-test", Duration.ofSeconds(1),
                 Duration.ofSeconds(2), 2), audit, transactions, new ObjectMapper(), Clock.fixed(NOW, ZoneOffset.UTC));
     }
@@ -102,7 +114,7 @@ class AiGenerationApplicationServiceTest {
         UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrix = UUID.randomUUID(), execution = UUID.randomUUID();
         GenerationJob running = GenerationJob.queue(owner, context, "key", AiGenerationApplicationService.SKILL_EXPLANATION_TASK,
             NOW.minusSeconds(1)).start(NOW.minusMillis(500));
-        GenerationWorkItem item = new GenerationWorkItem(running, matrix, null, "prompt");
+        GenerationWorkItem item = new GenerationWorkItem(running, matrix, null, null, "prompt");
         SkillMatrixView matrixView = org.mockito.Mockito.mock(SkillMatrixView.class);
         UUID evaluationId = UUID.randomUUID();
         RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
@@ -163,12 +175,46 @@ class AiGenerationApplicationServiceTest {
     }
 
     @Test
+    void createsCareerCoachingContextFromOwnedDeterministicOutputs() {
+        UUID owner = UUID.randomUUID(), readinessId = UUID.randomUUID(), matrixId = UUID.randomUUID();
+        UUID setId = UUID.randomUUID(), templateId = UUID.randomUUID();
+        CareerReadinessView readinessView = org.mockito.Mockito.mock(CareerReadinessView.class);
+        RecommendationSetView set = org.mockito.Mockito.mock(RecommendationSetView.class);
+        LearningRoadmapView roadmap = org.mockito.Mockito.mock(LearningRoadmapView.class);
+        var template = new PromptTemplateVersion(templateId, AiGenerationApplicationService.CAREER_COACHING_TASK,
+            "v1", "Never calculate scores.", "Return JSON.");
+        when(persistence.findByOwnerAndIdempotencyKey(owner, "coaching-key")).thenReturn(Optional.empty());
+        when(persistence.loadActiveTemplate(AiGenerationApplicationService.CAREER_COACHING_TASK)).thenReturn(template);
+        when(readiness.get(owner, readinessId)).thenReturn(readinessView);
+        when(readinessView.status()).thenReturn("COMPLETED");
+        when(readinessView.skillMatrixId()).thenReturn(matrixId);
+        when(set.careerReadinessId()).thenReturn(readinessId);
+        when(set.recommendationSetId()).thenReturn(setId);
+        when(recommendations.listRecommendationSets(owner)).thenReturn(new RecommendationSetListView(List.of(set)));
+        when(roadmap.recommendationSetId()).thenReturn(setId);
+        when(recommendations.listRoadmaps(owner)).thenReturn(new LearningRoadmapListView(List.of(roadmap)));
+        when(coachingPrompts.build(readinessView, set, roadmap, template))
+            .thenReturn(new PromptPackage("{}", "coaching prompt", "c".repeat(64), 8192));
+        when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+
+        service.request(owner, AiGenerationApplicationService.CAREER_COACHING_TASK, List.of(readinessId),
+            AiGenerationApplicationService.CAREER_COACHING_OUTPUT, "coaching-key");
+
+        ArgumentCaptor<StoredPromptContext> context = ArgumentCaptor.forClass(StoredPromptContext.class);
+        verify(persistence).saveContext(context.capture());
+        assertThat(context.getValue().careerReadinessId()).isEqualTo(readinessId);
+        assertThat(context.getValue().skillMatrixId()).isEqualTo(matrixId);
+        assertThat(context.getValue().analysisId()).isNull();
+    }
+
+    @Test
     void persistsRepositoryReviewOnlyAfterGroundingValidation() {
         UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrix = UUID.randomUUID();
         UUID analysisId = UUID.randomUUID(), evaluationId = UUID.randomUUID(), execution = UUID.randomUUID();
         GenerationJob running = GenerationJob.queue(owner, context, "review-key",
             AiGenerationApplicationService.REPOSITORY_REVIEW_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
-        GenerationWorkItem item = new GenerationWorkItem(running, matrix, analysisId, "prompt");
+        GenerationWorkItem item = new GenerationWorkItem(running, matrix, analysisId, null, "prompt");
         var analysis = new AnalysisResultView(analysisId, UUID.randomUUID(), UUID.randomUUID(), evaluationId,
             matrix, "REPOSITORY_BASELINE", true, NOW);
         var evidence = new RuleEvidenceListView(evaluationId, List.of());

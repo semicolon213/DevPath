@@ -4,6 +4,7 @@ import com.devpath.ai.application.ArtifactRecord;
 import com.devpath.ai.application.GenerationPersistencePort;
 import com.devpath.ai.application.GenerationWorkItem;
 import com.devpath.ai.application.AiGenerationApplicationService;
+import com.devpath.ai.application.CareerAdviceValidator;
 import com.devpath.ai.application.RepositoryReviewValidator;
 import com.devpath.ai.application.SkillExplanationValidator;
 import com.devpath.ai.application.StoredPromptContext;
@@ -72,6 +73,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
     @Override
     public UUID findSourceResourceId(UUID promptContextId) {
         PromptContextJpaEntity context = contexts.findById(promptContextId).orElseThrow();
+        if (context.careerReadinessId != null) return context.careerReadinessId;
         return context.analysisId == null ? context.skillMatrixId : context.analysisId;
     }
 
@@ -81,7 +83,8 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
             GenerationJob started = saveJob(toDomain(entity).start(now));
             PromptContextJpaEntity context = contexts.findById(started.promptContextId())
                 .orElseThrow(() -> new IllegalStateException("Prompt context is unavailable"));
-            return new GenerationWorkItem(started, context.skillMatrixId, context.analysisId, context.providerPrompt);
+            return new GenerationWorkItem(started, context.skillMatrixId, context.analysisId,
+                context.careerReadinessId, context.providerPrompt);
         });
     }
 
@@ -128,9 +131,13 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
         var artifact = new GeneratedArtifactJpaEntity();
         artifact.id = artifactId; artifact.userId = item.job().userId(); artifact.responseId = response.id;
         artifact.promptContextId = item.job().promptContextId();
-        artifact.artifactType = AiGenerationApplicationService.REPOSITORY_REVIEW_TASK.equals(item.job().taskType())
-            ? AiGenerationApplicationService.REPOSITORY_REVIEW_OUTPUT
-            : AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT;
+        artifact.artifactType = switch (item.job().taskType()) {
+            case AiGenerationApplicationService.REPOSITORY_REVIEW_TASK ->
+                AiGenerationApplicationService.REPOSITORY_REVIEW_OUTPUT;
+            case AiGenerationApplicationService.CAREER_COACHING_TASK ->
+                AiGenerationApplicationService.CAREER_COACHING_OUTPUT;
+            default -> AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT;
+        };
         artifact.status = "VALIDATED"; artifact.contentReference = contentReference; artifact.createdAt = now;
         artifacts.save(artifact);
         saveJob(item.job().succeed(now));
@@ -150,7 +157,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
             ModelExecutionJpaEntity execution = executions.findById(response.modelExecutionId).orElseThrow();
             ResponseValidationResultJpaEntity validation = validations.findByResponseId(response.id).orElseThrow();
             return new ArtifactRecord(artifact.id, artifact.promptContextId, context.skillMatrixId, context.analysisId,
-                artifact.artifactType, artifact.contentReference, template.versionLabel, execution.provider,
+                context.careerReadinessId, artifact.artifactType, artifact.contentReference, template.versionLabel, execution.provider,
                 execution.model, context.contextHash, validation.status, validation.validatorVersion,
                 validation.violations, validation.validatedAt, artifact.createdAt);
         });
@@ -176,8 +183,11 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
     }
 
     private static String validatorVersion(GenerationWorkItem item) {
-        return AiGenerationApplicationService.REPOSITORY_REVIEW_TASK.equals(item.job().taskType())
-            ? RepositoryReviewValidator.VERSION : SkillExplanationValidator.VERSION;
+        return switch (item.job().taskType()) {
+            case AiGenerationApplicationService.REPOSITORY_REVIEW_TASK -> RepositoryReviewValidator.VERSION;
+            case AiGenerationApplicationService.CAREER_COACHING_TASK -> CareerAdviceValidator.VERSION;
+            default -> SkillExplanationValidator.VERSION;
+        };
     }
 
     private GenerationJob toDomain(AiTaskJpaEntity value) {
