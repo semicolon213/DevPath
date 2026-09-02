@@ -8,6 +8,7 @@ import com.devpath.rule.application.SkillAssessmentView;
 import com.devpath.rule.application.SkillMatrixView;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -21,8 +22,10 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SkillExplanationValidator {
-    public static final String VERSION = "skill-explanation-validator-v3";
+    public static final String VERSION = "skill-explanation-validator-v4";
     private static final int GROUNDED_EVIDENCE_LIMIT = 2;
+    private static final Set<String> ROOT_FIELDS = Set.of("summary", "strengths", "improvementAreas");
+    private static final Set<String> REQUIRED_ITEM_FIELDS = Set.of("skillKey", "explanation", "evidenceIds");
     private static final Pattern NUMBER = Pattern.compile("\\p{N}");
     private static final Pattern UNSAFE = Pattern.compile("(?i)<|javascript:|on(?:click|error|load)\\s*=");
     private final ObjectMapper mapper;
@@ -40,15 +43,27 @@ public class SkillExplanationValidator {
         }
         try {
             JsonNode root = mapper.readTree(raw);
-            if (!root.isObject() || !fields(root).equals(Set.of("summary", "strengths", "improvementAreas"))) {
+            if (!root.isObject() || !ROOT_FIELDS.containsAll(fields(root))
+                || root.get("strengths") == null || root.get("improvementAreas") == null) {
                 return new SkillExplanationValidation(null, List.of("INVALID_RESPONSE_SCHEMA"));
             }
-            SkillExplanationContent content = mapper.treeToValue(root, SkillExplanationContent.class);
+            ObjectNode normalized = ((ObjectNode) root).deepCopy();
+            if (!normalized.hasNonNull("summary") || normalized.get("summary").asText().isBlank()) {
+                normalized.put("summary", "검증된 Rule Engine 근거를 바탕으로 강점과 개선 영역을 정리했습니다.");
+            }
+            if (!normalizeItems(normalized.get("strengths"))
+                || !normalizeItems(normalized.get("improvementAreas"))) {
+                return new SkillExplanationValidation(null, List.of("INVALID_RESPONSE_SCHEMA"));
+            }
+            SkillExplanationContent content = mapper.treeToValue(normalized, SkillExplanationContent.class);
             validateText(content.summary(), 2000, violations);
             validateItems(content.strengths(), matrix, SkillAssessmentView::strength, violations);
             validateItems(content.improvementAreas(), matrix, SkillAssessmentView::weakness, violations);
-            validateCoverage(content.strengths(), matrix, SkillAssessmentView::strength, violations);
-            validateCoverage(content.improvementAreas(), matrix, SkillAssessmentView::weakness, violations);
+            if (!matrix.skills().isEmpty() && content.strengths().isEmpty() && content.improvementAreas().isEmpty()) {
+                violations.add("INCOMPLETE_SKILL_EXPLANATION");
+            }
+            content = new SkillExplanationContent(content.summary(), complete(content.strengths(), matrix,
+                SkillAssessmentView::strength), complete(content.improvementAreas(), matrix, SkillAssessmentView::weakness));
             return new SkillExplanationValidation(new SkillExplanationContent(content.summary(),
                 ground(content.strengths(), matrix, evaluation, evidence),
                 ground(content.improvementAreas(), matrix, evaluation, evidence)),
@@ -56,6 +71,43 @@ public class SkillExplanationValidator {
         } catch (RuntimeException | com.fasterxml.jackson.core.JsonProcessingException exception) {
             return new SkillExplanationValidation(null, List.of("INVALID_RESPONSE_SCHEMA"));
         }
+    }
+
+    private static boolean normalizeItems(JsonNode items) {
+        if (!items.isArray()) return false;
+        for (JsonNode item : items) {
+            if (!item.isObject() || !fields(item).containsAll(REQUIRED_ITEM_FIELDS)
+                || !Set.of("skillKey", "explanation", "evidenceIds", "skillName").containsAll(fields(item))) {
+                return false;
+            }
+            ((ObjectNode) item).remove("skillName");
+        }
+        return true;
+    }
+
+    private static List<SkillExplanationContent.Item> complete(
+        List<SkillExplanationContent.Item> items, SkillMatrixView matrix, Predicate<SkillAssessmentView> expectedState
+    ) {
+        Map<String, SkillExplanationContent.Item> supplied = items.stream()
+            .collect(Collectors.toMap(SkillExplanationContent.Item::skillKey, value -> value));
+        return matrix.skills().stream().filter(expectedState).map(skill -> supplied.getOrDefault(skill.skillKey(),
+            new SkillExplanationContent.Item(skill.skillKey(), fallback(skill), List.of()))).toList();
+    }
+
+    private static String fallback(SkillAssessmentView skill) {
+        String label = switch (skill.category()) {
+            case "LANGUAGE" -> "언어 활용";
+            case "FRAMEWORK" -> "프레임워크 활용";
+            case "DATABASE" -> "데이터베이스";
+            case "ARCHITECTURE" -> "아키텍처";
+            case "TESTING" -> "테스트";
+            case "DEVOPS" -> "배포 및 운영";
+            case "DOCUMENTATION" -> "문서화";
+            case "ACTIVITY" -> "개발 활동";
+            default -> "기술 역량";
+        };
+        return skill.strength() ? "Rule Engine 근거에서 " + label + " 강점이 확인되었습니다."
+            : "Rule Engine 근거에서 " + label + " 개선 필요성이 확인되었습니다.";
     }
 
     private static void validateItems(
@@ -126,16 +178,6 @@ public class SkillExplanationValidator {
             case "TEST_FRAMEWORKS" -> "조언: 저장소의 테스트 실행 구성을 명시하세요. 확인 기준: 다음 분석에서 테스트 프레임워크 근거가 감지됩니다.";
             default -> "";
         };
-    }
-
-    private static void validateCoverage(
-        List<SkillExplanationContent.Item> items, SkillMatrixView matrix,
-        Predicate<SkillAssessmentView> expectedState, List<String> violations
-    ) {
-        Set<String> expected = matrix.skills().stream().filter(expectedState).map(SkillAssessmentView::skillKey)
-            .collect(Collectors.toSet());
-        Set<String> actual = items.stream().map(SkillExplanationContent.Item::skillKey).collect(Collectors.toSet());
-        if (!actual.equals(expected)) violations.add("INCOMPLETE_SKILL_EXPLANATION");
     }
 
     private static void validateText(String value, int maxLength, List<String> violations) {

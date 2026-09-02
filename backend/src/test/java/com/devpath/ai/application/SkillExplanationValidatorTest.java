@@ -77,18 +77,19 @@ class SkillExplanationValidatorTest {
         var evidence = new RuleEvidenceListView(evaluationId, List.of(new RuleEvidenceView(commitEvidence,
             "COMMIT_COUNT", "DIRECT", "SNAPSHOT_SIGNAL", "snapshot:signal:COMMIT_COUNT", "commits", BigDecimal.ONE)));
         String response = """
-            {"summary":"Grounded advice","strengths":[],"improvementAreas":[
-            {"skillKey":"development-activity","explanation":"Activity needs attention.","evidenceIds":[]},
-            {"skillKey":"delivery-operations","explanation":"Delivery needs attention.","evidenceIds":[]}]}
+            {"strengths":[],"improvementAreas":[{"skillKey":"development-activity","skillName":"Activity",
+            "explanation":"Activity needs attention.","evidenceIds":[]}]}
             """;
 
         SkillExplanationValidation result = validator.validate(response, weakMatrix, evaluation, evidence);
 
         assertThat(result.passed()).isTrue();
+        assertThat(result.content().summary()).contains("Rule Engine 근거");
         assertThat(result.content().improvementAreas()).filteredOn(item -> item.skillKey().equals("development-activity"))
             .singleElement().satisfies(item -> assertThat(item.explanation()).contains("커밋으로 나누어", "추가 커밋 이력"));
         assertThat(result.content().improvementAreas()).filteredOn(item -> item.skillKey().equals("delivery-operations"))
-            .singleElement().satisfies(item -> assertThat(item.explanation()).contains("CI 워크플로 설정 파일", "워크플로 설정이 감지"));
+            .singleElement().satisfies(item -> assertThat(item.explanation())
+                .contains("배포 및 운영 개선 필요성", "CI 워크플로 설정 파일", "워크플로 설정이 감지"));
     }
 
     private static SkillMatrixView matrix(UUID evidenceId) {
