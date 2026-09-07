@@ -4,6 +4,7 @@ import java.time.Instant;
 import java.util.UUID;
 
 public record StoredPromptContext(
-    UUID id, UUID userId, UUID templateVersionId, UUID skillMatrixId, UUID analysisId, UUID careerReadinessId, String taskType,
+    UUID id, UUID userId, UUID templateVersionId, UUID skillMatrixId, UUID analysisId, UUID careerReadinessId,
+    UUID learningRoadmapId, String taskType,
     int tokenBudget, String contextHash, String contextPayload, String prompt, Instant lockedAt
 ) {}

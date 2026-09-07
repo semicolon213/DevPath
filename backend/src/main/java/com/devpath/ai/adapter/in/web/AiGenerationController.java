@@ -79,9 +79,9 @@ public class AiGenerationController {
     }
 
     record CreateGenerationRequest(
-        @NotNull @Pattern(regexp = "SKILL_ANALYSIS_EXPLANATION|REPOSITORY_REVIEW|CAREER_COACHING") String taskType,
+        @NotNull @Pattern(regexp = "SKILL_ANALYSIS_EXPLANATION|REPOSITORY_REVIEW|CAREER_COACHING|LEARNING_RECOMMENDATION") String taskType,
         @NotEmpty @Size(max = 1) List<@NotNull UUID> sourceResourceRefs,
-        @NotNull @Pattern(regexp = "SKILL_EXPLANATION|REPOSITORY_REVIEW|CAREER_ADVICE") String outputType
+        @NotNull @Pattern(regexp = "SKILL_EXPLANATION|REPOSITORY_REVIEW|CAREER_ADVICE|LEARNING_RECOMMENDATION") String outputType
     ) {}
 
     record CancelJobRequest() {}

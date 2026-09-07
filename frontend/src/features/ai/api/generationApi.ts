@@ -23,6 +23,8 @@ export type GeneratedSkillExplanation = {
   provenance: {
     skillMatrixId: string;
     analysisId?: string | null;
+    careerReadinessId?: string | null;
+    learningRoadmapId?: string | null;
     promptContextId: string;
     templateVersion: string;
     provider: "OLLAMA";
@@ -87,6 +89,35 @@ export type GeneratedCareerAdvice = {
   };
 };
 
+export type GeneratedLearningRecommendation = {
+  artifactId: string;
+  type: "LEARNING_RECOMMENDATION";
+  status: "VALIDATED";
+  provenance: GeneratedSkillExplanation["provenance"] & {
+    careerReadinessId: string;
+    learningRoadmapId: string;
+  };
+  validation: {
+    status: "PASSED";
+    validatorVersion: "learning-recommendation-validator-v1";
+    validatedAt: string;
+    violations: string[];
+  };
+  contentRef: string;
+  content: {
+    recommendationSummary: string;
+    steps: Array<{
+      roadmapStepId: string;
+      position: number;
+      milestoneExplanation: string;
+      objective: string;
+      practiceTask: string;
+      completionCriteria: string;
+      expectedEvidence: string[];
+    }>;
+  };
+};
+
 export async function requestSkillExplanation(skillMatrixId: string) {
   return requestGeneration("SKILL_ANALYSIS_EXPLANATION", skillMatrixId, "SKILL_EXPLANATION");
 }
@@ -97,6 +128,10 @@ export async function requestRepositoryReview(analysisId: string) {
 
 export async function requestCareerCoaching(careerReadinessId: string) {
   return requestGeneration("CAREER_COACHING", careerReadinessId, "CAREER_ADVICE");
+}
+
+export async function requestLearningRecommendation(learningRoadmapId: string) {
+  return requestGeneration("LEARNING_RECOMMENDATION", learningRoadmapId, "LEARNING_RECOMMENDATION");
 }
 
 export async function getGenerationJob(jobId: string) {
@@ -121,6 +156,10 @@ export async function getGeneratedRepositoryReview(artifactUrl: string) {
 
 export async function getGeneratedCareerAdvice(artifactUrl: string) {
   return apiRequest<GeneratedCareerAdvice>(artifactUrl);
+}
+
+export async function getGeneratedLearningRecommendation(artifactUrl: string) {
+  return apiRequest<GeneratedLearningRecommendation>(artifactUrl);
 }
 
 async function requestGeneration(taskType: string, sourceResourceRef: string, outputType: string) {

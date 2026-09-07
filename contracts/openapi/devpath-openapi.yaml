@@ -3256,14 +3256,14 @@ components:
       additionalProperties: false
       required: [taskType, sourceResourceRefs, outputType]
       properties:
-        taskType: {type: string, enum: [SKILL_ANALYSIS_EXPLANATION, REPOSITORY_REVIEW, CAREER_COACHING]}
+        taskType: {type: string, enum: [SKILL_ANALYSIS_EXPLANATION, REPOSITORY_REVIEW, CAREER_COACHING, LEARNING_RECOMMENDATION]}
         sourceResourceRefs:
           type: array
           minItems: 1
           maxItems: 1
           uniqueItems: true
           items: {type: string, format: uuid}
-        outputType: {type: string, enum: [SKILL_EXPLANATION, REPOSITORY_REVIEW, CAREER_ADVICE]}
+        outputType: {type: string, enum: [SKILL_EXPLANATION, REPOSITORY_REVIEW, CAREER_ADVICE, LEARNING_RECOMMENDATION]}
     CancelJobRequest:
       type: object
       additionalProperties: false
@@ -3349,6 +3349,28 @@ components:
           maxItems: 3
           items: {$ref: "#/components/schemas/CareerAdviceNextStep"}
         confidenceNotice: {type: string, minLength: 1, maxLength: 2000}
+    LearningRecommendationStep:
+      type: object
+      additionalProperties: false
+      required: [roadmapStepId, position, milestoneExplanation, objective, practiceTask, completionCriteria, expectedEvidence]
+      properties:
+        roadmapStepId: {type: string, format: uuid}
+        position: {type: integer, minimum: 0}
+        milestoneExplanation: {type: string, minLength: 1, maxLength: 2000}
+        objective: {type: string, minLength: 1, maxLength: 2000}
+        practiceTask: {type: string, minLength: 1, maxLength: 2000}
+        completionCriteria: {type: string, minLength: 1, maxLength: 500}
+        expectedEvidence: {type: array, items: {type: string}}
+    LearningRecommendationContent:
+      type: object
+      additionalProperties: false
+      required: [recommendationSummary, steps]
+      properties:
+        recommendationSummary: {type: string, minLength: 1, maxLength: 2000}
+        steps:
+          type: array
+          minItems: 1
+          items: {$ref: "#/components/schemas/LearningRecommendationStep"}
     ArtifactProvenance:
       type: object
       additionalProperties: false
@@ -3357,6 +3379,7 @@ components:
         skillMatrixId: {type: string, format: uuid}
         analysisId: {type: string, format: uuid, nullable: true}
         careerReadinessId: {type: string, format: uuid, nullable: true}
+        learningRoadmapId: {type: string, format: uuid, nullable: true}
         promptContextId: {type: string, format: uuid}
         templateVersion: {type: string}
         provider: {type: string, enum: [OLLAMA]}
@@ -3369,7 +3392,7 @@ components:
       required: [artifactId, type, status, provenance, validation, contentRef, content]
       properties:
         artifactId: {type: string, format: uuid}
-        type: {type: string, enum: [SKILL_EXPLANATION, REPOSITORY_REVIEW, CAREER_ADVICE]}
+        type: {type: string, enum: [SKILL_EXPLANATION, REPOSITORY_REVIEW, CAREER_ADVICE, LEARNING_RECOMMENDATION]}
         status: {type: string, enum: [VALIDATED]}
         provenance: {$ref: "#/components/schemas/ArtifactProvenance"}
         validation: {$ref: "#/components/schemas/ResponseValidation"}
@@ -3379,6 +3402,7 @@ components:
             - $ref: "#/components/schemas/SkillExplanationContent"
             - $ref: "#/components/schemas/RepositoryReviewContent"
             - $ref: "#/components/schemas/CareerAdviceContent"
+            - $ref: "#/components/schemas/LearningRecommendationContent"
     GeneratedArtifactEnvelope:
       type: object
       additionalProperties: false
@@ -3392,7 +3416,7 @@ components:
       required: [status, validatorVersion, validatedAt, violations]
       properties:
         status: {type: string, enum: [PASSED, REJECTED]}
-        validatorVersion: {type: string, enum: [skill-explanation-validator-v1, repository-review-validator-v1, career-advice-validator-v1]}
+        validatorVersion: {type: string, enum: [skill-explanation-validator-v1, repository-review-validator-v1, career-advice-validator-v1, learning-recommendation-validator-v1]}
         validatedAt: {type: string, format: date-time}
         violations:
           type: array

@@ -8,7 +8,8 @@ public record GeneratedArtifactView(
     ResponseValidationView validation, String contentRef, Object content
 ) {
     public record Provenance(
-        UUID skillMatrixId, UUID analysisId, UUID careerReadinessId, UUID promptContextId, String templateVersion, String provider,
+        UUID skillMatrixId, UUID analysisId, UUID careerReadinessId, UUID learningRoadmapId,
+        UUID promptContextId, String templateVersion, String provider,
         String model, String contextHash, Instant generatedAt
     ) {}
 }

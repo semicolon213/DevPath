@@ -16,6 +16,7 @@ import com.devpath.career.application.CareerReadinessView;
 import com.devpath.learning.application.LearningRoadmapListView;
 import com.devpath.learning.application.LearningRoadmapView;
 import com.devpath.prompt.application.CareerCoachingPromptBuilder;
+import com.devpath.prompt.application.LearningRecommendationPromptBuilder;
 import com.devpath.prompt.application.PromptPackage;
 import com.devpath.prompt.application.PromptTemplateVersion;
 import com.devpath.prompt.application.RepositoryReviewPromptBuilder;
@@ -62,6 +63,8 @@ class AiGenerationApplicationServiceTest {
     @Mock RecommendationApplicationService recommendations;
     @Mock CareerCoachingPromptBuilder coachingPrompts;
     @Mock CareerAdviceValidator adviceValidator;
+    @Mock LearningRecommendationPromptBuilder learningPrompts;
+    @Mock LearningRecommendationValidator learningValidator;
     @Mock ObjectContentPort objects;
     @Mock AiAuditPort audit;
     @Mock AiGenerationTransactionService transactions;
@@ -70,7 +73,8 @@ class AiGenerationApplicationServiceTest {
     @BeforeEach
     void setUp() {
         service = new AiGenerationApplicationService(persistence, matrices, prompts, validator, analyses, repositories,
-            evaluations, reviewPrompts, reviewValidator, readiness, recommendations, coachingPrompts, adviceValidator, objects,
+            evaluations, reviewPrompts, reviewValidator, readiness, recommendations, coachingPrompts, adviceValidator,
+            learningPrompts, learningValidator, objects,
             new AiGenerationProperties("http://localhost", "qwen-test", Duration.ofSeconds(1),
                 Duration.ofSeconds(2), 2), audit, transactions, new ObjectMapper(), Clock.fixed(NOW, ZoneOffset.UTC));
     }
@@ -114,7 +118,7 @@ class AiGenerationApplicationServiceTest {
         UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrix = UUID.randomUUID(), execution = UUID.randomUUID();
         GenerationJob running = GenerationJob.queue(owner, context, "key", AiGenerationApplicationService.SKILL_EXPLANATION_TASK,
             NOW.minusSeconds(1)).start(NOW.minusMillis(500));
-        GenerationWorkItem item = new GenerationWorkItem(running, matrix, null, null, "prompt");
+        GenerationWorkItem item = new GenerationWorkItem(running, matrix, null, null, null, "prompt");
         SkillMatrixView matrixView = org.mockito.Mockito.mock(SkillMatrixView.class);
         UUID evaluationId = UUID.randomUUID();
         RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
@@ -209,12 +213,46 @@ class AiGenerationApplicationServiceTest {
     }
 
     @Test
+    void createsLearningRecommendationContextFromOwnedRoadmap() {
+        UUID owner = UUID.randomUUID(), roadmapId = UUID.randomUUID(), setId = UUID.randomUUID();
+        UUID readinessId = UUID.randomUUID(), matrixId = UUID.randomUUID(), templateId = UUID.randomUUID();
+        LearningRoadmapView roadmap = org.mockito.Mockito.mock(LearningRoadmapView.class);
+        RecommendationSetView set = org.mockito.Mockito.mock(RecommendationSetView.class);
+        CareerReadinessView readinessView = org.mockito.Mockito.mock(CareerReadinessView.class);
+        var template = new PromptTemplateVersion(templateId, AiGenerationApplicationService.LEARNING_RECOMMENDATION_TASK,
+            "v1", "Never calculate scores.", "Return JSON.");
+        when(persistence.findByOwnerAndIdempotencyKey(owner, "learning-key")).thenReturn(Optional.empty());
+        when(persistence.loadActiveTemplate(AiGenerationApplicationService.LEARNING_RECOMMENDATION_TASK)).thenReturn(template);
+        when(recommendations.getRoadmap(owner, roadmapId)).thenReturn(roadmap);
+        when(roadmap.roadmapId()).thenReturn(roadmapId);
+        when(roadmap.recommendationSetId()).thenReturn(setId);
+        when(recommendations.get(owner, setId)).thenReturn(set);
+        when(set.careerReadinessId()).thenReturn(readinessId);
+        when(readiness.get(owner, readinessId)).thenReturn(readinessView);
+        when(readinessView.careerReadinessId()).thenReturn(readinessId);
+        when(readinessView.skillMatrixId()).thenReturn(matrixId);
+        when(learningPrompts.build(readinessView, set, roadmap, template))
+            .thenReturn(new PromptPackage("{}", "learning prompt", "d".repeat(64), 8192));
+        when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+
+        service.request(owner, AiGenerationApplicationService.LEARNING_RECOMMENDATION_TASK, List.of(roadmapId),
+            AiGenerationApplicationService.LEARNING_RECOMMENDATION_OUTPUT, "learning-key");
+
+        ArgumentCaptor<StoredPromptContext> context = ArgumentCaptor.forClass(StoredPromptContext.class);
+        verify(persistence).saveContext(context.capture());
+        assertThat(context.getValue().learningRoadmapId()).isEqualTo(roadmapId);
+        assertThat(context.getValue().careerReadinessId()).isEqualTo(readinessId);
+        assertThat(context.getValue().skillMatrixId()).isEqualTo(matrixId);
+    }
+
+    @Test
     void persistsRepositoryReviewOnlyAfterGroundingValidation() {
         UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrix = UUID.randomUUID();
         UUID analysisId = UUID.randomUUID(), evaluationId = UUID.randomUUID(), execution = UUID.randomUUID();
         GenerationJob running = GenerationJob.queue(owner, context, "review-key",
             AiGenerationApplicationService.REPOSITORY_REVIEW_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
-        GenerationWorkItem item = new GenerationWorkItem(running, matrix, analysisId, null, "prompt");
+        GenerationWorkItem item = new GenerationWorkItem(running, matrix, analysisId, null, null, "prompt");
         var analysis = new AnalysisResultView(analysisId, UUID.randomUUID(), UUID.randomUUID(), evaluationId,
             matrix, "REPOSITORY_BASELINE", true, NOW);
         var evidence = new RuleEvidenceListView(evaluationId, List.of());

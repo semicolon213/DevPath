@@ -6,6 +6,7 @@ import com.devpath.ai.domain.GenerationJobStatus;
 import com.devpath.analysis.application.AnalysisApplicationService;
 import com.devpath.career.application.CareerReadinessApplicationService;
 import com.devpath.prompt.application.CareerCoachingPromptBuilder;
+import com.devpath.prompt.application.LearningRecommendationPromptBuilder;
 import com.devpath.prompt.application.SkillExplanationPromptBuilder;
 import com.devpath.prompt.application.RepositoryReviewPromptBuilder;
 import com.devpath.prompt.application.PromptPackage;
@@ -33,6 +34,8 @@ public class AiGenerationApplicationService {
     public static final String REPOSITORY_REVIEW_OUTPUT = "REPOSITORY_REVIEW";
     public static final String CAREER_COACHING_TASK = "CAREER_COACHING";
     public static final String CAREER_COACHING_OUTPUT = "CAREER_ADVICE";
+    public static final String LEARNING_RECOMMENDATION_TASK = "LEARNING_RECOMMENDATION";
+    public static final String LEARNING_RECOMMENDATION_OUTPUT = "LEARNING_RECOMMENDATION";
     private static final Pattern IDEMPOTENCY_KEY = Pattern.compile("^[A-Za-z0-9._:-]{1,128}$");
     private final GenerationPersistencePort persistence;
     private final SkillMatrixApplicationService matrices;
@@ -47,6 +50,8 @@ public class AiGenerationApplicationService {
     private final RecommendationApplicationService recommendations;
     private final CareerCoachingPromptBuilder coachingPrompts;
     private final CareerAdviceValidator adviceValidator;
+    private final LearningRecommendationPromptBuilder learningPrompts;
+    private final LearningRecommendationValidator learningValidator;
     private final ObjectContentPort objects;
     private final AiGenerationProperties properties;
     private final AiAuditPort audit;
@@ -61,7 +66,8 @@ public class AiGenerationApplicationService {
         CompletedRuleEvaluationApplicationService evaluations, RepositoryReviewPromptBuilder reviewPrompts,
         RepositoryReviewValidator reviewValidator, CareerReadinessApplicationService readiness,
         RecommendationApplicationService recommendations, CareerCoachingPromptBuilder coachingPrompts,
-        CareerAdviceValidator adviceValidator, ObjectContentPort objects,
+        CareerAdviceValidator adviceValidator, LearningRecommendationPromptBuilder learningPrompts,
+        LearningRecommendationValidator learningValidator, ObjectContentPort objects,
         AiGenerationProperties properties, AiAuditPort audit, AiGenerationTransactionService transactions,
         ObjectMapper mapper, Clock clock
     ) {
@@ -70,6 +76,7 @@ public class AiGenerationApplicationService {
         this.reviewPrompts = reviewPrompts; this.reviewValidator = reviewValidator;
         this.readiness = readiness; this.recommendations = recommendations;
         this.coachingPrompts = coachingPrompts; this.adviceValidator = adviceValidator;
+        this.learningPrompts = learningPrompts; this.learningValidator = learningValidator;
         this.objects = objects; this.properties = properties; this.audit = audit; this.transactions = transactions;
         this.mapper = mapper; this.clock = clock;
     }
@@ -91,6 +98,7 @@ public class AiGenerationApplicationService {
         UUID matrixId;
         UUID analysisId = null;
         UUID careerReadinessId = null;
+        UUID learningRoadmapId = null;
         PromptPackage prompt;
         var template = persistence.loadActiveTemplate(taskType);
         if (SKILL_EXPLANATION_TASK.equals(taskType)) {
@@ -105,7 +113,7 @@ public class AiGenerationApplicationService {
             var evaluation = evaluations.getEvaluation(userId, analysis.evaluationId());
             prompt = reviewPrompts.build(repositories.get(userId, analysis.repositoryId()), analysis, evaluation,
                 evaluations.getEvidence(userId, analysis.evaluationId()), template);
-        } else {
+        } else if (CAREER_COACHING_TASK.equals(taskType)) {
             var careerReadiness = readiness.get(userId, sourceId);
             if (!"COMPLETED".equals(careerReadiness.status())) {
                 throw new IllegalArgumentException("Career coaching requires completed readiness");
@@ -119,11 +127,19 @@ public class AiGenerationApplicationService {
             matrixId = careerReadiness.skillMatrixId();
             careerReadinessId = sourceId;
             prompt = coachingPrompts.build(careerReadiness, recommendationSet, roadmap, template);
+        } else {
+            var roadmap = recommendations.getRoadmap(userId, sourceId);
+            var recommendationSet = recommendations.get(userId, roadmap.recommendationSetId());
+            var careerReadiness = readiness.get(userId, recommendationSet.careerReadinessId());
+            matrixId = careerReadiness.skillMatrixId();
+            careerReadinessId = careerReadiness.careerReadinessId();
+            learningRoadmapId = roadmap.roadmapId();
+            prompt = learningPrompts.build(careerReadiness, recommendationSet, roadmap, template);
         }
         Instant now = clock.instant();
         UUID contextId = UUID.randomUUID();
         persistence.saveContext(new StoredPromptContext(contextId, userId, template.id(), matrixId, analysisId,
-            careerReadinessId, taskType,
+            careerReadinessId, learningRoadmapId, taskType,
             prompt.tokenBudget(), prompt.contextHash(), prompt.contextPayload(), prompt.prompt(), now));
         GenerationJob job = persistence.saveJob(GenerationJob.queue(userId, contextId, idempotencyKey, taskType, now));
         audit.record(AiAuditEvent.GENERATION_REQUESTED, userId, job.id(), now);
@@ -188,6 +204,10 @@ public class AiGenerationApplicationService {
                 .orElseThrow(() -> new IllegalStateException("Career recommendations are unavailable"));
             var validation = adviceValidator.validate(result.content(), recommendationSet);
             content = validation.content(); violations = validation.violations(); fileName = "career-advice.json";
+        } else if (LEARNING_RECOMMENDATION_TASK.equals(item.job().taskType())) {
+            var validation = learningValidator.validate(result.content(),
+                recommendations.getRoadmap(item.job().userId(), item.learningRoadmapId()));
+            content = validation.content(); violations = validation.violations(); fileName = "learning-recommendation.json";
         } else {
             var matrix = matrices.get(item.job().userId(), item.skillMatrixId());
             var evaluation = evaluations.getEvaluation(item.job().userId(), matrix.evaluationId());
@@ -257,7 +277,7 @@ public class AiGenerationApplicationService {
     private GeneratedArtifactView artifactView(ArtifactRecord value, Object content) {
         return new GeneratedArtifactView(value.artifactId(), value.artifactType(), "VALIDATED",
             new GeneratedArtifactView.Provenance(value.skillMatrixId(), value.analysisId(), value.careerReadinessId(),
-                value.promptContextId(),
+                value.learningRoadmapId(), value.promptContextId(),
                 value.templateVersion(), value.provider(), value.model(), value.contextHash(), value.createdAt()),
             validationView(value), "/api/v1/generated-artifacts/" + value.artifactId(), content);
     }
@@ -276,6 +296,7 @@ public class AiGenerationApplicationService {
         try { return switch (artifactType) {
             case REPOSITORY_REVIEW_OUTPUT -> mapper.readValue(value, RepositoryReviewContent.class);
             case CAREER_COACHING_OUTPUT -> mapper.readValue(value, CareerAdviceContent.class);
+            case LEARNING_RECOMMENDATION_OUTPUT -> mapper.readValue(value, LearningRecommendationContent.class);
             default -> mapper.readValue(value, SkillExplanationContent.class);
         }; }
         catch (JsonProcessingException exception) { throw new IllegalStateException("Artifact content is invalid", exception); }
@@ -286,7 +307,8 @@ public class AiGenerationApplicationService {
     ) {
         boolean supported = SKILL_EXPLANATION_TASK.equals(taskType) && SKILL_EXPLANATION_OUTPUT.equals(outputType)
             || REPOSITORY_REVIEW_TASK.equals(taskType) && REPOSITORY_REVIEW_OUTPUT.equals(outputType)
-            || CAREER_COACHING_TASK.equals(taskType) && CAREER_COACHING_OUTPUT.equals(outputType);
+            || CAREER_COACHING_TASK.equals(taskType) && CAREER_COACHING_OUTPUT.equals(outputType)
+            || LEARNING_RECOMMENDATION_TASK.equals(taskType) && LEARNING_RECOMMENDATION_OUTPUT.equals(outputType);
         if (!supported || sourceResourceRefs == null
             || sourceResourceRefs.size() != 1 || sourceResourceRefs.getFirst() == null || idempotencyKey == null
             || !IDEMPOTENCY_KEY.matcher(idempotencyKey).matches()) {

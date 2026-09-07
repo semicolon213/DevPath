@@ -81,6 +81,21 @@ class AiGenerationSecurityTest {
         verify(service).request(USER, "CAREER_COACHING", List.of(MATRIX), "CAREER_ADVICE", "coaching-key");
     }
 
+    @Test
+    void acceptsLearningRecommendationContractForAuthenticatedOwner() throws Exception {
+        when(service.request(USER, "LEARNING_RECOMMENDATION", List.of(MATRIX),
+            "LEARNING_RECOMMENDATION", "learning-key")).thenReturn(job());
+        String body = "{\"taskType\":\"LEARNING_RECOMMENDATION\",\"sourceResourceRefs\":[\"" + MATRIX
+            + "\"],\"outputType\":\"LEARNING_RECOMMENDATION\"}";
+
+        mockMvc.perform(post("/api/v1/generation-requests").with(oauth2Login().oauth2User(principal())).with(csrf())
+            .contentType(MediaType.APPLICATION_JSON).content(body).header("Idempotency-Key", "learning-key"))
+            .andExpect(status().isAccepted());
+
+        verify(service).request(USER, "LEARNING_RECOMMENDATION", List.of(MATRIX),
+            "LEARNING_RECOMMENDATION", "learning-key");
+    }
+
     private GenerationJobView job() {
         return new GenerationJobView(JOB, "QUEUED", "PENDING", null, null,
             Instant.parse("2026-08-31T00:00:00Z"), null);

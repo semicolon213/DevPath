@@ -5,6 +5,7 @@ import com.devpath.ai.application.GenerationPersistencePort;
 import com.devpath.ai.application.GenerationWorkItem;
 import com.devpath.ai.application.AiGenerationApplicationService;
 import com.devpath.ai.application.CareerAdviceValidator;
+import com.devpath.ai.application.LearningRecommendationValidator;
 import com.devpath.ai.application.RepositoryReviewValidator;
 import com.devpath.ai.application.SkillExplanationValidator;
 import com.devpath.ai.application.StoredPromptContext;
@@ -73,6 +74,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
     @Override
     public UUID findSourceResourceId(UUID promptContextId) {
         PromptContextJpaEntity context = contexts.findById(promptContextId).orElseThrow();
+        if (context.learningRoadmapId != null) return context.learningRoadmapId;
         if (context.careerReadinessId != null) return context.careerReadinessId;
         return context.analysisId == null ? context.skillMatrixId : context.analysisId;
     }
@@ -84,7 +86,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
             PromptContextJpaEntity context = contexts.findById(started.promptContextId())
                 .orElseThrow(() -> new IllegalStateException("Prompt context is unavailable"));
             return new GenerationWorkItem(started, context.skillMatrixId, context.analysisId,
-                context.careerReadinessId, context.providerPrompt);
+                context.careerReadinessId, context.learningRoadmapId, context.providerPrompt);
         });
     }
 
@@ -136,6 +138,8 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
                 AiGenerationApplicationService.REPOSITORY_REVIEW_OUTPUT;
             case AiGenerationApplicationService.CAREER_COACHING_TASK ->
                 AiGenerationApplicationService.CAREER_COACHING_OUTPUT;
+            case AiGenerationApplicationService.LEARNING_RECOMMENDATION_TASK ->
+                AiGenerationApplicationService.LEARNING_RECOMMENDATION_OUTPUT;
             default -> AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT;
         };
         artifact.status = "VALIDATED"; artifact.contentReference = contentReference; artifact.createdAt = now;
@@ -157,7 +161,8 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
             ModelExecutionJpaEntity execution = executions.findById(response.modelExecutionId).orElseThrow();
             ResponseValidationResultJpaEntity validation = validations.findByResponseId(response.id).orElseThrow();
             return new ArtifactRecord(artifact.id, artifact.promptContextId, context.skillMatrixId, context.analysisId,
-                context.careerReadinessId, artifact.artifactType, artifact.contentReference, template.versionLabel, execution.provider,
+                context.careerReadinessId, context.learningRoadmapId, artifact.artifactType, artifact.contentReference,
+                template.versionLabel, execution.provider,
                 execution.model, context.contextHash, validation.status, validation.validatorVersion,
                 validation.violations, validation.validatedAt, artifact.createdAt);
         });
@@ -186,6 +191,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
         return switch (item.job().taskType()) {
             case AiGenerationApplicationService.REPOSITORY_REVIEW_TASK -> RepositoryReviewValidator.VERSION;
             case AiGenerationApplicationService.CAREER_COACHING_TASK -> CareerAdviceValidator.VERSION;
+            case AiGenerationApplicationService.LEARNING_RECOMMENDATION_TASK -> LearningRecommendationValidator.VERSION;
             default -> SkillExplanationValidator.VERSION;
         };
     }

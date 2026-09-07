@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { LearningRecommendationPanel } from "../features/ai/ui/LearningRecommendationPanel";
 import type { Recommendation, RoadmapStep } from "../features/recommendations/api/recommendationApi";
 import { useArchiveRoadmap, useRecommendationJourney } from "../features/recommendations/model/useRecommendationJourney";
 import { ApiError } from "../shared/api/apiClient";
@@ -9,7 +10,8 @@ export function LearningRoadmapPage(){const query=useRecommendationJourney();con
   <section className="roadmap-summary" aria-label="로드맵 요약"><div><strong>{recommendations.recommendations.length}</strong><span>현재 추천</span></div><div><strong>{roadmap.steps.length}</strong><span>학습 단계</span></div><div><strong>{formatNumber(roadmap.progressPercent)}%</strong><span>진행률</span></div></section>
   {recommendations.recommendations.length===0?<section className="state-panel"><h2>현재 개선 추천이 없습니다</h2><p>현재 필수 범주가 모두 충분 이상입니다. 새 분석이 완료되면 정책 기준으로 다시 생성됩니다.</p></section>:<>
   <section aria-labelledby="recommendations-title"><div className="section-heading"><div><h2 id="recommendations-title">우선 추천</h2><p>Missing, Weak, Partial 순서와 직무 가중치·선행 순서를 반영합니다.</p></div></div><div className="recommendation-grid">{recommendations.recommendations.map(item=><RecommendationCard key={item.recommendationId} item={item}/>)}</div></section>
-  <section aria-labelledby="roadmap-title"><div className="section-heading"><div><h2 id="roadmap-title">실행 순서</h2><p>앞 단계가 다음 단계의 명시적 prerequisite로 연결됩니다.</p></div></div><ol className="roadmap-step-list">{roadmap.steps.map(step=><StepCard key={step.roadmapStepId} step={step}/>)}</ol></section></>}
+  <section aria-labelledby="roadmap-title"><div className="section-heading"><div><h2 id="roadmap-title">실행 순서</h2><p>앞 단계가 다음 단계의 명시적 prerequisite로 연결됩니다.</p></div></div><ol className="roadmap-step-list">{roadmap.steps.map(step=><StepCard key={step.roadmapStepId} step={step}/>)}</ol></section>
+  <LearningRecommendationPanel learningRoadmapId={roadmap.roadmapId}/></>}
   <div className="roadmap-actions"><button type="button" className="button-danger" disabled={archive.isPending} onClick={()=>archive.mutate(roadmap.roadmapId)}>{archive.isPending?"보관 중…":"현재 로드맵 보관"}</button>{archive.isError?<p role="alert">로드맵을 보관하지 못했습니다. 다시 시도해 주세요.</p>:null}</div></>}
   <section aria-labelledby="roadmap-history-title" className="roadmap-history"><div className="section-heading"><div><h2 id="roadmap-history-title">로드맵 이력</h2><p>정책 버전과 당시 진행 상태를 보존합니다.</p></div></div>{roadmaps.length===0?<p>저장된 로드맵이 없습니다.</p>:<ul>{roadmaps.map(item=><li key={item.roadmapId}><div><strong>{item.policyVersion}</strong><span>{roadmapStatusLabel(item.status)}</span></div><p>단계 {item.steps.length}개 · 진행률 {formatNumber(item.progressPercent)}%</p><time dateTime={item.updatedAt}>{new Intl.DateTimeFormat("ko-KR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(item.updatedAt))}</time></li>)}</ul>}</section>
 </Shell>;}

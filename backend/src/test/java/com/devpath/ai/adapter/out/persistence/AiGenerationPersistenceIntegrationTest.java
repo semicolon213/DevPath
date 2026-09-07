@@ -39,7 +39,7 @@ class AiGenerationPersistenceIntegrationTest {
         insertUser(owner, now); insertUser(other, now);
         insertMatrix(matrix, owner, now);
         var template = persistence.loadActiveTemplate("SKILL_ANALYSIS_EXPLANATION");
-        persistence.saveContext(new StoredPromptContext(context, owner, template.id(), matrix, null, null,
+        persistence.saveContext(new StoredPromptContext(context, owner, template.id(), matrix, null, null, null,
             "SKILL_ANALYSIS_EXPLANATION", 4096, "a".repeat(64), "{}", "safe prompt", now));
         var queued = persistence.saveJob(GenerationJob.queue(owner, context, "key", "SKILL_ANALYSIS_EXPLANATION", now));
 
@@ -68,7 +68,7 @@ class AiGenerationPersistenceIntegrationTest {
         insertMatrix(matrix, owner, now);
         insertAnalysis(analysis, matrix, owner, now);
         var template = persistence.loadActiveTemplate("REPOSITORY_REVIEW");
-        persistence.saveContext(new StoredPromptContext(context, owner, template.id(), matrix, analysis, null,
+        persistence.saveContext(new StoredPromptContext(context, owner, template.id(), matrix, analysis, null, null,
             "REPOSITORY_REVIEW", 8192, "b".repeat(64), "{}", "safe review prompt", now));
         persistence.saveJob(GenerationJob.queue(owner, context, "review-key", "REPOSITORY_REVIEW", now));
 
