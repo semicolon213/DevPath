@@ -6,7 +6,7 @@ This document records implementation evidence for the M34 MVP Completion Gate. I
 handoff aid, not a requirements source and not approval that the milestone is complete. Requirements and engine
 semantics remain controlled by `01_SRS.md`, `02_Rule_Engine.md`, and `03_Career_Path_Engine.md`.
 
-Evidence date: 2026-08-27.
+Evidence date: 2026-09-09.
 
 ## 2. Gate Evidence
 
@@ -59,19 +59,19 @@ that require an explicit `DEVPATH_DB_URL` remain reported as skipped unless that
 It now fails fast when no Docker-compatible server is reachable so Testcontainers-backed PostgreSQL coverage cannot be
 silently omitted from an MVP verification run.
 
-Latest clean local result on 2026-08-27:
+Latest clean local result on 2026-09-07:
 
-- Backend full suite: PASS; 132 tests, 130 passed, 0 failed, 2 environment-gated skips.
+- Backend full suite: PASS; 191 tests, 189 passed, 0 failed, 2 environment-gated skips.
 - PostgreSQL Testcontainers suites: PASS with Docker API compatibility set to 1.44.
-- Frontend Vitest: PASS; 35 files and 83 tests.
-- Playwright Chromium/axe: PASS; 6 browser journeys, including reduced-motion media behavior.
+- Frontend Vitest: PASS; 42 files and 104 tests.
+- Playwright Chromium/axe: PASS; 7 browser journeys, including reduced-motion media behavior.
 - Platform-neutral security boundary tests and repository scan: PASS.
 - Frontend production build: PASS.
 - Frontend npm audit: PASS; 0 vulnerabilities.
-- OpenAPI lint: PASS with 0 errors and 8 non-blocking pre-existing recommendation warnings.
+- OpenAPI lint: PASS with 0 errors and 9 non-blocking recommendation warnings.
 - One-command `npm run verify:mvp`: PASS from Docker/security preflight through clean backend build, clean frontend
-  install, complete frontend quality, and contract lint. The Docker-backed backend suite was then forced to rerun and
-  confirmed 132 total, 130 passed, 0 failed, and only the 2 explicit-`DEVPATH_DB_URL` skips.
+  install, complete frontend quality, and contract lint. The Docker-backed backend suite confirmed 191 total, 189
+  passed, 0 failed, and only the 2 explicit-`DEVPATH_DB_URL` skips.
 - Local PostgreSQL-backed startup smoke on port 8080: PASS; Flyway validated and applied 20 migrations, health returned 200,
   and the same bounded request/correlation identifiers appeared in response headers and the completion log.
 
@@ -173,6 +173,28 @@ real GitHub provider:
   controls, status and alert semantics, and descriptive link/button names on the exercised home and dashboard routes.
 - PASS: Chromium reduced-motion emulation removes the skip-link transition while preserving keyboard entry, route
   focus, repository analysis actions, and axe semantics. A physical Windows reduced-motion setting exercise remains pending.
+
+Additional live AI provider smoke run on 2026-09-07 against local Ollama and `qwen2.5:3b`:
+
+- PASS: an `/api/chat` request using the production adapter contract (`format=json`, deterministic temperature, bounded
+  output) returned in 33.56 seconds with 224 prompt tokens and 141 completion tokens.
+- PASS: the synthetic AI-003 response contained the required root and item fields, referenced only the supplied skill
+  keys and evidence ID, and contained no numeric or unsafe rendered-text claim.
+- PASS: an AI-008 learning-guide response returned in 40.99 seconds with 234 prompt tokens and 199 completion tokens;
+  it preserved both supplied roadmap positions exactly, matched the required schema, and contained no numeric or unsafe
+  rendered-text claim. Response SHA-256: `d2a0adfc94471f3366c05b60b733fe90229b7ed08ef30b426c4d26d9e268f366`.
+- PASS: a separate authenticated GitHub-to-analysis browser journey on 2026-09-09 created repository-review job
+  `2cfaeff5-d3f6-4389-a893-a8fc6e8f84f4` against the configured default `qwen2.5:7b` model. The bounded prompt used 967
+  tokens, generation completed in one attempt with 278 completion tokens, and PostgreSQL recorded provider/model/latency,
+  prompt-template, context-hash, and validation metadata without exposing prompt or response content.
+- PASS: `repository-review-validator-v1` resolved the prompt's bounded category-local evidence keys back to immutable
+  evidence UUIDs, accepted all five required review categories with no violations, and persisted validated artifact
+  `487d1394-fcc0-41df-b19c-e4412127276d` with eight grounded evidence references.
+- PASS: the authenticated analysis UI retrieved and rendered the validated artifact as Architecture, Testing, DevOps,
+  Documentation, and Collaboration sections with evidence labels. It displayed the validator and prompt-template version;
+  provider, model, and context hash remained backend trace metadata rather than user-facing fields.
+- The authenticated generation-job, PostgreSQL persistence, validation, artifact retrieval, and browser rendering checks
+  are now covered locally. Staging deployment evidence and owner approval remain pending.
 
 This is local system evidence, not a staging deployment, external security review, spoken screen-reader review,
 provider permission-edge-case test, token revocation exercise, or owner approval.
