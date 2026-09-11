@@ -7,6 +7,7 @@ import com.devpath.ai.application.AiGenerationApplicationService;
 import com.devpath.ai.application.CareerAdviceValidator;
 import com.devpath.ai.application.LearningRecommendationValidator;
 import com.devpath.ai.application.RepositoryReviewValidator;
+import com.devpath.ai.application.RepositorySummaryValidator;
 import com.devpath.ai.application.SkillExplanationValidator;
 import com.devpath.ai.application.StoredPromptContext;
 import com.devpath.ai.domain.GenerationJob;
@@ -136,6 +137,8 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
         artifact.artifactType = switch (item.job().taskType()) {
             case AiGenerationApplicationService.REPOSITORY_REVIEW_TASK ->
                 AiGenerationApplicationService.REPOSITORY_REVIEW_OUTPUT;
+            case AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK ->
+                AiGenerationApplicationService.REPOSITORY_SUMMARY_OUTPUT;
             case AiGenerationApplicationService.CAREER_COACHING_TASK ->
                 AiGenerationApplicationService.CAREER_COACHING_OUTPUT;
             case AiGenerationApplicationService.LEARNING_RECOMMENDATION_TASK ->
@@ -190,6 +193,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
     private static String validatorVersion(GenerationWorkItem item) {
         return switch (item.job().taskType()) {
             case AiGenerationApplicationService.REPOSITORY_REVIEW_TASK -> RepositoryReviewValidator.VERSION;
+            case AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK -> RepositorySummaryValidator.VERSION;
             case AiGenerationApplicationService.CAREER_COACHING_TASK -> CareerAdviceValidator.VERSION;
             case AiGenerationApplicationService.LEARNING_RECOMMENDATION_TASK -> LearningRecommendationValidator.VERSION;
             default -> SkillExplanationValidator.VERSION;

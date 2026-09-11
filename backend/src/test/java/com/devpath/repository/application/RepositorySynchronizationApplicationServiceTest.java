@@ -39,4 +39,15 @@ class RepositorySynchronizationApplicationServiceTest {
 
         verify(transactions).getEvidence(userId, repositoryId, NOW);
     }
+
+    @Test
+    void readsTechnologiesFromTheRequestedHistoricalSnapshot() {
+        UUID userId = UUID.randomUUID(), repositoryId = UUID.randomUUID(), snapshotId = UUID.randomUUID();
+        var transactions = mock(RepositorySynchronizationTransaction.class);
+        var service = new RepositorySynchronizationApplicationService(transactions, Clock.fixed(NOW, ZoneOffset.UTC));
+
+        service.getTechnologies(userId, repositoryId, snapshotId);
+
+        verify(transactions).getTechnologies(userId, repositoryId, snapshotId);
+    }
 }

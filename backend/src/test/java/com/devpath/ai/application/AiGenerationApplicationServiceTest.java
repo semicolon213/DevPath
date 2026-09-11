@@ -20,8 +20,11 @@ import com.devpath.prompt.application.LearningRecommendationPromptBuilder;
 import com.devpath.prompt.application.PromptPackage;
 import com.devpath.prompt.application.PromptTemplateVersion;
 import com.devpath.prompt.application.RepositoryReviewPromptBuilder;
+import com.devpath.prompt.application.RepositorySummaryPromptBuilder;
 import com.devpath.prompt.application.SkillExplanationPromptBuilder;
 import com.devpath.repository.application.RepositoryApplicationService;
+import com.devpath.repository.application.RepositorySynchronizationApplicationService;
+import com.devpath.repository.application.TechnologySummaryView;
 import com.devpath.repository.application.RepositoryView;
 import com.devpath.recommendation.application.RecommendationApplicationService;
 import com.devpath.recommendation.application.RecommendationSetListView;
@@ -59,6 +62,9 @@ class AiGenerationApplicationServiceTest {
     @Mock CompletedRuleEvaluationApplicationService evaluations;
     @Mock RepositoryReviewPromptBuilder reviewPrompts;
     @Mock RepositoryReviewValidator reviewValidator;
+    @Mock RepositorySynchronizationApplicationService synchronization;
+    @Mock RepositorySummaryPromptBuilder summaryPrompts;
+    @Mock RepositorySummaryValidator summaryValidator;
     @Mock CareerReadinessApplicationService readiness;
     @Mock RecommendationApplicationService recommendations;
     @Mock CareerCoachingPromptBuilder coachingPrompts;
@@ -73,7 +79,8 @@ class AiGenerationApplicationServiceTest {
     @BeforeEach
     void setUp() {
         service = new AiGenerationApplicationService(persistence, matrices, prompts, validator, analyses, repositories,
-            evaluations, reviewPrompts, reviewValidator, readiness, recommendations, coachingPrompts, adviceValidator,
+            evaluations, reviewPrompts, reviewValidator, synchronization, summaryPrompts, summaryValidator,
+            readiness, recommendations, coachingPrompts, adviceValidator,
             learningPrompts, learningValidator, objects,
             new AiGenerationProperties("http://localhost", "qwen-test", Duration.ofSeconds(1),
                 Duration.ofSeconds(2), 2), audit, transactions, new ObjectMapper(), Clock.fixed(NOW, ZoneOffset.UTC));
@@ -270,5 +277,85 @@ class AiGenerationApplicationServiceTest {
         service.providerSucceeded(item, execution, new GenerationProviderResult("raw", 10, 5), 12);
 
         verify(transactions).validated(eq(item), eq(execution), any(), eq("object://owner/review"), any(), eq(NOW));
+    }
+
+    @Test
+    void createsAndPersistsRepositorySummaryFromTheAnalysisSnapshot() {
+        UUID owner = UUID.randomUUID(), analysisId = UUID.randomUUID(), repositoryId = UUID.randomUUID(), snapshotId = UUID.randomUUID();
+        UUID evaluationId = UUID.randomUUID(), matrixId = UUID.randomUUID(), templateId = UUID.randomUUID(), execution = UUID.randomUUID();
+        var analysis = new AnalysisResultView(analysisId, repositoryId, snapshotId, evaluationId, matrixId, "REPOSITORY_BASELINE", true, NOW);
+        RepositoryView repository = org.mockito.Mockito.mock(RepositoryView.class);
+        RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
+        var evidence = new RuleEvidenceListView(evaluationId, List.of());
+        var technologies = new TechnologySummaryView(repositoryId, snapshotId, "v1", "v1", null, List.of());
+        var template = new PromptTemplateVersion(templateId, AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, "v2", "Never calculate scores.", "Return JSON.");
+        var prompt = new PromptPackage("{}", "summary prompt", "e".repeat(64), 8192);
+        when(persistence.findByOwnerAndIdempotencyKey(owner, "summary-key")).thenReturn(Optional.empty());
+        when(persistence.loadActiveTemplate(AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK)).thenReturn(template);
+        when(analyses.getResult(owner, analysisId)).thenReturn(analysis);
+        when(repositories.get(owner, repositoryId)).thenReturn(repository);
+        when(evaluations.getEvaluation(owner, evaluationId)).thenReturn(evaluation);
+        when(evaluations.getEvidence(owner, evaluationId)).thenReturn(evidence);
+        when(synchronization.getTechnologies(owner, repositoryId, snapshotId)).thenReturn(technologies);
+        when(summaryPrompts.build(repository, analysis, evaluation, List.of(), evidence, template)).thenReturn(prompt);
+        when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+
+        GenerationJobView requested = service.request(owner, AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, List.of(analysisId), AiGenerationApplicationService.REPOSITORY_SUMMARY_OUTPUT, "summary-key");
+        verify(synchronization).getTechnologies(owner, repositoryId, snapshotId);
+        assertThat(requested.status()).isEqualTo("QUEUED");
+
+        GenerationJob running = GenerationJob.queue(owner, UUID.randomUUID(), "summary-provider", AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
+        GenerationWorkItem item = new GenerationWorkItem(running, matrixId, analysisId, null, null, "prompt");
+        var content = new RepositorySummaryContent(
+            new RepositorySummaryContent.Claim("grounded", List.of(), List.of("rule-output")), List.of(), List.of(), List.of()
+        );
+        when(transactions.providerCompleted(item, execution, new GenerationProviderResult("raw", 10, 5), 12, NOW)).thenReturn(Optional.of(running));
+        when(summaryValidator.validate("raw", List.of(), evaluation, evidence)).thenReturn(new RepositorySummaryValidation(content, List.of()));
+        when(objects.put(eq(owner), any(), eq(running.id()), eq("repository-summary.json"), any())).thenReturn("object://owner/summary");
+        when(transactions.validated(eq(item), eq(execution), any(), eq("object://owner/summary"), any(), eq(NOW))).thenReturn(true);
+
+        service.providerSucceeded(item, execution, new GenerationProviderResult("raw", 10, 5), 12);
+
+        verify(transactions).validated(eq(item), eq(execution), any(), eq("object://owner/summary"), any(), eq(NOW));
+    }
+
+    @Test
+    void rejectsUngroundedRepositorySummaryWithoutCreatingAnArtifact() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrixId = UUID.randomUUID(), analysisId = UUID.randomUUID();
+        UUID evaluationId = UUID.randomUUID(), execution = UUID.randomUUID();
+        GenerationJob running = GenerationJob.queue(owner, context, "summary-rejected", AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
+        GenerationWorkItem item = new GenerationWorkItem(running, matrixId, analysisId, null, null, "prompt");
+        var analysis = new AnalysisResultView(analysisId, UUID.randomUUID(), UUID.randomUUID(), evaluationId, matrixId, "REPOSITORY_BASELINE", true, NOW);
+        RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
+        var evidence = new RuleEvidenceListView(evaluationId, List.of());
+        when(transactions.providerCompleted(item, execution, new GenerationProviderResult("raw", 10, 5), 12, NOW)).thenReturn(Optional.of(running));
+        when(analyses.getResult(owner, analysisId)).thenReturn(analysis);
+        when(evaluations.getEvaluation(owner, evaluationId)).thenReturn(evaluation);
+        when(evaluations.getEvidence(owner, evaluationId)).thenReturn(evidence);
+        when(synchronization.getTechnologies(owner, analysis.repositoryId(), analysis.snapshotId())).thenReturn(new TechnologySummaryView(analysis.repositoryId(), analysis.snapshotId(), "v1", "v1", null, List.of()));
+        when(summaryValidator.validate("raw", List.of(), evaluation, evidence)).thenReturn(new RepositorySummaryValidation(null, List.of("MISSING_GROUNDING_REFERENCE")));
+        when(objects.put(eq(owner), any(), eq(running.id()), eq("rejected-response.txt"), eq("raw"))).thenReturn("object://owner/rejected");
+        when(transactions.rejected(eq(item), eq(execution), eq("object://owner/rejected"), any(), eq(NOW))).thenReturn(true);
+
+        service.providerSucceeded(item, execution, new GenerationProviderResult("raw", 10, 5), 12);
+
+        verify(transactions).rejected(eq(item), eq(execution), eq("object://owner/rejected"), any(), eq(NOW));
+        verify(transactions, never()).validated(eq(item), eq(execution), any(), any(), any(), any());
+    }
+
+    @Test
+    void readsValidatedRepositorySummaryArtifactsAsSummaryContent() {
+        UUID owner = UUID.randomUUID(), artifactId = UUID.randomUUID();
+        var record = new ArtifactRecord(artifactId, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), null, null,
+            AiGenerationApplicationService.REPOSITORY_SUMMARY_OUTPUT, "object://owner/summary", "v2", "OLLAMA", "qwen-test",
+            "a".repeat(64), "PASSED", RepositorySummaryValidator.VERSION, List.of(), NOW, NOW);
+        when(transactions.artifact(owner, artifactId)).thenReturn(record);
+        when(objects.read(owner, "object://owner/summary")).thenReturn("{\"summary\":{\"text\":\"grounded\",\"evidenceReferences\":[],\"ruleOutputReferences\":[\"rule-output\"]},\"strengths\":[],\"improvementAreas\":[],\"technologies\":[]}");
+
+        GeneratedArtifactView artifact = service.getArtifact(owner, artifactId);
+
+        assertThat(artifact.type()).isEqualTo(AiGenerationApplicationService.REPOSITORY_SUMMARY_OUTPUT);
+        assertThat(artifact.content()).isInstanceOf(RepositorySummaryContent.class);
     }
 }

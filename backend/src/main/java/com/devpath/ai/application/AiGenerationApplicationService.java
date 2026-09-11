@@ -9,8 +9,10 @@ import com.devpath.prompt.application.CareerCoachingPromptBuilder;
 import com.devpath.prompt.application.LearningRecommendationPromptBuilder;
 import com.devpath.prompt.application.SkillExplanationPromptBuilder;
 import com.devpath.prompt.application.RepositoryReviewPromptBuilder;
+import com.devpath.prompt.application.RepositorySummaryPromptBuilder;
 import com.devpath.prompt.application.PromptPackage;
 import com.devpath.repository.application.RepositoryApplicationService;
+import com.devpath.repository.application.RepositorySynchronizationApplicationService;
 import com.devpath.recommendation.application.RecommendationApplicationService;
 import com.devpath.rule.application.CompletedRuleEvaluationApplicationService;
 import com.devpath.rule.application.SkillMatrixApplicationService;
@@ -32,6 +34,8 @@ public class AiGenerationApplicationService {
     public static final String SKILL_EXPLANATION_OUTPUT = "SKILL_EXPLANATION";
     public static final String REPOSITORY_REVIEW_TASK = "REPOSITORY_REVIEW";
     public static final String REPOSITORY_REVIEW_OUTPUT = "REPOSITORY_REVIEW";
+    public static final String REPOSITORY_SUMMARY_TASK = "REPOSITORY_SUMMARY";
+    public static final String REPOSITORY_SUMMARY_OUTPUT = "REPOSITORY_SUMMARY";
     public static final String CAREER_COACHING_TASK = "CAREER_COACHING";
     public static final String CAREER_COACHING_OUTPUT = "CAREER_ADVICE";
     public static final String LEARNING_RECOMMENDATION_TASK = "LEARNING_RECOMMENDATION";
@@ -46,6 +50,9 @@ public class AiGenerationApplicationService {
     private final CompletedRuleEvaluationApplicationService evaluations;
     private final RepositoryReviewPromptBuilder reviewPrompts;
     private final RepositoryReviewValidator reviewValidator;
+    private final RepositorySynchronizationApplicationService synchronization;
+    private final RepositorySummaryPromptBuilder summaryPrompts;
+    private final RepositorySummaryValidator summaryValidator;
     private final CareerReadinessApplicationService readiness;
     private final RecommendationApplicationService recommendations;
     private final CareerCoachingPromptBuilder coachingPrompts;
@@ -64,7 +71,9 @@ public class AiGenerationApplicationService {
         SkillExplanationPromptBuilder prompts, SkillExplanationValidator validator,
         AnalysisApplicationService analyses, RepositoryApplicationService repositories,
         CompletedRuleEvaluationApplicationService evaluations, RepositoryReviewPromptBuilder reviewPrompts,
-        RepositoryReviewValidator reviewValidator, CareerReadinessApplicationService readiness,
+        RepositoryReviewValidator reviewValidator, RepositorySynchronizationApplicationService synchronization,
+        RepositorySummaryPromptBuilder summaryPrompts, RepositorySummaryValidator summaryValidator,
+        CareerReadinessApplicationService readiness,
         RecommendationApplicationService recommendations, CareerCoachingPromptBuilder coachingPrompts,
         CareerAdviceValidator adviceValidator, LearningRecommendationPromptBuilder learningPrompts,
         LearningRecommendationValidator learningValidator, ObjectContentPort objects,
@@ -74,6 +83,7 @@ public class AiGenerationApplicationService {
         this.persistence = persistence; this.matrices = matrices; this.prompts = prompts; this.validator = validator;
         this.analyses = analyses; this.repositories = repositories; this.evaluations = evaluations;
         this.reviewPrompts = reviewPrompts; this.reviewValidator = reviewValidator;
+        this.synchronization = synchronization; this.summaryPrompts = summaryPrompts; this.summaryValidator = summaryValidator;
         this.readiness = readiness; this.recommendations = recommendations;
         this.coachingPrompts = coachingPrompts; this.adviceValidator = adviceValidator;
         this.learningPrompts = learningPrompts; this.learningValidator = learningValidator;
@@ -106,13 +116,20 @@ public class AiGenerationApplicationService {
             var matrix = matrices.get(userId, matrixId);
             var evidence = evaluations.getEvidence(userId, matrix.evaluationId());
             prompt = prompts.build(matrix, evaluations.getEvaluation(userId, matrix.evaluationId()), evidence, template);
-        } else if (REPOSITORY_REVIEW_TASK.equals(taskType)) {
+        } else if (REPOSITORY_REVIEW_TASK.equals(taskType) || REPOSITORY_SUMMARY_TASK.equals(taskType)) {
             var analysis = analyses.getResult(userId, sourceId);
             analysisId = analysis.analysisId();
             matrixId = analysis.skillMatrixId();
-            var evaluation = evaluations.getEvaluation(userId, analysis.evaluationId());
-            prompt = reviewPrompts.build(repositories.get(userId, analysis.repositoryId()), analysis, evaluation,
-                evaluations.getEvidence(userId, analysis.evaluationId()), template);
+            var repository = repositories.get(userId, analysis.repositoryId());
+            var evidence = evaluations.getEvidence(userId, analysis.evaluationId());
+            if (REPOSITORY_REVIEW_TASK.equals(taskType)) {
+                prompt = reviewPrompts.build(repository, analysis, evaluations.getEvaluation(userId, analysis.evaluationId()), evidence, template);
+            } else {
+                var evaluation = evaluations.getEvaluation(userId, analysis.evaluationId());
+                var technologies = synchronization.getTechnologies(userId, analysis.repositoryId(), analysis.snapshotId())
+                    .technologies().stream().map(value -> value.name()).distinct().limit(20).toList();
+                prompt = summaryPrompts.build(repository, analysis, evaluation, technologies, evidence, template);
+            }
         } else if (CAREER_COACHING_TASK.equals(taskType)) {
             var careerReadiness = readiness.get(userId, sourceId);
             if (!"COMPLETED".equals(careerReadiness.status())) {
@@ -198,6 +215,14 @@ public class AiGenerationApplicationService {
             var validation = reviewValidator.validate(result.content(),
                 evaluations.getEvidence(item.job().userId(), analysis.evaluationId()));
             content = validation.content(); violations = validation.violations(); fileName = "repository-review.json";
+        } else if (REPOSITORY_SUMMARY_TASK.equals(item.job().taskType())) {
+            var analysis = analyses.getResult(item.job().userId(), item.analysisId());
+            var technologies = synchronization.getTechnologies(item.job().userId(), analysis.repositoryId(), analysis.snapshotId())
+                .technologies().stream().map(value -> value.name()).distinct().limit(20).toList();
+            var validation = summaryValidator.validate(result.content(), technologies,
+                evaluations.getEvaluation(item.job().userId(), analysis.evaluationId()),
+                evaluations.getEvidence(item.job().userId(), analysis.evaluationId()));
+            content = validation.content(); violations = validation.violations(); fileName = "repository-summary.json";
         } else if (CAREER_COACHING_TASK.equals(item.job().taskType())) {
             var recommendationSet = recommendations.listRecommendationSets(item.job().userId()).recommendationSets().stream()
                 .filter(value -> value.careerReadinessId().equals(item.careerReadinessId())).findFirst()
@@ -295,6 +320,7 @@ public class AiGenerationApplicationService {
     private Object read(String value, String artifactType) {
         try { return switch (artifactType) {
             case REPOSITORY_REVIEW_OUTPUT -> mapper.readValue(value, RepositoryReviewContent.class);
+            case REPOSITORY_SUMMARY_OUTPUT -> mapper.readValue(value, RepositorySummaryContent.class);
             case CAREER_COACHING_OUTPUT -> mapper.readValue(value, CareerAdviceContent.class);
             case LEARNING_RECOMMENDATION_OUTPUT -> mapper.readValue(value, LearningRecommendationContent.class);
             default -> mapper.readValue(value, SkillExplanationContent.class);
@@ -307,6 +333,7 @@ public class AiGenerationApplicationService {
     ) {
         boolean supported = SKILL_EXPLANATION_TASK.equals(taskType) && SKILL_EXPLANATION_OUTPUT.equals(outputType)
             || REPOSITORY_REVIEW_TASK.equals(taskType) && REPOSITORY_REVIEW_OUTPUT.equals(outputType)
+            || REPOSITORY_SUMMARY_TASK.equals(taskType) && REPOSITORY_SUMMARY_OUTPUT.equals(outputType)
             || CAREER_COACHING_TASK.equals(taskType) && CAREER_COACHING_OUTPUT.equals(outputType)
             || LEARNING_RECOMMENDATION_TASK.equals(taskType) && LEARNING_RECOMMENDATION_OUTPUT.equals(outputType);
         if (!supported || sourceResourceRefs == null

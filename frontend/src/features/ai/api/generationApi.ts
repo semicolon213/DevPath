@@ -68,6 +68,32 @@ export type GeneratedRepositoryReview = {
   };
 };
 
+export type GeneratedRepositorySummary = {
+  artifactId: string;
+  type: "REPOSITORY_SUMMARY";
+  status: "VALIDATED";
+  provenance: Omit<GeneratedSkillExplanation["provenance"], "analysisId"> & { analysisId: string };
+  validation: {
+    status: "PASSED";
+    validatorVersion: "repository-summary-validator-v1";
+    validatedAt: string;
+    violations: string[];
+  };
+  contentRef: string;
+  content: {
+    summary: RepositorySummaryClaim;
+    strengths: RepositorySummaryClaim[];
+    improvementAreas: RepositorySummaryClaim[];
+    technologies: string[];
+  };
+};
+
+export type RepositorySummaryClaim = {
+  text: string;
+  evidenceReferences: string[];
+  ruleOutputReferences: string[];
+};
+
 export type GeneratedCareerAdvice = {
   artifactId: string;
   type: "CAREER_ADVICE";
@@ -126,6 +152,10 @@ export async function requestRepositoryReview(analysisId: string) {
   return requestGeneration("REPOSITORY_REVIEW", analysisId, "REPOSITORY_REVIEW");
 }
 
+export async function requestRepositorySummary(analysisId: string) {
+  return requestGeneration("REPOSITORY_SUMMARY", analysisId, "REPOSITORY_SUMMARY");
+}
+
 export async function requestCareerCoaching(careerReadinessId: string) {
   return requestGeneration("CAREER_COACHING", careerReadinessId, "CAREER_ADVICE");
 }
@@ -152,6 +182,10 @@ export async function getGeneratedSkillExplanation(artifactUrl: string) {
 
 export async function getGeneratedRepositoryReview(artifactUrl: string) {
   return apiRequest<GeneratedRepositoryReview>(artifactUrl);
+}
+
+export async function getGeneratedRepositorySummary(artifactUrl: string) {
+  return apiRequest<GeneratedRepositorySummary>(artifactUrl);
 }
 
 export async function getGeneratedCareerAdvice(artifactUrl: string) {

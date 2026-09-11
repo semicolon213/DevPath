@@ -894,6 +894,13 @@ documentation, and collaboration sections, rejects unknown evidence IDs, numeric
 schemas, and the analysis detail UI renders only validated plain text. Live-provider grounding evaluation and owner
 approval remain required; this implementation does not complete M43 or authorize the lower-priority task types.
 
+The `REPOSITORY_SUMMARY` capability reuses that owner-scoped generation and validated-artifact flow for a completed
+Analysis. Its prompt is limited to the analysis snapshot's detected technologies, deterministic Rule Engine category
+findings, and normalized evidence. The validator rejects malformed summaries and claim references that cannot resolve to
+that supplied context. Local implementation checks cover prompt composition, validation, owner-authorized generation and
+artifact retrieval, and safe analysis-detail rendering. Live-provider evaluation and owner approval remain required; this
+does not complete M43 or authorize Portfolio or later workflows.
+
 Do not implement all prompt categories simultaneously.
 
 ## 44. Generated Artifact Foundation

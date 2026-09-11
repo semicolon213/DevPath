@@ -38,6 +38,10 @@ public class RepositorySynchronizationApplicationService {
         return transactions.getTechnologies(userId, repositoryId);
     }
 
+    public TechnologySummaryView getTechnologies(UUID userId, UUID repositoryId, UUID snapshotId) {
+        return transactions.getTechnologies(userId, repositoryId, snapshotId);
+    }
+
     public RepositoryEvidenceSummaryView getEvidence(UUID userId, UUID repositoryId) {
         return transactions.getEvidence(userId, repositoryId, clock.instant());
     }

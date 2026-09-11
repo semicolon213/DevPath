@@ -108,6 +108,14 @@ class RepositorySynchronizationTransaction {
             .orElseThrow(RepositoryNotFoundException::new);
     }
 
+    @Transactional(readOnly = true)
+    TechnologySummaryView getTechnologies(UUID userId, UUID repositoryId, UUID snapshotId) {
+        owned(userId, repositoryId);
+        return synchronization.findSnapshot(userId, repositoryId, snapshotId)
+            .map(TechnologySummaryView::from)
+            .orElseThrow(RepositoryNotFoundException::new);
+    }
+
     @Transactional
     RepositoryEvidenceSummaryView getEvidence(UUID userId, UUID repositoryId, Instant now) {
         Repository repository = owned(userId, repositoryId);

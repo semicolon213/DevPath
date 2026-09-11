@@ -3,6 +3,7 @@ import type { RuleCategoryScore, RuleEvidence, RuleResult } from "../features/an
 import { useAnalysisDetail } from "../features/analysis/model/useAnalysis";
 import { ApiError } from "../shared/api/apiClient";
 import { RepositoryReviewPanel } from "../features/ai/ui/RepositoryReviewPanel";
+import { RepositorySummaryPanel } from "../features/ai/ui/RepositorySummaryPanel";
 
 export function AnalysisDetailPage() {
   const { analysisId } = useParams();
@@ -62,6 +63,7 @@ export function AnalysisDetailPage() {
         <section className="analysis-warning" role="status"><h2>분석 경고</h2><ul>{evaluation.warnings.map(value => <li key={value}>{value}</li>)}</ul></section>
       ) : null}
 
+      <RepositorySummaryPanel analysisId={result.analysisId} />
       <RepositoryReviewPanel analysisId={result.analysisId} />
 
       <section aria-labelledby="category-results-title">

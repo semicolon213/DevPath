@@ -736,6 +736,7 @@ Normal users must not receive hidden system prompt text or sensitive internal in
 | Task Type | Supported Purpose |
 |---|---|
 | `REPOSITORY_REVIEW` | Review repository based on deterministic analysis and evidence. |
+| `REPOSITORY_SUMMARY` | Summarize a repository from deterministic analysis, rule outputs, and evidence. |
 | `SKILL_ANALYSIS_EXPLANATION` | Explain Skill Matrix without recalculating scores. |
 | `CAREER_COACHING` | Generate grounded career coaching. |
 | `PORTFOLIO_GENERATION` | Generate portfolio draft. |
@@ -746,6 +747,11 @@ Normal users must not receive hidden system prompt text or sensitive internal in
 | `TECHNOLOGY_RECOMMENDATION` | Explain technology learning suggestions based on deterministic context. |
 | `ARCHITECTURE_REVIEW` | Explain architecture signals and improvement ideas. |
 | `PROJECT_EXPLANATION` | Generate project explanation from grounded project facts. |
+
+For the implemented `REPOSITORY_SUMMARY` output, `summary` and every `strengths` or `improvementAreas`
+item is a claim object containing `text`, `evidenceReferences`, and `ruleOutputReferences`. Each claim
+must reference at least one supplied evidence ID or deterministic rule-output reference; unrelated
+references elsewhere cannot ground it. `technologies` exactly preserves the supplied deterministic list.
 
 ### 20.2 Endpoint Contracts
 

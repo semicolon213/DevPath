@@ -6,7 +6,7 @@ This document records implementation evidence for the M34 MVP Completion Gate. I
 handoff aid, not a requirements source and not approval that the milestone is complete. Requirements and engine
 semantics remain controlled by `01_SRS.md`, `02_Rule_Engine.md`, and `03_Career_Path_Engine.md`.
 
-Evidence date: 2026-09-09.
+Evidence date: 2026-09-11.
 
 ## 2. Gate Evidence
 
@@ -35,7 +35,7 @@ Evidence date: 2026-09-09.
 | Authorization is enforced | PASS | Authentication/CSRF tests, owner-ID delegation assertions, cross-owner analysis and recommendation persistence tests | External security review |
 | Critical telemetry exists | PARTIAL | Safe request/correlation propagation, response support IDs, bounded request-completion logs, durable audit records | ADR-031 technology decision, metrics/traces/backend verification |
 | Critical tests pass | PASS | `npm run verify:mvp`, including the tested platform-neutral security-boundary scan | Hosted CI execution is not configured because its platform decision remains open |
-| Deployment smoke passes | PARTIAL | Local PostgreSQL/Testcontainers build and local health smoke | ADR-033/034, staging deployment and smoke |
+| Deployment smoke passes | PARTIAL | Docker/Testcontainers verification; an earlier local health smoke is recorded below but was not part of the AI-002 verification run | ADR-033/034, staging deployment and smoke |
 | Known limitations documented | PASS | Section 4 of this document and roadmap exclusions | Owner acceptance |
 
 ## 3. Reproducible Local Verification
@@ -46,9 +46,11 @@ Prerequisites:
 - Playwright Chromium installed once with `cd frontend && npx playwright install chromium`.
 - Network access for the pinned Redocly CLI when it is not already present in the npm cache.
 
-Run from the repository root:
+Run from the repository root with Docker API compatibility and the local frontend API base URL set:
 
 ```text
+DOCKER_API_VERSION=1.44
+VITE_DEVPATH_API_BASE_URL=http://localhost:8080
 npm run verify:mvp
 ```
 
@@ -59,21 +61,27 @@ that require an explicit `DEVPATH_DB_URL` remain reported as skipped unless that
 It now fails fast when no Docker-compatible server is reachable so Testcontainers-backed PostgreSQL coverage cannot be
 silently omitted from an MVP verification run.
 
-Latest clean local result on 2026-09-07:
+Latest AI-002 local verification result on 2026-09-11 (Docker 29.6.2):
 
-- Backend full suite: PASS; 191 tests, 189 passed, 0 failed, 2 environment-gated skips.
-- PostgreSQL Testcontainers suites: PASS with Docker API compatibility set to 1.44.
-- Frontend Vitest: PASS; 42 files and 104 tests.
+- Backend full suite: PASS; 201 tests, 199 passed, 0 failed, 2 environment-gated skips.
+- PostgreSQL Testcontainers suites: PASS; 27 tests, 25 passed, 0 failed, 2 environment-gated skips. PostgreSQL 16.10
+  validated and applied 28 Flyway migrations through V28 in 11 Testcontainers logs.
+- Frontend Vitest: PASS; 43 files and 108 tests.
 - Playwright Chromium/axe: PASS; 7 browser journeys, including reduced-motion media behavior.
-- Platform-neutral security boundary tests and repository scan: PASS.
-- Frontend production build: PASS.
+- Platform-neutral security boundary tests and repository scan: PASS; 3 checks.
+- Frontend production build: PASS; 142 modules transformed.
 - Frontend npm audit: PASS; 0 vulnerabilities.
 - OpenAPI lint: PASS with 0 errors and 9 non-blocking recommendation warnings.
 - One-command `npm run verify:mvp`: PASS from Docker/security preflight through clean backend build, clean frontend
-  install, complete frontend quality, and contract lint. The Docker-backed backend suite confirmed 191 total, 189
+  install, complete frontend quality, and contract lint. The Docker-backed backend suite confirmed 201 total, 199
   passed, 0 failed, and only the 2 explicit-`DEVPATH_DB_URL` skips.
-- Local PostgreSQL-backed startup smoke on port 8080: PASS; Flyway validated and applied 20 migrations, health returned 200,
-  and the same bounded request/correlation identifiers appeared in response headers and the completion log.
+- AI-002 Repository Summary: PASS in local prompt-composition, claim-reference validation, owner-scoped generation and
+  artifact-retrieval, and analysis-detail rendering checks. The prompt uses only analysis-snapshot technologies,
+  deterministic category findings, and normalized evidence; unresolvable claim references are rejected. Live-provider
+  evaluation and owner approval remain pending.
+- Historical local PostgreSQL-backed startup smoke (not run during this AI-002 verification): Flyway validated and applied
+  20 migrations, health returned 200, and the same bounded request/correlation identifiers appeared in response headers and
+  the completion log. It is not evidence for the V28 migration or a current local startup/health result.
 
 ## 4. Live Local Provider Journey
 
