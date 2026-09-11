@@ -68,9 +68,8 @@ public class SkillExplanationPromptBuilder {
                 + " Do not use generic statements that merely repeat the classification."
                 + " Return an empty evidenceIds list for every item; the server attaches verified references."
                 + " All human-readable text must be Korean. Keep the summary and each explanation to one short sentence."
-                + "\n\nOutput contract: " + template.outputFormatPrompt()
-                + "\n\n<skill-matrix-data>\n" + context + "\n</skill-matrix-data>";
-            if ((prompt.length() + 3) / 4 > TOKEN_BUDGET) {
+                + "\n\nOutput contract: " + template.outputFormatPrompt();
+            if (PromptPackage.estimatedTokenCount(prompt, context) > TOKEN_BUDGET) {
                 throw new IllegalArgumentException("Prompt context exceeds the token budget");
             }
             return new PromptPackage(context, prompt, sha256(context), TOKEN_BUDGET);

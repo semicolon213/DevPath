@@ -49,8 +49,8 @@ public class RepositorySummaryPromptBuilder {
                 "categoryScores", categories, "ruleOutputs", outputs, "technologies", technologies, "evidence", selectedEvidence
             ));
             if (SECRET.matcher(context).find()) throw new IllegalArgumentException("Prompt context contains sensitive data");
-            String prompt = template.systemPrompt() + "\n\nTask: Summarize only supplied repository facts in Korean. Represent summary and every strengths/improvementAreas item as a claim object. Each claim must cite at least one supplied evidenceKey in evidenceReferences or supplied rule-output reference in ruleOutputReferences; do not write UUIDs. Keep each claim text to one short sentence. Copy technologies exactly as supplied.\n\nOutput contract: " + template.outputFormatPrompt() + "\n\n<repository-summary-data>\n" + context + "\n</repository-summary-data>";
-            if ((prompt.length() + 3) / 4 > TOKEN_BUDGET) throw new IllegalArgumentException("Prompt context exceeds the token budget");
+            String prompt = template.systemPrompt() + "\n\nTask: Summarize only supplied repository facts in Korean. Represent summary and every strengths/improvementAreas item as a claim object. Each claim must cite at least one supplied evidenceKey in evidenceReferences or supplied rule-output reference in ruleOutputReferences; do not write UUIDs. Keep each claim text to one short sentence. Copy technologies exactly as supplied.\n\nOutput contract: " + template.outputFormatPrompt();
+            if (PromptPackage.estimatedTokenCount(prompt, context) > TOKEN_BUDGET) throw new IllegalArgumentException("Prompt context exceeds the token budget");
             return new PromptPackage(context, prompt, sha256(context), TOKEN_BUDGET);
         } catch (JsonProcessingException exception) {
             throw new IllegalStateException("Prompt context could not be serialized", exception);

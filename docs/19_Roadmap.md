@@ -959,7 +959,7 @@ AI feedback MUST NOT be represented as authoritative hiring prediction.
 | Private repo/Notion isolation | Cross-user and provider-scope verification |
 | Upload/temp URL/XSS/CSRF/redirect/rate limit | Controls and tests |
 | Secrets/log redaction/dependencies | Scanning and redaction evidence |
-| Prompt injection/AI leakage | Adversarial tests |
+| Prompt injection/AI leakage | Provider-boundary role separation implemented for the five current prompt builders: trusted template/task/output contract is sent as system content; untrusted JSON context is sent as user content with a fixed data-not-instructions guard; legacy queued combined prompts normalize without template reload; budgeting includes the 161-character envelope. Live-model adversarial tests remain required; this does not complete M48. |
 | Admin operations | Audit and least privilege |
 
 Maps to `13_Security_Architecture.md` and `15_Test_Architecture.md`.

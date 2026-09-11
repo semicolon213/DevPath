@@ -61,11 +61,11 @@ that require an explicit `DEVPATH_DB_URL` remain reported as skipped unless that
 It now fails fast when no Docker-compatible server is reachable so Testcontainers-backed PostgreSQL coverage cannot be
 silently omitted from an MVP verification run.
 
-Latest AI-002 local verification result on 2026-09-11 (Docker 29.6.2):
+Latest M48 provider-boundary local verification result on 2026-09-11 (Docker 29.6.2):
 
-- Backend full suite: PASS; 201 tests, 199 passed, 0 failed, 2 environment-gated skips.
+- Backend full suite: PASS; 203 tests, 201 passed, 0 failed, 2 environment-gated skips.
 - PostgreSQL Testcontainers suites: PASS; 27 tests, 25 passed, 0 failed, 2 environment-gated skips. PostgreSQL 16.10
-  validated and applied 28 Flyway migrations through V28 in 11 Testcontainers logs.
+  validated and applied 28 Flyway migrations through V28.
 - Frontend Vitest: PASS; 43 files and 108 tests.
 - Playwright Chromium/axe: PASS; 7 browser journeys, including reduced-motion media behavior.
 - Platform-neutral security boundary tests and repository scan: PASS; 3 checks.
@@ -73,8 +73,13 @@ Latest AI-002 local verification result on 2026-09-11 (Docker 29.6.2):
 - Frontend npm audit: PASS; 0 vulnerabilities.
 - OpenAPI lint: PASS with 0 errors and 9 non-blocking recommendation warnings.
 - One-command `npm run verify:mvp`: PASS from Docker/security preflight through clean backend build, clean frontend
-  install, complete frontend quality, and contract lint. The Docker-backed backend suite confirmed 201 total, 199
+  install, complete frontend quality, and contract lint. The Docker-backed backend suite confirmed 203 total, 201
   passed, 0 failed, and only the 2 explicit-`DEVPATH_DB_URL` skips.
+- M48 provider-boundary role separation: PASS in the five prompt-builder and generation-adapter tests. Trusted
+  template/task/output-contract content is provider system content; bounded untrusted JSON context is provider user
+  content with a fixed data-not-instructions guard. Legacy queued combined prompts normalize without template reload,
+  and the prompt budget includes the 161-character user-context envelope. This is not evidence that prompt injection
+  is eliminated; live-model adversarial evaluation remains pending.
 - AI-002 Repository Summary: PASS in local prompt-composition, claim-reference validation, owner-scoped generation and
   artifact-retrieval, and analysis-detail rendering checks. The prompt uses only analysis-snapshot technologies,
   deterministic category findings, and normalized evidence; unresolvable claim references are rejected. Live-provider

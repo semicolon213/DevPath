@@ -54,9 +54,8 @@ public class LearningRecommendationPromptBuilder {
                 + " Return every supplied position exactly once and in the supplied order."
                 + " Do not repeat titles, priorities, hours, prerequisites, or completion criteria as the explanation."
                 + " All human-readable text must be Korean and concise."
-                + "\n\nOutput contract: " + template.outputFormatPrompt()
-                + "\n\n<learning-roadmap-data>\n" + context + "\n</learning-roadmap-data>";
-            if ((prompt.length() + 3) / 4 > TOKEN_BUDGET) {
+                + "\n\nOutput contract: " + template.outputFormatPrompt();
+            if (PromptPackage.estimatedTokenCount(prompt, context) > TOKEN_BUDGET) {
                 throw new IllegalArgumentException("Prompt context exceeds the token budget");
             }
             return new PromptPackage(context, prompt, sha256(context), TOKEN_BUDGET);

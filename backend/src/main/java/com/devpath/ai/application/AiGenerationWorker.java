@@ -30,7 +30,7 @@ class AiGenerationWorker {
             UUID executionId = service.beginExecution(item);
             long started = System.nanoTime();
             try {
-                GenerationProviderResult result = provider.generate(item.prompt());
+                GenerationProviderResult result = provider.generate(item.prompt(), item.contextPayload());
                 service.providerSucceeded(item, executionId, result, elapsedMillis(started));
             } catch (GenerationProviderException exception) {
                 service.providerFailed(item, executionId, exception.code(), elapsedMillis(started));

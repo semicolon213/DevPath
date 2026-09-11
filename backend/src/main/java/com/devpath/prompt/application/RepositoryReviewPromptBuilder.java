@@ -54,9 +54,8 @@ public class RepositoryReviewPromptBuilder {
                 + " Keep the summary and each section review to one short Korean sentence. "
                 + "The sections field must be a JSON array, not an object keyed by category. "
                 + "Put only supplied evidenceKey values in evidenceIds for the matching section; do not write UUIDs."
-                + "\n\nOutput contract: " + template.outputFormatPrompt()
-                + "\n\n<repository-review-data>\n" + context + "\n</repository-review-data>";
-            if ((prompt.length() + 3) / 4 > TOKEN_BUDGET) {
+                + "\n\nOutput contract: " + template.outputFormatPrompt();
+            if (PromptPackage.estimatedTokenCount(prompt, context) > TOKEN_BUDGET) {
                 throw new IllegalArgumentException("Prompt context exceeds the token budget");
             }
             return new PromptPackage(context, prompt, sha256(context), TOKEN_BUDGET);

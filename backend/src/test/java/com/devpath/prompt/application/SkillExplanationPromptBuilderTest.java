@@ -38,8 +38,9 @@ class SkillExplanationPromptBuilderTest {
         assertThat(first.contextPayload()).doesNotContain(matrix.skills().getFirst().evidenceIds().getFirst().toString());
         assertThat(first.contextPayload()).doesNotContain("score", "level", "confidence");
         assertThat(first.prompt()).contains("Never calculate", "every supplied skill", "must be Korean",
-            "concrete evidence facts", "confirmedRuleIds as present", "one short sentence", "<skill-matrix-data>");
-        assertThat((first.prompt().length() + 3) / 4).isLessThanOrEqualTo(first.tokenBudget());
+            "concrete evidence facts", "confirmedRuleIds as present", "one short sentence")
+            .doesNotContain(first.contextPayload(), "<skill-matrix-data>");
+        assertThat(PromptPackage.estimatedTokenCount(first.prompt(), first.contextPayload())).isLessThanOrEqualTo(first.tokenBudget());
     }
 
     @Test

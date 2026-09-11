@@ -76,6 +76,6 @@ class RepositoryReviewPromptBuilderTest {
             assertThat(entry.getValue().path(1).path("evidenceKey").asText()).isEqualTo("B");
             assertThat(entry.getValue().path(0).has("evidenceId")).isFalse();
         });
-        assertThat((prompt.prompt().length() + 3) / 4).isLessThanOrEqualTo(prompt.tokenBudget());
+        assertThat(PromptPackage.estimatedTokenCount(prompt.prompt(), prompt.contextPayload())).isLessThanOrEqualTo(prompt.tokenBudget());
     }
 }

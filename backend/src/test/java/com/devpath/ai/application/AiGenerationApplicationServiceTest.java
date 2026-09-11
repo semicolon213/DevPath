@@ -125,7 +125,7 @@ class AiGenerationApplicationServiceTest {
         UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrix = UUID.randomUUID(), execution = UUID.randomUUID();
         GenerationJob running = GenerationJob.queue(owner, context, "key", AiGenerationApplicationService.SKILL_EXPLANATION_TASK,
             NOW.minusSeconds(1)).start(NOW.minusMillis(500));
-        GenerationWorkItem item = new GenerationWorkItem(running, matrix, null, null, null, "prompt");
+        GenerationWorkItem item = new GenerationWorkItem(running, matrix, null, null, null, "prompt", "{}");
         SkillMatrixView matrixView = org.mockito.Mockito.mock(SkillMatrixView.class);
         UUID evaluationId = UUID.randomUUID();
         RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
@@ -259,7 +259,7 @@ class AiGenerationApplicationServiceTest {
         UUID analysisId = UUID.randomUUID(), evaluationId = UUID.randomUUID(), execution = UUID.randomUUID();
         GenerationJob running = GenerationJob.queue(owner, context, "review-key",
             AiGenerationApplicationService.REPOSITORY_REVIEW_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
-        GenerationWorkItem item = new GenerationWorkItem(running, matrix, analysisId, null, null, "prompt");
+        GenerationWorkItem item = new GenerationWorkItem(running, matrix, analysisId, null, null, "prompt", "{}");
         var analysis = new AnalysisResultView(analysisId, UUID.randomUUID(), UUID.randomUUID(), evaluationId,
             matrix, "REPOSITORY_BASELINE", true, NOW);
         var evidence = new RuleEvidenceListView(evaluationId, List.of());
@@ -306,7 +306,7 @@ class AiGenerationApplicationServiceTest {
         assertThat(requested.status()).isEqualTo("QUEUED");
 
         GenerationJob running = GenerationJob.queue(owner, UUID.randomUUID(), "summary-provider", AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
-        GenerationWorkItem item = new GenerationWorkItem(running, matrixId, analysisId, null, null, "prompt");
+        GenerationWorkItem item = new GenerationWorkItem(running, matrixId, analysisId, null, null, "prompt", "{}");
         var content = new RepositorySummaryContent(
             new RepositorySummaryContent.Claim("grounded", List.of(), List.of("rule-output")), List.of(), List.of(), List.of()
         );
@@ -325,7 +325,7 @@ class AiGenerationApplicationServiceTest {
         UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrixId = UUID.randomUUID(), analysisId = UUID.randomUUID();
         UUID evaluationId = UUID.randomUUID(), execution = UUID.randomUUID();
         GenerationJob running = GenerationJob.queue(owner, context, "summary-rejected", AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
-        GenerationWorkItem item = new GenerationWorkItem(running, matrixId, analysisId, null, null, "prompt");
+        GenerationWorkItem item = new GenerationWorkItem(running, matrixId, analysisId, null, null, "prompt", "{}");
         var analysis = new AnalysisResultView(analysisId, UUID.randomUUID(), UUID.randomUUID(), evaluationId, matrixId, "REPOSITORY_BASELINE", true, NOW);
         RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
         var evidence = new RuleEvidenceListView(evaluationId, List.of());

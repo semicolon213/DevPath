@@ -87,7 +87,8 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
             PromptContextJpaEntity context = contexts.findById(started.promptContextId())
                 .orElseThrow(() -> new IllegalStateException("Prompt context is unavailable"));
             return new GenerationWorkItem(started, context.skillMatrixId, context.analysisId,
-                context.careerReadinessId, context.learningRoadmapId, context.providerPrompt);
+                context.careerReadinessId, context.learningRoadmapId,
+                trustedInstructions(context.providerPrompt, context.contextPayload), context.contextPayload);
         });
     }
 
@@ -198,6 +199,16 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
             case AiGenerationApplicationService.LEARNING_RECOMMENDATION_TASK -> LearningRecommendationValidator.VERSION;
             default -> SkillExplanationValidator.VERSION;
         };
+    }
+
+    static String trustedInstructions(String providerPrompt, String contextPayload) {
+        int contextStart = providerPrompt.lastIndexOf(contextPayload);
+        if (contextStart < 0 || !providerPrompt.substring(contextStart + contextPayload.length()).matches("\\n</[a-z-]+>")) {
+            return providerPrompt;
+        }
+        int blockStart = providerPrompt.lastIndexOf("\n\n<", contextStart);
+        return blockStart >= 0 && providerPrompt.substring(blockStart, contextStart).matches("\\n\\n<[a-z-]+>\\n")
+            ? providerPrompt.substring(0, blockStart) : providerPrompt;
     }
 
     private GenerationJob toDomain(AiTaskJpaEntity value) {

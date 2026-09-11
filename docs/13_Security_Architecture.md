@@ -646,6 +646,12 @@ Prompt-injection defense is risk reduction, not guaranteed prevention. DevPath M
 | Output escaping | Frontend MUST safely render AI-generated Markdown or text |
 | Human review | Publication-sensitive artifacts SHOULD support user review before publishing |
 
+### 20.1 Implemented Provider-Boundary Role Separation (M48 item)
+
+The five current prompt builders separate the trusted template, task, and output contract from untrusted JSON context. The provider adapter sends the trusted material in the system role and the bounded untrusted context in the user role. A fixed guard states that untrusted context is data, not instructions. Legacy queued combined prompts are normalized without reloading a template, and prompt budgeting includes the 161-character user-context envelope.
+
+This is a defense-in-depth implementation item, not a claim that prompt injection is eliminated. Live-model adversarial evaluation remains required before the M48 prompt-injection/AI-leakage work is complete.
+
 ## 21. AI Provider Security and Privacy
 
 ### 21.1 Provider Criteria
