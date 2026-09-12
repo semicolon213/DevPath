@@ -17,16 +17,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
-import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 @Component
 public class SkillExplanationPromptBuilder {
     private static final int TOKEN_BUDGET = 4096;
     private static final int EVIDENCE_LIMIT = 2;
-    private static final Pattern SECRET = Pattern.compile(
-        "(?i)(github_pat_|ghp_|sk-[a-z0-9]|-----BEGIN [A-Z ]+PRIVATE KEY-----|password\\s*[:=])"
-    );
     private final ObjectMapper mapper;
 
     public SkillExplanationPromptBuilder(ObjectMapper mapper) {
@@ -59,7 +55,7 @@ public class SkillExplanationPromptBuilder {
                 "improvementAreas", matrix.skills().stream().filter(SkillAssessmentView::weakness)
                     .map(skill -> skillContext(skill, categories, evidenceById)).toList()
             ));
-            if (SECRET.matcher(context).find()) throw new IllegalArgumentException("Prompt context contains sensitive data");
+            PromptSecretDetector.reject(context);
             String prompt = template.systemPrompt() + "\n\nTask: Explain the supplied Skill Matrix in Korean."
                 + " Include every supplied skill exactly once in its classified list."
                 + " Explain why each classification applies using its rule outcomes and concrete evidence facts."

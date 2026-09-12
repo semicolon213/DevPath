@@ -10,15 +10,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Map;
-import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 @Component
 public class CareerCoachingPromptBuilder {
     private static final int TOKEN_BUDGET = 8192;
-    private static final Pattern SECRET = Pattern.compile(
-        "(?i)(github_pat_|ghp_|sk-[a-z0-9]|-----BEGIN [A-Z ]+PRIVATE KEY-----|password\\s*[:=])"
-    );
     private final ObjectMapper mapper;
 
     public CareerCoachingPromptBuilder(ObjectMapper mapper) { this.mapper = mapper; }
@@ -52,7 +48,7 @@ public class CareerCoachingPromptBuilder {
                 "roadmapSteps", roadmap.steps().stream()
                     .filter(value -> recommendationIds.contains(value.recommendationId())).toList()
             ));
-            if (SECRET.matcher(context).find()) throw new IllegalArgumentException("Prompt context contains sensitive data");
+            PromptSecretDetector.reject(context);
             String prompt = template.systemPrompt()
                 + "\n\nTask: Coach the user in Korean using only the supplied career data. Explain what the verified strengths enable,"
                 + " why each gap matters for the selected career, and how to execute the supplied next steps."

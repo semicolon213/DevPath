@@ -10,15 +10,11 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.Map;
-import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 @Component
 public class LearningRecommendationPromptBuilder {
     private static final int TOKEN_BUDGET = 8192;
-    private static final Pattern SECRET = Pattern.compile(
-        "(?i)(github_pat_|ghp_|sk-[a-z0-9]|-----BEGIN [A-Z ]+PRIVATE KEY-----|password\\s*[:=])"
-    );
     private final ObjectMapper mapper;
 
     public LearningRecommendationPromptBuilder(ObjectMapper mapper) { this.mapper = mapper; }
@@ -46,7 +42,7 @@ public class LearningRecommendationPromptBuilder {
                 "milestones", roadmap.milestones(),
                 "steps", roadmap.steps()
             ));
-            if (SECRET.matcher(context).find()) throw new IllegalArgumentException("Prompt context contains sensitive data");
+            PromptSecretDetector.reject(context);
             String prompt = template.systemPrompt()
                 + "\n\nTask: Explain the supplied learning roadmap in actionable Korean."
                 + " For each supplied step, explain its milestone, learning objective, and a concrete practice task"

@@ -812,6 +812,11 @@ No unsupported scanning vendor or tool is mandated by this document.
 | Backup restoration tests | Restore integrity and access boundary validation |
 | Incident exercises | Credential leak, AI leak, cross-user exposure, dependency compromise |
 
+For the currently implemented five prompt builders, NFR-003, PR-004, and AI-NFR-005 are enforced before provider
+assembly by the shared fail-closed `PromptSecretDetector`. It blocks high-confidence GitHub, OpenAI, AWS, private-key,
+and password secret patterns in untrusted prompt context. This is local control evidence, not completion evidence for
+the broader prompt-injection or live-provider security gates.
+
 ### 27.2 Threat-to-Verification Mapping
 
 | Threat IDs | Verification Methods |
