@@ -50,6 +50,8 @@ class AiGenerationPersistenceIntegrationTest {
         persistence.saveValidatedArtifact(item, execution, artifact, "object://" + owner + "/artifact", now.plusSeconds(2));
 
         assertThat(persistence.findJob(owner, queued.id()).orElseThrow().status().name()).isEqualTo("SUCCEEDED");
+        assertThat(persistence.findJob(other, queued.id())).isEmpty();
+        assertThat(persistence.findByOwnerAndIdempotencyKey(other, "key")).isEmpty();
         assertThat(persistence.findArtifact(owner, artifact)).isPresent().get().satisfies(value -> {
             assertThat(value.skillMatrixId()).isEqualTo(matrix);
             assertThat(value.contextHash()).isEqualTo("a".repeat(64));

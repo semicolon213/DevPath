@@ -1,6 +1,7 @@
 package com.devpath.ai.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -10,8 +11,10 @@ import static org.mockito.Mockito.when;
 import com.devpath.ai.config.AiGenerationProperties;
 import com.devpath.ai.domain.GenerationJob;
 import com.devpath.analysis.application.AnalysisApplicationService;
+import com.devpath.analysis.application.AnalysisNotFoundException;
 import com.devpath.analysis.application.AnalysisResultView;
 import com.devpath.career.application.CareerReadinessApplicationService;
+import com.devpath.career.application.CareerReadinessNotFoundException;
 import com.devpath.career.application.CareerReadinessView;
 import com.devpath.learning.application.LearningRoadmapListView;
 import com.devpath.learning.application.LearningRoadmapView;
@@ -27,12 +30,14 @@ import com.devpath.repository.application.RepositorySynchronizationApplicationSe
 import com.devpath.repository.application.TechnologySummaryView;
 import com.devpath.repository.application.RepositoryView;
 import com.devpath.recommendation.application.RecommendationApplicationService;
+import com.devpath.recommendation.application.RecommendationNotFoundException;
 import com.devpath.recommendation.application.RecommendationSetListView;
 import com.devpath.recommendation.application.RecommendationSetView;
 import com.devpath.rule.application.CompletedRuleEvaluationApplicationService;
 import com.devpath.rule.application.RuleEvidenceListView;
 import com.devpath.rule.application.RuleEvaluationView;
 import com.devpath.rule.application.SkillMatrixApplicationService;
+import com.devpath.rule.application.SkillMatrixNotFoundException;
 import com.devpath.rule.application.SkillMatrixView;
 import com.devpath.shared.application.ObjectContentPort;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -46,6 +51,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -381,5 +389,89 @@ class AiGenerationApplicationServiceTest {
 
         assertThat(artifact.type()).isEqualTo(AiGenerationApplicationService.REPOSITORY_SUMMARY_OUTPUT);
         assertThat(artifact.content()).isInstanceOf(RepositorySummaryContent.class);
+    }
+
+    @ParameterizedTest
+    @MethodSource("foreignSourceRequests")
+    void rejectsForeignSourceReferencesBeforePersistingAJob(
+        String taskType, String outputType, RuntimeException notFound
+    ) {
+        UUID owner = UUID.randomUUID(), foreignSource = UUID.randomUUID();
+        when(persistence.findByOwnerAndIdempotencyKey(owner, "foreign-source")).thenReturn(Optional.empty());
+        when(persistence.loadActiveTemplate(taskType)).thenReturn(new PromptTemplateVersion(UUID.randomUUID(), taskType,
+            "v1", "trusted", "json"));
+        switch (taskType) {
+            case AiGenerationApplicationService.SKILL_EXPLANATION_TASK ->
+                when(matrices.get(owner, foreignSource)).thenThrow(notFound);
+            case AiGenerationApplicationService.REPOSITORY_REVIEW_TASK,
+                 AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK ->
+                when(analyses.getResult(owner, foreignSource)).thenThrow(notFound);
+            case AiGenerationApplicationService.CAREER_COACHING_TASK ->
+                when(readiness.get(owner, foreignSource)).thenThrow(notFound);
+            default -> when(recommendations.getRoadmap(owner, foreignSource)).thenThrow(notFound);
+        }
+
+        assertThatThrownBy(() -> service.request(owner, taskType, List.of(foreignSource), outputType, "foreign-source"))
+            .isSameAs(notFound);
+
+        verify(persistence, never()).saveContext(any());
+        verify(persistence, never()).saveJob(any());
+    }
+
+    static java.util.stream.Stream<Arguments> foreignSourceRequests() {
+        return java.util.stream.Stream.of(
+            Arguments.of(AiGenerationApplicationService.SKILL_EXPLANATION_TASK, AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT, new SkillMatrixNotFoundException()),
+            Arguments.of(AiGenerationApplicationService.REPOSITORY_REVIEW_TASK, AiGenerationApplicationService.REPOSITORY_REVIEW_OUTPUT, new AnalysisNotFoundException()),
+            Arguments.of(AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, AiGenerationApplicationService.REPOSITORY_SUMMARY_OUTPUT, new AnalysisNotFoundException()),
+            Arguments.of(AiGenerationApplicationService.CAREER_COACHING_TASK, AiGenerationApplicationService.CAREER_COACHING_OUTPUT, new CareerReadinessNotFoundException()),
+            Arguments.of(AiGenerationApplicationService.LEARNING_RECOMMENDATION_TASK, AiGenerationApplicationService.LEARNING_RECOMMENDATION_OUTPUT, new RecommendationNotFoundException())
+        );
+    }
+
+    @Test
+    void scopesIdempotencyKeysToTheirOwners() {
+        UUID first = UUID.randomUUID(), second = UUID.randomUUID(), matrix = UUID.randomUUID(), evaluation = UUID.randomUUID();
+        SkillMatrixView matrixView = org.mockito.Mockito.mock(SkillMatrixView.class);
+        RuleEvaluationView evaluationView = org.mockito.Mockito.mock(RuleEvaluationView.class);
+        var template = new PromptTemplateVersion(UUID.randomUUID(), AiGenerationApplicationService.SKILL_EXPLANATION_TASK, "v1", "trusted", "json");
+        when(persistence.findByOwnerAndIdempotencyKey(first, "shared-key")).thenReturn(Optional.empty());
+        when(persistence.findByOwnerAndIdempotencyKey(second, "shared-key")).thenReturn(Optional.empty());
+        when(persistence.loadActiveTemplate(AiGenerationApplicationService.SKILL_EXPLANATION_TASK)).thenReturn(template);
+        when(matrices.get(first, matrix)).thenReturn(matrixView);
+        when(matrices.get(second, matrix)).thenReturn(matrixView);
+        when(matrixView.evaluationId()).thenReturn(evaluation);
+        when(evaluations.getEvaluation(first, evaluation)).thenReturn(evaluationView);
+        when(evaluations.getEvaluation(second, evaluation)).thenReturn(evaluationView);
+        when(evaluations.getEvidence(eq(first), eq(evaluation))).thenReturn(new RuleEvidenceListView(evaluation, List.of()));
+        when(evaluations.getEvidence(eq(second), eq(evaluation))).thenReturn(new RuleEvidenceListView(evaluation, List.of()));
+        when(prompts.build(eq(matrixView), eq(evaluationView), any(), eq(template)))
+            .thenReturn(new PromptPackage("{}", "prompt", "a".repeat(64), 4096));
+        when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+
+        service.request(first, AiGenerationApplicationService.SKILL_EXPLANATION_TASK, List.of(matrix), AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT, "shared-key");
+        service.request(second, AiGenerationApplicationService.SKILL_EXPLANATION_TASK, List.of(matrix), AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT, "shared-key");
+
+        verify(persistence).findByOwnerAndIdempotencyKey(first, "shared-key");
+        verify(persistence).findByOwnerAndIdempotencyKey(second, "shared-key");
+        ArgumentCaptor<GenerationJob> jobs = ArgumentCaptor.forClass(GenerationJob.class);
+        verify(persistence, org.mockito.Mockito.times(2)).saveJob(jobs.capture());
+        assertThat(jobs.getAllValues()).extracting(GenerationJob::userId).containsExactly(first, second);
+    }
+
+    @Test
+    void hidesForeignJobsArtifactsAndValidationRecords() {
+        UUID owner = UUID.randomUUID(), foreignJob = UUID.randomUUID(), foreignArtifact = UUID.randomUUID();
+        when(persistence.findJob(owner, foreignJob)).thenReturn(Optional.empty());
+        when(transactions.artifact(owner, foreignArtifact)).thenThrow(new GenerationNotFoundException());
+        when(persistence.findArtifact(owner, foreignArtifact)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getJob(owner, foreignJob)).isInstanceOf(GenerationNotFoundException.class);
+        assertThatThrownBy(() -> service.cancel(owner, foreignJob)).isInstanceOf(GenerationNotFoundException.class);
+        assertThatThrownBy(() -> service.getArtifact(owner, foreignArtifact)).isInstanceOf(GenerationNotFoundException.class);
+        assertThatThrownBy(() -> service.getValidation(owner, foreignArtifact)).isInstanceOf(GenerationNotFoundException.class);
+
+        verify(persistence, never()).saveJob(any());
+        verify(objects, never()).read(any(), any());
     }
 }

@@ -1095,3 +1095,9 @@ production security platform. It rejects tracked sensitive environment/key conta
 credential formats, runtime-owned JPA schema mutation modes, browser credential persistence, and direct browser calls to
 GitHub, Notion, or OpenAI APIs. Its detector has executable positive and negative fixture tests. This lightweight gate
 does not replace dependency audit, provider secret rotation, external security review, or a future approved CI scanner.
+
+## 39. AI Generation Owner-Isolation Regression Evidence
+
+AI-generation persistence uses PostgreSQL owner-scoped roots for jobs, idempotency records, and generated artifacts. Regression coverage proves that foreign source references are rejected for all five current task types; an identical idempotency key is isolated per owner; and foreign job get/cancel, artifact, and validation-result reads are unavailable. This is local persistence and application-service evidence only: production behavior is unchanged, and no cancel/retry race evidence exists.
+
+Verification: `backend:test` PASS (213 total: 211 passed, 0 failed, 2 `DEVPATH_DB_URL` skips), including 2 AI persistence and 17 AI application-service tests; backend build PASS; `security:check` PASS (3 checks). M48 remains incomplete.
