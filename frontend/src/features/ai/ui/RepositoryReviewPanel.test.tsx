@@ -27,7 +27,7 @@ describe("RepositoryReviewPanel", () => {
         provenance: { skillMatrixId: "matrix-id", analysisId: "analysis-id", promptContextId: "context-id",
           templateVersion: "v1", provider: "OLLAMA", model: "qwen-test", contextHash: "a".repeat(64),
           generatedAt: "2026-08-31T00:00:00Z" },
-        validation: { status: "PASSED", validatorVersion: "repository-review-validator-v1",
+        validation: { status: "PASSED", validatorVersion: "repository-review-validator-v2",
           validatedAt: "2026-08-31T00:00:00Z", violations: [] },
         contentRef: "/api/v1/generated-artifacts/artifact-id",
         content: { summary: "근거 기반 리뷰", sections: [{ category: "DOCUMENTATION",

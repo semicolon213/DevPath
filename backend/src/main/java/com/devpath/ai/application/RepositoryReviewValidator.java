@@ -18,10 +18,9 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class RepositoryReviewValidator {
-    public static final String VERSION = "repository-review-validator-v1";
+    public static final String VERSION = "repository-review-validator-v2";
     private static final Set<String> CATEGORIES = Set.copyOf(RepositoryReviewEvidenceSelection.CATEGORIES);
     private static final Pattern NUMBER = Pattern.compile("\\p{N}");
-    private static final Pattern UNSAFE = Pattern.compile("(?i)<|javascript:|on(?:click|error|load)\\s*=");
     private final ObjectMapper mapper;
 
     public RepositoryReviewValidator(ObjectMapper mapper) { this.mapper = mapper; }
@@ -102,7 +101,7 @@ public class RepositoryReviewValidator {
         if (value == null || value.isBlank() || value.length() > 2000) violations.add("INVALID_RESPONSE_SCHEMA");
         else {
             if (NUMBER.matcher(value).find()) violations.add("UNTRACEABLE_NUMERIC_CLAIM");
-            if (UNSAFE.matcher(value).find()) violations.add("UNSAFE_RENDERED_CONTENT");
+            violations.addAll(GeneratedOutputPolicy.renderSafetyViolations(value));
         }
     }
 

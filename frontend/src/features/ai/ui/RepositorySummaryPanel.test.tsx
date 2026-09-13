@@ -23,7 +23,7 @@ describe("RepositorySummaryPanel", () => {
     expect(screen.getByText("Grounded summary")).toBeInTheDocument();
     expect(screen.getByText("evidence-id", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("rule-output", { exact: false })).toBeInTheDocument();
-    expect(screen.getByText("repository-summary-validator-v1", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("repository-summary-validator-v2", { exact: false })).toBeInTheDocument();
     expect(document.querySelector("[dangerouslySetInnerHTML]")).toBeNull();
   });
 
@@ -34,7 +34,7 @@ describe("RepositorySummaryPanel", () => {
   });
 
   function artifact() {
-    return { artifactId: "artifact-id", type: "REPOSITORY_SUMMARY", status: "VALIDATED", provenance: { skillMatrixId: "matrix-id", analysisId: "analysis-id", promptContextId: "context-id", templateVersion: "v2", provider: "OLLAMA", model: "qwen-test", contextHash: "a".repeat(64), generatedAt: "2026-09-11T00:00:00Z" }, validation: { status: "PASSED", validatorVersion: "repository-summary-validator-v1", validatedAt: "2026-09-11T00:00:00Z", violations: [] }, contentRef: "/api/v1/generated-artifacts/artifact-id", content: { summary: { text: "Grounded summary", evidenceReferences: ["evidence-id"], ruleOutputReferences: ["rule-output"] }, strengths: [], improvementAreas: [], technologies: ["Java"] } };
+    return { artifactId: "artifact-id", type: "REPOSITORY_SUMMARY", status: "VALIDATED", provenance: { skillMatrixId: "matrix-id", analysisId: "analysis-id", promptContextId: "context-id", templateVersion: "v2", provider: "OLLAMA", model: "qwen-test", contextHash: "a".repeat(64), generatedAt: "2026-09-11T00:00:00Z" }, validation: { status: "PASSED", validatorVersion: "repository-summary-validator-v2", validatedAt: "2026-09-11T00:00:00Z", violations: [] }, contentRef: "/api/v1/generated-artifacts/artifact-id", content: { summary: { text: "Grounded summary", evidenceReferences: ["evidence-id"], ruleOutputReferences: ["rule-output"] }, strengths: [], improvementAreas: [], technologies: ["Java"] } };
   }
 
   function state(overrides: Record<string, unknown> = {}) {

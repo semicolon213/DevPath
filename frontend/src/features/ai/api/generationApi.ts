@@ -34,7 +34,7 @@ export type GeneratedSkillExplanation = {
   };
   validation: {
     status: "PASSED";
-    validatorVersion: "skill-explanation-validator-v1";
+    validatorVersion: "skill-explanation-validator-v1" | "skill-explanation-validator-v2" | "skill-explanation-validator-v3" | "skill-explanation-validator-v4" | "skill-explanation-validator-v5";
     validatedAt: string;
     violations: string[];
   };
@@ -53,7 +53,7 @@ export type GeneratedRepositoryReview = {
   provenance: Omit<GeneratedSkillExplanation["provenance"], "analysisId"> & { analysisId: string };
   validation: {
     status: "PASSED";
-    validatorVersion: "repository-review-validator-v1";
+    validatorVersion: "repository-review-validator-v1" | "repository-review-validator-v2";
     validatedAt: string;
     violations: string[];
   };
@@ -75,7 +75,7 @@ export type GeneratedRepositorySummary = {
   provenance: Omit<GeneratedSkillExplanation["provenance"], "analysisId"> & { analysisId: string };
   validation: {
     status: "PASSED";
-    validatorVersion: "repository-summary-validator-v1";
+    validatorVersion: "repository-summary-validator-v1" | "repository-summary-validator-v2";
     validatedAt: string;
     violations: string[];
   };
@@ -101,7 +101,7 @@ export type GeneratedCareerAdvice = {
   provenance: GeneratedSkillExplanation["provenance"] & { careerReadinessId: string };
   validation: {
     status: "PASSED";
-    validatorVersion: "career-advice-validator-v1";
+    validatorVersion: "career-advice-validator-v1" | "career-advice-validator-v2";
     validatedAt: string;
     violations: string[];
   };
@@ -125,7 +125,7 @@ export type GeneratedLearningRecommendation = {
   };
   validation: {
     status: "PASSED";
-    validatorVersion: "learning-recommendation-validator-v1";
+    validatorVersion: "learning-recommendation-validator-v1" | "learning-recommendation-validator-v2";
     validatedAt: string;
     violations: string[];
   };

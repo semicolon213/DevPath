@@ -64,6 +64,7 @@ public class AiGenerationApplicationService {
     private final AiAuditPort audit;
     private final AiGenerationTransactionService transactions;
     private final ObjectMapper mapper;
+    private final GeneratedOutputPolicy outputPolicy;
     private final Clock clock;
 
     public AiGenerationApplicationService(
@@ -88,7 +89,7 @@ public class AiGenerationApplicationService {
         this.coachingPrompts = coachingPrompts; this.adviceValidator = adviceValidator;
         this.learningPrompts = learningPrompts; this.learningValidator = learningValidator;
         this.objects = objects; this.properties = properties; this.audit = audit; this.transactions = transactions;
-        this.mapper = mapper; this.clock = clock;
+        this.mapper = mapper; this.outputPolicy = new GeneratedOutputPolicy(mapper); this.clock = clock;
     }
 
     @Transactional
@@ -207,6 +208,13 @@ public class AiGenerationApplicationService {
         Optional<GenerationJob> currentValue = transactions.providerCompleted(item, executionId, result, latencyMs, now);
         if (currentValue.isEmpty()) return;
         GenerationJob current = currentValue.get();
+        List<String> policyViolations = outputPolicy.violations(result.content(), item.trustedSystemPrompt());
+        if (!policyViolations.isEmpty()) {
+            boolean recorded = storeRejected(item, executionId, result.content(), policyViolations, now);
+            if (recorded && item.job().attemptCount() >= properties.maxAttempts())
+                audit.record(AiAuditEvent.GENERATION_FAILED, current.userId(), current.id(), now);
+            return;
+        }
         Object content;
         List<String> violations;
         String fileName;

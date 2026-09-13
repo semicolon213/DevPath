@@ -650,7 +650,9 @@ Prompt-injection defense is risk reduction, not guaranteed prevention. DevPath M
 
 The five current prompt builders separate the trusted template, task, and output contract from untrusted JSON context. The provider adapter sends the trusted material in the system role and the bounded untrusted context in the user role. A fixed guard states that untrusted context is data, not instructions. Legacy queued combined prompts are normalized without reloading a template, and prompt budgeting includes the 161-character user-context envelope.
 
-This is a defense-in-depth implementation item, not a claim that prompt injection is eliminated. Live-model adversarial evaluation remains required before the M48 prompt-injection/AI-leakage work is complete.
+Generated JSON text is centrally checked for render safety before it reaches task validation. The shared generated-output policy rejects an exact locked-template `systemPrompt` disclosure, including disclosure reconstructed from contiguous textual JSON nodes. Each task validator retains its direct safety check through that shared policy; a rejected response creates no generated artifact.
+
+This is a defense-in-depth implementation item, not a claim that prompt injection is eliminated. The disclosure control is exact-match only: paraphrases, a broader harm taxonomy, and live-model adversarial evaluation are not covered. M48 remains incomplete.
 
 ## 21. AI Provider Security and Privacy
 

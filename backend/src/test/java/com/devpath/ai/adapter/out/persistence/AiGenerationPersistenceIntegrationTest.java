@@ -81,7 +81,7 @@ class AiGenerationPersistenceIntegrationTest {
         assertThat(persistence.findArtifact(owner, artifact)).isPresent().get().satisfies(value -> {
             assertThat(value.analysisId()).isEqualTo(analysis);
             assertThat(value.artifactType()).isEqualTo("REPOSITORY_REVIEW");
-            assertThat(value.validatorVersion()).isEqualTo("repository-review-validator-v1");
+            assertThat(value.validatorVersion()).isEqualTo("repository-review-validator-v2");
         });
     }
 

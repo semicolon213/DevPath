@@ -28,7 +28,7 @@ describe("LearningRecommendationPanel", () => {
           learningRoadmapId: "roadmap-id", promptContextId: "context-id", templateVersion: "v1",
           provider: "OLLAMA", model: "qwen-test", contextHash: "a".repeat(64),
           generatedAt: "2026-09-02T00:00:00Z" },
-        validation: { status: "PASSED", validatorVersion: "learning-recommendation-validator-v1",
+        validation: { status: "PASSED", validatorVersion: "learning-recommendation-validator-v2",
           validatedAt: "2026-09-02T00:00:00Z", violations: [] },
         contentRef: "/api/v1/generated-artifacts/artifact-id",
         content: { recommendationSummary: "실행 순서 해석", steps: [{ roadmapStepId: "step-id", position: 0,

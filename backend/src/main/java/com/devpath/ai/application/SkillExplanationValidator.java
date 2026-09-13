@@ -22,12 +22,11 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class SkillExplanationValidator {
-    public static final String VERSION = "skill-explanation-validator-v4";
+    public static final String VERSION = "skill-explanation-validator-v5";
     private static final int GROUNDED_EVIDENCE_LIMIT = 2;
     private static final Set<String> ROOT_FIELDS = Set.of("summary", "strengths", "improvementAreas");
     private static final Set<String> REQUIRED_ITEM_FIELDS = Set.of("skillKey", "explanation", "evidenceIds");
     private static final Pattern NUMBER = Pattern.compile("\\p{N}");
-    private static final Pattern UNSAFE = Pattern.compile("(?i)<|javascript:|on(?:click|error|load)\\s*=");
     private final ObjectMapper mapper;
 
     public SkillExplanationValidator(ObjectMapper mapper) {
@@ -184,7 +183,7 @@ public class SkillExplanationValidator {
         if (value == null || value.isBlank() || value.length() > maxLength) violations.add("INVALID_RESPONSE_SCHEMA");
         else {
             if (NUMBER.matcher(value).find()) violations.add("UNTRACEABLE_NUMERIC_CLAIM");
-            if (UNSAFE.matcher(value).find()) violations.add("UNSAFE_RENDERED_CONTENT");
+            violations.addAll(GeneratedOutputPolicy.renderSafetyViolations(value));
         }
     }
 

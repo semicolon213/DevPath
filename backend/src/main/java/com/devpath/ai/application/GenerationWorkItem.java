@@ -5,5 +5,5 @@ import java.util.UUID;
 
 public record GenerationWorkItem(
     GenerationJob job, UUID skillMatrixId, UUID analysisId, UUID careerReadinessId, UUID learningRoadmapId,
-    String prompt, String contextPayload
+    String prompt, String contextPayload, String trustedSystemPrompt
 ) {}

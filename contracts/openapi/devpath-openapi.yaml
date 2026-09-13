@@ -3445,7 +3445,7 @@ components:
       required: [status, validatorVersion, validatedAt, violations]
       properties:
         status: {type: string, enum: [PASSED, REJECTED]}
-        validatorVersion: {type: string, enum: [skill-explanation-validator-v1, repository-review-validator-v1, repository-summary-validator-v1, career-advice-validator-v1, learning-recommendation-validator-v1]}
+        validatorVersion: {type: string, enum: [skill-explanation-validator-v1, skill-explanation-validator-v2, skill-explanation-validator-v3, skill-explanation-validator-v4, skill-explanation-validator-v5, repository-review-validator-v1, repository-review-validator-v2, repository-summary-validator-v1, repository-summary-validator-v2, career-advice-validator-v1, career-advice-validator-v2, learning-recommendation-validator-v1, learning-recommendation-validator-v2]}
         validatedAt: {type: string, format: date-time}
         violations:
           type: array

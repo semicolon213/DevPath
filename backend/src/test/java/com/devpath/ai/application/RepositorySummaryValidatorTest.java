@@ -34,7 +34,7 @@ class RepositorySummaryValidatorTest {
     }
 
     @Test
-    void rejectsMalformedUnsupportedDuplicateNumericHtmlAndIndividuallyUngroundedClaims() {
+    void rejectsMalformedUnsupportedDuplicateNumericAndIndividuallyUngroundedClaims() {
         Source source = source();
         assertThat(validator.validate("{}", List.of("Java"), source.evaluation(), source.evidence()).violations())
             .contains("INVALID_RESPONSE_SCHEMA");

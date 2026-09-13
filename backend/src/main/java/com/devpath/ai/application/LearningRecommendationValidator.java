@@ -12,9 +12,8 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class LearningRecommendationValidator {
-    public static final String VERSION = "learning-recommendation-validator-v1";
+    public static final String VERSION = "learning-recommendation-validator-v2";
     private static final Pattern NUMBER = Pattern.compile("\\p{N}");
-    private static final Pattern UNSAFE = Pattern.compile("(?i)<|javascript:|on(?:click|error|load)\\s*=");
     private final ObjectMapper mapper;
 
     public LearningRecommendationValidator(ObjectMapper mapper) { this.mapper = mapper; }
@@ -65,7 +64,7 @@ public class LearningRecommendationValidator {
         if (value == null || value.isBlank() || value.length() > 2000) violations.add("INVALID_RESPONSE_SCHEMA");
         else {
             if (NUMBER.matcher(value).find()) violations.add("UNTRACEABLE_NUMERIC_CLAIM");
-            if (UNSAFE.matcher(value).find()) violations.add("UNSAFE_RENDERED_CONTENT");
+            violations.addAll(GeneratedOutputPolicy.renderSafetyViolations(value));
         }
     }
 

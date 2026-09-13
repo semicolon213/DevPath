@@ -26,7 +26,7 @@ describe("SkillExplanationPanel", () => {
         artifactId: "artifact-id", type: "SKILL_EXPLANATION", status: "VALIDATED",
         provenance: { skillMatrixId: "matrix-id", promptContextId: "context-id", templateVersion: "v1",
           provider: "OLLAMA", model: "qwen-test", contextHash: "a".repeat(64), generatedAt: "2026-08-31T00:00:00Z" },
-        validation: { status: "PASSED", validatorVersion: "skill-explanation-validator-v1",
+        validation: { status: "PASSED", validatorVersion: "skill-explanation-validator-v5",
           validatedAt: "2026-08-31T00:00:00Z", violations: [] },
         contentRef: "/api/v1/generated-artifacts/artifact-id",
         content: { summary: "검증된 설명", strengths: [{ skillKey: "testing-discipline",

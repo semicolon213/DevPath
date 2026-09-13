@@ -86,9 +86,11 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
             GenerationJob started = saveJob(toDomain(entity).start(now));
             PromptContextJpaEntity context = contexts.findById(started.promptContextId())
                 .orElseThrow(() -> new IllegalStateException("Prompt context is unavailable"));
+            PromptTemplateVersionJpaEntity template = templates.findById(context.templateVersionId)
+                .orElseThrow(() -> new IllegalStateException("Prompt template is unavailable"));
             return new GenerationWorkItem(started, context.skillMatrixId, context.analysisId,
                 context.careerReadinessId, context.learningRoadmapId,
-                trustedInstructions(context.providerPrompt, context.contextPayload), context.contextPayload);
+                trustedInstructions(context.providerPrompt, context.contextPayload), context.contextPayload, template.systemPrompt);
         });
     }
 

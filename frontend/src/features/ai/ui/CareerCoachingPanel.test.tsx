@@ -28,7 +28,7 @@ describe("CareerCoachingPanel", () => {
         provenance: { skillMatrixId: "matrix-id", careerReadinessId: "readiness-id", promptContextId: "context-id",
           templateVersion: "v1", provider: "OLLAMA", model: "qwen-test", contextHash: "a".repeat(64),
           generatedAt: "2026-09-02T00:00:00Z" },
-        validation: { status: "PASSED", validatorVersion: "career-advice-validator-v1",
+        validation: { status: "PASSED", validatorVersion: "career-advice-validator-v2",
           validatedAt: "2026-09-02T00:00:00Z", violations: [] },
         contentRef: "/api/v1/generated-artifacts/artifact-id",
         content: { readinessSummary: "준비도 해석", strengthExplanation: "강점 활용법",
