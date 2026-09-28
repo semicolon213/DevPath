@@ -6,7 +6,7 @@ This document records implementation evidence for the M34 MVP Completion Gate. I
 handoff aid, not a requirements source and not approval that the milestone is complete. Requirements and engine
 semantics remain controlled by `01_SRS.md`, `02_Rule_Engine.md`, and `03_Career_Path_Engine.md`.
 
-Evidence date: 2026-09-11.
+Evidence date: 2026-09-28.
 
 ## 2. Gate Evidence
 
@@ -49,9 +49,7 @@ Prerequisites:
 Run from the repository root with Docker API compatibility and the local frontend API base URL set:
 
 ```text
-DOCKER_API_VERSION=1.44
-VITE_DEVPATH_API_BASE_URL=http://localhost:8080
-npm run verify:mvp
+DOCKER_API_VERSION=1.44 VITE_DEVPATH_API_BASE_URL=http://localhost:8080 npm run verify:mvp
 ```
 
 The command runs the security-boundary detector tests and repository scan, a clean backend build with the full
@@ -61,20 +59,22 @@ that require an explicit `DEVPATH_DB_URL` remain reported as skipped unless that
 It now fails fast when no Docker-compatible server is reachable so Testcontainers-backed PostgreSQL coverage cannot be
 silently omitted from an MVP verification run.
 
-Latest M48 provider-boundary local verification result on 2026-09-11 (Docker 29.6.2):
+Latest M48 regression local verification result on 2026-09-28 (Docker 29.6.2):
 
-- Backend full suite: PASS; 203 tests, 201 passed, 0 failed, 2 environment-gated skips.
-- PostgreSQL Testcontainers suites: PASS; 27 tests, 25 passed, 0 failed, 2 environment-gated skips. PostgreSQL 16.10
-  validated and applied 28 Flyway migrations through V28.
+- Backend full suite: PASS; 219 tests, 217 passed, 0 failed, 2 environment-gated skips.
+- PostgreSQL Testcontainers persistence subset: PASS; 20 tests, 18 passed, 0 failed, 2 environment-gated skips.
+  PostgreSQL 16.10 validated and applied 28 Flyway migrations through final migration V28.
+- AI generation suite: PASS; 29 tests, 29 passed, 0 failed.
 - Frontend Vitest: PASS; 43 files and 108 tests.
 - Playwright Chromium/axe: PASS; 7 browser journeys, including reduced-motion media behavior.
 - Platform-neutral security boundary tests and repository scan: PASS; 3 checks.
 - Frontend production build: PASS; 142 modules transformed.
 - Frontend npm audit: PASS; 0 vulnerabilities.
 - OpenAPI lint: PASS with 0 errors and 9 non-blocking recommendation warnings.
-- One-command `npm run verify:mvp`: PASS from Docker/security preflight through clean backend build, clean frontend
-  install, complete frontend quality, and contract lint. The Docker-backed backend suite confirmed 203 total, 201
-  passed, 0 failed, and only the 2 explicit-`DEVPATH_DB_URL` skips.
+- One-command `DOCKER_API_VERSION=1.44 VITE_DEVPATH_API_BASE_URL=http://localhost:8080 npm run verify:mvp`: PASS
+  from Docker/security preflight through clean backend build, clean frontend install, complete frontend quality, and
+  contract lint. The Docker-backed backend suite confirmed 219 total, 217 passed, 0 failed, and only the 2
+  explicit-`DEVPATH_DB_URL` skips.
 - M48 provider-boundary role separation: PASS in the five prompt-builder and generation-adapter tests. Trusted
   template/task/output-contract content is provider system content; bounded untrusted JSON context is provider user
   content with a fixed data-not-instructions guard. Legacy queued combined prompts normalize without template reload,
