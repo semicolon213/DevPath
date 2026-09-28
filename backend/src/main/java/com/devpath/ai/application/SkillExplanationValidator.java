@@ -16,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
@@ -26,7 +25,6 @@ public class SkillExplanationValidator {
     private static final int GROUNDED_EVIDENCE_LIMIT = 2;
     private static final Set<String> ROOT_FIELDS = Set.of("summary", "strengths", "improvementAreas");
     private static final Set<String> REQUIRED_ITEM_FIELDS = Set.of("skillKey", "explanation", "evidenceIds");
-    private static final Pattern NUMBER = Pattern.compile("\\p{N}");
     private final ObjectMapper mapper;
 
     public SkillExplanationValidator(ObjectMapper mapper) {
@@ -42,7 +40,7 @@ public class SkillExplanationValidator {
         }
         try {
             JsonNode root = mapper.readTree(raw);
-            if (!root.isObject() || !ROOT_FIELDS.containsAll(fields(root))
+            if (!root.isObject() || !ROOT_FIELDS.containsAll(GeneratedOutputPolicy.fields(root))
                 || root.get("strengths") == null || root.get("improvementAreas") == null) {
                 return new SkillExplanationValidation(null, List.of("INVALID_RESPONSE_SCHEMA"));
             }
@@ -55,7 +53,7 @@ public class SkillExplanationValidator {
                 return new SkillExplanationValidation(null, List.of("INVALID_RESPONSE_SCHEMA"));
             }
             SkillExplanationContent content = mapper.treeToValue(normalized, SkillExplanationContent.class);
-            validateText(content.summary(), 2000, violations);
+            GeneratedOutputPolicy.validateText(content.summary(), 2000, violations);
             validateItems(content.strengths(), matrix, SkillAssessmentView::strength, violations);
             validateItems(content.improvementAreas(), matrix, SkillAssessmentView::weakness, violations);
             if (!matrix.skills().isEmpty() && content.strengths().isEmpty() && content.improvementAreas().isEmpty()) {
@@ -75,8 +73,8 @@ public class SkillExplanationValidator {
     private static boolean normalizeItems(JsonNode items) {
         if (!items.isArray()) return false;
         for (JsonNode item : items) {
-            if (!item.isObject() || !fields(item).containsAll(REQUIRED_ITEM_FIELDS)
-                || !Set.of("skillKey", "explanation", "evidenceIds", "skillName").containsAll(fields(item))) {
+            if (!item.isObject() || !GeneratedOutputPolicy.fields(item).containsAll(REQUIRED_ITEM_FIELDS)
+                || !Set.of("skillKey", "explanation", "evidenceIds", "skillName").containsAll(GeneratedOutputPolicy.fields(item))) {
                 return false;
             }
             ((ObjectNode) item).remove("skillName");
@@ -122,7 +120,7 @@ public class SkillExplanationValidator {
             if (source == null || !expectedState.test(source) || !seen.add(item.skillKey())) {
                 violations.add("UNSUPPORTED_SKILL_CLAIM");
             }
-            validateText(item.explanation(), 1000, violations);
+            GeneratedOutputPolicy.validateText(item.explanation(), 1000, violations);
         }
     }
 
@@ -179,17 +177,4 @@ public class SkillExplanationValidator {
         };
     }
 
-    private static void validateText(String value, int maxLength, List<String> violations) {
-        if (value == null || value.isBlank() || value.length() > maxLength) violations.add("INVALID_RESPONSE_SCHEMA");
-        else {
-            if (NUMBER.matcher(value).find()) violations.add("UNTRACEABLE_NUMERIC_CLAIM");
-            violations.addAll(GeneratedOutputPolicy.renderSafetyViolations(value));
-        }
-    }
-
-    private static Set<String> fields(JsonNode node) {
-        Set<String> values = new HashSet<>();
-        node.fieldNames().forEachRemaining(values::add);
-        return values;
-    }
 }

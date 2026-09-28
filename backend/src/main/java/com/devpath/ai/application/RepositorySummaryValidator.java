@@ -12,13 +12,11 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RepositorySummaryValidator {
     public static final String VERSION = "repository-summary-validator-v2";
-    private static final Pattern NUMBER = Pattern.compile("\\p{N}");
     private final ObjectMapper mapper;
 
     public RepositorySummaryValidator(ObjectMapper mapper) { this.mapper = mapper; }
@@ -31,7 +29,7 @@ public class RepositorySummaryValidator {
         }
         try {
             JsonNode root = mapper.readTree(raw);
-            if (!root.isObject() || !fields(root).equals(Set.of(
+            if (!root.isObject() || !GeneratedOutputPolicy.fields(root).equals(Set.of(
                 "summary", "strengths", "improvementAreas", "technologies"
             )) || !validClaimNodes(root)) return new RepositorySummaryValidation(null, List.of("INVALID_RESPONSE_SCHEMA"));
             resolveEvidenceKeys(root, source);
@@ -84,7 +82,7 @@ public class RepositorySummaryValidator {
     }
 
     private static boolean validClaimNode(JsonNode claim) {
-        return claim.isObject() && fields(claim).equals(Set.of("text", "evidenceReferences", "ruleOutputReferences"));
+        return claim.isObject() && GeneratedOutputPolicy.fields(claim).equals(Set.of("text", "evidenceReferences", "ruleOutputReferences"));
     }
 
     private static void validateClaimList(
@@ -98,7 +96,7 @@ public class RepositorySummaryValidator {
         RepositorySummaryContent.Claim claim, Set<UUID> evidence, Set<String> outputs, List<String> violations
     ) {
         if (claim == null) { violations.add("INVALID_RESPONSE_SCHEMA"); return; }
-        validateText(claim.text(), violations);
+        GeneratedOutputPolicy.validateText(claim.text(), 2000, violations);
         if (claim.evidenceReferences() == null || claim.evidenceReferences().size() > 20
             || new HashSet<>(claim.evidenceReferences()).size() != claim.evidenceReferences().size()
             || !evidence.containsAll(claim.evidenceReferences())) violations.add("UNSUPPORTED_EVIDENCE_REFERENCE");
@@ -110,17 +108,4 @@ public class RepositorySummaryValidator {
             violations.add("MISSING_GROUNDING_REFERENCE");
     }
 
-    private static void validateText(String value, List<String> violations) {
-        if (value == null || value.isBlank() || value.length() > 2000) violations.add("INVALID_RESPONSE_SCHEMA");
-        else {
-            if (NUMBER.matcher(value).find()) violations.add("UNTRACEABLE_NUMERIC_CLAIM");
-            violations.addAll(GeneratedOutputPolicy.renderSafetyViolations(value));
-        }
-    }
-
-    private static Set<String> fields(JsonNode node) {
-        Set<String> values = new HashSet<>();
-        node.fieldNames().forEachRemaining(values::add);
-        return values;
-    }
 }

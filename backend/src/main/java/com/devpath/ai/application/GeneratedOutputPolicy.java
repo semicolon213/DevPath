@@ -4,11 +4,14 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 final class GeneratedOutputPolicy {
     private static final Pattern UNSAFE = Pattern.compile("(?i)<|javascript:|on(?:click|error|load)\\s*=");
+    private static final Pattern NUMBER = Pattern.compile("\\p{N}");
     private final ObjectMapper mapper;
 
     GeneratedOutputPolicy(ObjectMapper mapper) {
@@ -33,6 +36,21 @@ final class GeneratedOutputPolicy {
 
     static List<String> renderSafetyViolations(String value) {
         return value != null && UNSAFE.matcher(value).find() ? List.of("UNSAFE_RENDERED_CONTENT") : List.of();
+    }
+
+    static void validateText(String value, int maxLength, List<String> violations) {
+        if (value == null || value.isBlank() || value.length() > maxLength) {
+            violations.add("INVALID_RESPONSE_SCHEMA");
+            return;
+        }
+        if (NUMBER.matcher(value).find()) violations.add("UNTRACEABLE_NUMERIC_CLAIM");
+        violations.addAll(renderSafetyViolations(value));
+    }
+
+    static Set<String> fields(JsonNode node) {
+        Set<String> values = new HashSet<>();
+        node.fieldNames().forEachRemaining(values::add);
+        return values;
     }
 
     private static List<String> renderSafetyViolations(List<String> values) {

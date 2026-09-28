@@ -13,14 +13,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RepositoryReviewValidator {
     public static final String VERSION = "repository-review-validator-v2";
     private static final Set<String> CATEGORIES = Set.copyOf(RepositoryReviewEvidenceSelection.CATEGORIES);
-    private static final Pattern NUMBER = Pattern.compile("\\p{N}");
     private final ObjectMapper mapper;
 
     public RepositoryReviewValidator(ObjectMapper mapper) { this.mapper = mapper; }
@@ -31,21 +29,21 @@ public class RepositoryReviewValidator {
         }
         try {
             JsonNode root = mapper.readTree(raw);
-            if (!root.isObject() || !fields(root).equals(Set.of("summary", "sections"))) {
+            if (!root.isObject() || !GeneratedOutputPolicy.fields(root).equals(Set.of("summary", "sections"))) {
                 return new RepositoryReviewValidation(null, List.of("INVALID_RESPONSE_SCHEMA"));
             }
             if (!root.path("sections").isArray()) {
                 return new RepositoryReviewValidation(null, List.of("INVALID_RESPONSE_SCHEMA"));
             }
             for (JsonNode section : root.path("sections")) {
-                if (!section.isObject() || !fields(section).equals(Set.of("category", "review", "evidenceIds"))) {
+                if (!section.isObject() || !GeneratedOutputPolicy.fields(section).equals(Set.of("category", "review", "evidenceIds"))) {
                     return new RepositoryReviewValidation(null, List.of("INVALID_RESPONSE_SCHEMA"));
                 }
             }
             resolveEvidenceKeys(root, source);
             RepositoryReviewContent content = mapper.treeToValue(root, RepositoryReviewContent.class);
             List<String> violations = new ArrayList<>();
-            validateText(content.summary(), violations);
+            GeneratedOutputPolicy.validateText(content.summary(), 2000, violations);
             validateSections(content.sections(), source, violations);
             return new RepositoryReviewValidation(content, violations.stream().distinct().toList());
         } catch (RuntimeException | com.fasterxml.jackson.core.JsonProcessingException exception) {
@@ -84,7 +82,7 @@ public class RepositoryReviewValidator {
                 violations.add("INVALID_RESPONSE_SCHEMA");
                 continue;
             }
-            validateText(section.review(), violations);
+            GeneratedOutputPolicy.validateText(section.review(), 2000, violations);
             Set<UUID> allowedEvidence = source.evidence().stream()
                 .filter(value -> section.category().equals(RepositoryReviewEvidenceSelection.categoryForRule(value.ruleId())))
                 .map(value -> value.evidenceId()).collect(java.util.stream.Collectors.toSet());
@@ -97,17 +95,4 @@ public class RepositoryReviewValidator {
         if (!categories.equals(CATEGORIES)) violations.add("INCOMPLETE_REPOSITORY_REVIEW");
     }
 
-    private static void validateText(String value, List<String> violations) {
-        if (value == null || value.isBlank() || value.length() > 2000) violations.add("INVALID_RESPONSE_SCHEMA");
-        else {
-            if (NUMBER.matcher(value).find()) violations.add("UNTRACEABLE_NUMERIC_CLAIM");
-            violations.addAll(GeneratedOutputPolicy.renderSafetyViolations(value));
-        }
-    }
-
-    private static Set<String> fields(JsonNode node) {
-        Set<String> values = new HashSet<>();
-        node.fieldNames().forEachRemaining(values::add);
-        return values;
-    }
 }
