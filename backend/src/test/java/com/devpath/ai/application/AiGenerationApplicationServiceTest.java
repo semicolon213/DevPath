@@ -5,11 +5,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.devpath.ai.config.AiGenerationProperties;
 import com.devpath.ai.domain.GenerationJob;
+import com.devpath.ai.domain.GenerationJobStatus;
 import com.devpath.analysis.application.AnalysisApplicationService;
 import com.devpath.analysis.application.AnalysisNotFoundException;
 import com.devpath.analysis.application.AnalysisResultView;
@@ -158,6 +160,96 @@ class AiGenerationApplicationServiceTest {
 
         verify(transactions).validated(eq(item), eq(execution), any(), eq("object://owner/artifact"), any(), eq(NOW));
         verify(persistence, never()).recordRejectedResponse(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void ignoresLateProviderSuccessAfterCancellation() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrix = UUID.randomUUID(), execution = UUID.randomUUID();
+        GenerationJob running = GenerationJob.queue(owner, context, "late-success",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
+        GenerationWorkItem item = new GenerationWorkItem(running, matrix, null, null, null, "prompt", "{}", null);
+        when(transactions.providerCompleted(item, execution, new GenerationProviderResult("raw", 10, 5), 12, NOW))
+            .thenReturn(Optional.empty());
+
+        service.providerSucceeded(item, execution, new GenerationProviderResult("raw", 10, 5), 12);
+
+        verify(validator, never()).validate(any(), any(), any(), any());
+        verify(objects, never()).put(any(), any(), any(), any(), any());
+        verify(transactions, never()).validated(any(), any(), any(), any(), any(), any());
+        verify(audit, never()).record(eq(AiAuditEvent.GENERATION_COMPLETED), any(), any(), any());
+        verify(audit, never()).record(eq(AiAuditEvent.GENERATION_FAILED), any(), any(), any());
+    }
+
+    @Test
+    void deletesObjectWhenCancellationWinsAfterValidation() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrix = UUID.randomUUID(), execution = UUID.randomUUID();
+        GenerationJob running = GenerationJob.queue(owner, context, "late-validation",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
+        GenerationWorkItem item = new GenerationWorkItem(running, matrix, null, null, null, "prompt", "{}", null);
+        SkillMatrixView matrixView = org.mockito.Mockito.mock(SkillMatrixView.class);
+        UUID evaluationId = UUID.randomUUID();
+        RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
+        var evidence = new RuleEvidenceListView(evaluationId, List.of());
+        when(transactions.providerCompleted(item, execution, new GenerationProviderResult("raw", 10, 5), 12, NOW))
+            .thenReturn(Optional.of(running));
+        when(matrices.get(owner, matrix)).thenReturn(matrixView);
+        when(matrixView.evaluationId()).thenReturn(evaluationId);
+        when(evaluations.getEvaluation(owner, evaluationId)).thenReturn(evaluation);
+        when(evaluations.getEvidence(owner, evaluationId)).thenReturn(evidence);
+        when(validator.validate("raw", matrixView, evaluation, evidence))
+            .thenReturn(new SkillExplanationValidation(new SkillExplanationContent("grounded", List.of(), List.of()), List.of()));
+        when(objects.put(eq(owner), any(), eq(running.id()), eq("skill-explanation.json"), any()))
+            .thenReturn("object://owner/artifact");
+        when(transactions.validated(eq(item), eq(execution), any(), eq("object://owner/artifact"), any(), eq(NOW)))
+            .thenReturn(false);
+
+        service.providerSucceeded(item, execution, new GenerationProviderResult("raw", 10, 5), 12);
+
+        ArgumentCaptor<UUID> artifactId = ArgumentCaptor.forClass(UUID.class);
+        var order = org.mockito.Mockito.inOrder(objects, transactions);
+        order.verify(objects).put(eq(owner), artifactId.capture(), eq(running.id()), eq("skill-explanation.json"), any());
+        order.verify(transactions).validated(eq(item), eq(execution), eq(artifactId.getValue()),
+            eq("object://owner/artifact"), any(), eq(NOW));
+        order.verify(objects).deleteVersion(eq(owner), eq(artifactId.getValue()), eq(running.id()));
+        verify(audit, never()).record(eq(AiAuditEvent.GENERATION_COMPLETED), any(), any(), any());
+    }
+
+    @Test
+    void ignoresProviderFailureAfterCancellation() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), execution = UUID.randomUUID();
+        GenerationJob running = GenerationJob.queue(owner, context, "late-failure",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
+        GenerationWorkItem item = new GenerationWorkItem(running, UUID.randomUUID(), null, null, null, "prompt", "{}", null);
+        when(persistence.findJob(owner, running.id())).thenReturn(Optional.of(running.cancel(NOW)));
+
+        service.providerFailed(item, execution, "UPSTREAM_FAILURE", 12);
+
+        verify(persistence, never()).saveJob(any());
+        verify(audit, never()).record(eq(AiAuditEvent.GENERATION_FAILED), any(), any(), any());
+    }
+
+    @Test
+    void retriesProviderFailuresBeforeRecordingOneTerminalFailure() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID();
+        GenerationJob firstAttempt = GenerationJob.queue(owner, context, "retry",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minusSeconds(2)).start(NOW.minusSeconds(1));
+        GenerationJob finalAttempt = firstAttempt.retryOrFail("UPSTREAM_FAILURE", 2, NOW).start(NOW);
+        GenerationWorkItem firstItem = new GenerationWorkItem(firstAttempt, UUID.randomUUID(), null, null, null, "prompt", "{}", null);
+        GenerationWorkItem finalItem = new GenerationWorkItem(finalAttempt, UUID.randomUUID(), null, null, null, "prompt", "{}", null);
+        when(persistence.findJob(owner, firstAttempt.id())).thenReturn(Optional.of(firstAttempt), Optional.of(finalAttempt));
+        when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.providerFailed(firstItem, UUID.randomUUID(), "UPSTREAM_FAILURE", 12);
+
+        verify(audit, never()).record(eq(AiAuditEvent.GENERATION_FAILED), any(), any(), any());
+
+        service.providerFailed(finalItem, UUID.randomUUID(), "UPSTREAM_FAILURE", 12);
+
+        ArgumentCaptor<GenerationJob> saved = ArgumentCaptor.forClass(GenerationJob.class);
+        verify(persistence, times(2)).saveJob(saved.capture());
+        assertThat(saved.getAllValues().stream().map(GenerationJob::status))
+            .containsExactly(GenerationJobStatus.QUEUED, GenerationJobStatus.FAILED);
+        verify(audit).record(AiAuditEvent.GENERATION_FAILED, owner, finalAttempt.id(), NOW);
     }
 
     @Test

@@ -757,6 +757,8 @@ Operational logs, security logs, and immutable audit records MUST be distinguish
 
 Local regression coverage verifies that root logger output excludes sentinel prompt, context, raw-provider-response, and nested-provider-exception payloads. The generation worker forwards only normalized failure codes. For failed generation, the durable audit record persists normalized metadata with empty details rather than raw provider data. Rejected-response retrieval remains owner-scoped; its stored response is limited to the first 20,000 characters, and the truncated tail is not retained.
 
+Cancellation and retry regressions additionally verify that a late provider success after cancellation creates no validation result, artifact, or terminal audit; if cancellation occurs after the private object is put, that exact object is deleted and no validated artifact remains. A late provider failure leaves the job cancelled. The first retry requeues without a terminal audit, while the final failed attempt records exactly one terminal audit. These are ordered local scenarios only: no true simultaneous database race or cancel-wins precedence is evidenced, and the contract does not define a priority between cancellation and a concurrent terminal callback.
+
 This is local code-path evidence only. Production logging, log aggregation/retention controls, ADR-031 observability selection, and live operational evidence remain unimplemented.
 
 ## 25. Abuse Prevention and Availability Security
@@ -1104,6 +1106,6 @@ does not replace dependency audit, provider secret rotation, external security r
 
 ## 39. AI Generation Owner-Isolation Regression Evidence
 
-AI-generation persistence uses PostgreSQL owner-scoped roots for jobs, idempotency records, and generated artifacts. Regression coverage proves that foreign source references are rejected for all five current task types; an identical idempotency key is isolated per owner; and foreign job get/cancel, artifact, and validation-result reads are unavailable. This is local persistence and application-service evidence only: production behavior is unchanged, and no cancel/retry race evidence exists.
+AI-generation persistence uses PostgreSQL owner-scoped roots for jobs, idempotency records, and generated artifacts. Regression coverage proves that foreign source references are rejected for all five current task types; an identical idempotency key is isolated per owner; and foreign job get/cancel, artifact, and validation-result reads are unavailable. This is local persistence and application-service evidence only: production behavior is unchanged. Ordered cancellation/retry scenarios are covered, but no true simultaneous database race or cancel-wins precedence evidence exists, and the contract does not define that priority.
 
-Verification: `backend:test` PASS (213 total: 211 passed, 0 failed, 2 `DEVPATH_DB_URL` skips), including 2 AI persistence and 17 AI application-service tests; backend build PASS; `security:check` PASS (3 checks). M48 remains incomplete.
+Verification: `backend:test` PASS (219 total: 217 passed, 0 failed, 2 `DEVPATH_DB_URL` skips), including 21 `AiGenerationApplicationServiceTest` tests; backend build PASS; `security:check` PASS (3 checks). M48 remains incomplete.
