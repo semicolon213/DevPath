@@ -356,24 +356,32 @@ class AiGenerationApplicationServiceTest {
     void rejectsUngroundedRepositorySummaryWithoutCreatingAnArtifact() {
         UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), matrixId = UUID.randomUUID(), analysisId = UUID.randomUUID();
         UUID evaluationId = UUID.randomUUID(), execution = UUID.randomUUID();
-        GenerationJob running = GenerationJob.queue(owner, context, "summary-rejected", AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
+        GenerationJob started = GenerationJob.queue(owner, context, "summary-rejected", AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
+        GenerationJob running = new GenerationJob(started.id(), started.userId(), started.promptContextId(),
+            started.idempotencyKey(), started.taskType(), started.status(), started.validationStatus(), 2,
+            started.failureCode(), started.requestedAt(), started.startedAt(), started.completedAt());
         GenerationWorkItem item = new GenerationWorkItem(running, matrixId, analysisId, null, null, "prompt", "{}", null);
         var analysis = new AnalysisResultView(analysisId, UUID.randomUUID(), UUID.randomUUID(), evaluationId, matrixId, "REPOSITORY_BASELINE", true, NOW);
         RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
         var evidence = new RuleEvidenceListView(evaluationId, List.of());
-        when(transactions.providerCompleted(item, execution, new GenerationProviderResult("raw", 10, 5), 12, NOW)).thenReturn(Optional.of(running));
+        String raw = "r".repeat(20_000) + "TAIL_SENTINEL";
+        when(transactions.providerCompleted(item, execution, new GenerationProviderResult(raw, 10, 5), 12, NOW)).thenReturn(Optional.of(running));
         when(analyses.getResult(owner, analysisId)).thenReturn(analysis);
         when(evaluations.getEvaluation(owner, evaluationId)).thenReturn(evaluation);
         when(evaluations.getEvidence(owner, evaluationId)).thenReturn(evidence);
         when(synchronization.getTechnologies(owner, analysis.repositoryId(), analysis.snapshotId())).thenReturn(new TechnologySummaryView(analysis.repositoryId(), analysis.snapshotId(), "v1", "v1", null, List.of()));
-        when(summaryValidator.validate("raw", List.of(), evaluation, evidence)).thenReturn(new RepositorySummaryValidation(null, List.of("MISSING_GROUNDING_REFERENCE")));
-        when(objects.put(eq(owner), any(), eq(running.id()), eq("rejected-response.txt"), eq("raw"))).thenReturn("object://owner/rejected");
+        when(summaryValidator.validate(raw, List.of(), evaluation, evidence)).thenReturn(new RepositorySummaryValidation(null, List.of("MISSING_GROUNDING_REFERENCE")));
+        when(objects.put(eq(owner), any(), eq(running.id()), eq("rejected-response.txt"), any())).thenReturn("object://owner/rejected");
         when(transactions.rejected(eq(item), eq(execution), eq("object://owner/rejected"), any(), eq(NOW))).thenReturn(true);
 
-        service.providerSucceeded(item, execution, new GenerationProviderResult("raw", 10, 5), 12);
+        service.providerSucceeded(item, execution, new GenerationProviderResult(raw, 10, 5), 12);
 
         verify(transactions).rejected(eq(item), eq(execution), eq("object://owner/rejected"), any(), eq(NOW));
         verify(transactions, never()).validated(eq(item), eq(execution), any(), any(), any(), any());
+        ArgumentCaptor<String> retained = ArgumentCaptor.forClass(String.class);
+        verify(objects).put(eq(owner), any(), eq(running.id()), eq("rejected-response.txt"), retained.capture());
+        assertThat(retained.getValue()).hasSize(20_000).isEqualTo(raw.substring(0, 20_000)).doesNotContain("TAIL_SENTINEL");
+        verify(audit).record(AiAuditEvent.GENERATION_FAILED, owner, running.id(), NOW);
     }
 
     @Test

@@ -753,6 +753,12 @@ Passwords, OAuth tokens, API keys, raw private repository contents, raw Notion p
 
 Operational logs, security logs, and immutable audit records MUST be distinguished by purpose, retention, access control, and mutability expectation.
 
+### 24.4 AI Generation Privacy Regression Evidence (M48 Item)
+
+Local regression coverage verifies that root logger output excludes sentinel prompt, context, raw-provider-response, and nested-provider-exception payloads. The generation worker forwards only normalized failure codes. For failed generation, the durable audit record persists normalized metadata with empty details rather than raw provider data. Rejected-response retrieval remains owner-scoped; its stored response is limited to the first 20,000 characters, and the truncated tail is not retained.
+
+This is local code-path evidence only. Production logging, log aggregation/retention controls, ADR-031 observability selection, and live operational evidence remain unimplemented.
+
 ## 25. Abuse Prevention and Availability Security
 
 | Abuse Area | Required Controls |
