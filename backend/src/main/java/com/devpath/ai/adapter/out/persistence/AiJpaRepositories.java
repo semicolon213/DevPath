@@ -18,6 +18,8 @@ interface AiTaskJpaRepository extends JpaRepository<AiTaskJpaEntity, UUID> {
     Optional<AiTaskJpaEntity> findByUserIdAndIdempotencyKey(UUID userId, String idempotencyKey);
     Optional<AiTaskJpaEntity> findByIdAndUserId(UUID id, UUID userId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    Optional<AiTaskJpaEntity> findWithLockByIdAndUserId(UUID id, UUID userId);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<AiTaskJpaEntity> findFirstByStatusOrderByRequestedAtAsc(String status);
 }
 

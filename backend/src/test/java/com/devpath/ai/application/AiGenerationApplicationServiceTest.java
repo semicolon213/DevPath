@@ -228,6 +228,49 @@ class AiGenerationApplicationServiceTest {
         verify(audit, never()).record(eq(AiAuditEvent.GENERATION_FAILED), any(), any(), any());
     }
 
+    @ParameterizedTest
+    @MethodSource("cancelableJobs")
+    void cancelsLockedQueuedOrRunningJobsAndAudits(GenerationJob current) {
+        UUID owner = current.userId();
+        when(persistence.findJobForUpdate(owner, current.id())).thenReturn(Optional.of(current));
+        when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        GenerationJobView result = service.cancel(owner, current.id());
+
+        assertThat(result.status()).isEqualTo("CANCELED");
+        verify(persistence).findJobForUpdate(owner, current.id());
+        verify(persistence, never()).findJob(owner, current.id());
+        verify(audit).record(AiAuditEvent.GENERATION_CANCELED, owner, current.id(), NOW);
+    }
+
+    static java.util.stream.Stream<GenerationJob> cancelableJobs() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID();
+        GenerationJob queued = GenerationJob.queue(owner, context, "cancel-queued",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minusSeconds(1));
+        return java.util.stream.Stream.of(queued, queued.start(NOW));
+    }
+
+    @ParameterizedTest
+    @MethodSource("terminalJobs")
+    void returnsTerminalJobFromLockedLookupWithoutCancellationAudit(GenerationJob terminal) {
+        UUID owner = terminal.userId();
+        when(persistence.findJobForUpdate(owner, terminal.id())).thenReturn(Optional.of(terminal));
+        when(persistence.saveJob(terminal)).thenReturn(terminal);
+
+        GenerationJobView result = service.cancel(owner, terminal.id());
+
+        assertThat(result.status()).isEqualTo(terminal.status().name());
+        verify(audit, never()).record(eq(AiAuditEvent.GENERATION_CANCELED), any(), any(), any());
+    }
+
+    static java.util.stream.Stream<GenerationJob> terminalJobs() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID();
+        GenerationJob running = GenerationJob.queue(owner, context, "cancel-terminal",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minusSeconds(1)).start(NOW);
+        return java.util.stream.Stream.of(running.succeed(NOW), running.retryOrFail("UPSTREAM_FAILURE", 1, NOW),
+            running.cancel(NOW));
+    }
+
     @Test
     void retriesProviderFailuresBeforeRecordingOneTerminalFailure() {
         UUID owner = UUID.randomUUID(), context = UUID.randomUUID();
@@ -563,6 +606,7 @@ class AiGenerationApplicationServiceTest {
     void hidesForeignJobsArtifactsAndValidationRecords() {
         UUID owner = UUID.randomUUID(), foreignJob = UUID.randomUUID(), foreignArtifact = UUID.randomUUID();
         when(persistence.findJob(owner, foreignJob)).thenReturn(Optional.empty());
+        when(persistence.findJobForUpdate(owner, foreignJob)).thenReturn(Optional.empty());
         when(transactions.artifact(owner, foreignArtifact)).thenThrow(new GenerationNotFoundException());
         when(persistence.findArtifact(owner, foreignArtifact)).thenReturn(Optional.empty());
 

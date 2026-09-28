@@ -73,6 +73,11 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
     }
 
     @Override
+    public Optional<GenerationJob> findJobForUpdate(UUID userId, UUID jobId) {
+        return tasks.findWithLockByIdAndUserId(jobId, userId).map(this::toDomain);
+    }
+
+    @Override
     public UUID findSourceResourceId(UUID promptContextId) {
         PromptContextJpaEntity context = contexts.findById(promptContextId).orElseThrow();
         if (context.learningRoadmapId != null) return context.learningRoadmapId;

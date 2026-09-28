@@ -51,6 +51,9 @@ class AiGenerationPersistenceIntegrationTest {
 
         assertThat(persistence.findJob(owner, queued.id()).orElseThrow().status().name()).isEqualTo("SUCCEEDED");
         assertThat(persistence.findJob(other, queued.id())).isEmpty();
+        assertThat(persistence.findJobForUpdate(other, queued.id())).isEmpty();
+        assertThat(persistence.findJobForUpdate(owner, queued.id())).isPresent().get().satisfies(value ->
+            assertThat(value.id()).isEqualTo(queued.id()));
         assertThat(persistence.findByOwnerAndIdempotencyKey(other, "key")).isEmpty();
         assertThat(persistence.findArtifact(owner, artifact)).isPresent().get().satisfies(value -> {
             assertThat(value.skillMatrixId()).isEqualTo(matrix);

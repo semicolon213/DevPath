@@ -171,7 +171,7 @@ public class AiGenerationApplicationService {
 
     @Transactional
     public GenerationJobView cancel(UUID userId, UUID jobId) {
-        GenerationJob current = job(userId, jobId);
+        GenerationJob current = persistence.findJobForUpdate(userId, jobId).orElseThrow(GenerationNotFoundException::new);
         GenerationJob canceled = persistence.saveJob(current.cancel(clock.instant()));
         if (canceled.status() == GenerationJobStatus.CANCELED && current.status() != GenerationJobStatus.CANCELED) {
             audit.record(AiAuditEvent.GENERATION_CANCELED, userId, jobId, clock.instant());
