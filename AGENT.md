@@ -60,22 +60,18 @@ Frontend code is feature-oriented. React Query owns server state. Components nev
 
 ## 5. Current Implementation Baseline
 
-`AGENTS.md` §4 is the repository's current *documented* implementation and verification baseline. It reports GitHub repository collection/synchronization, deterministic analysis and Rule Engine, Skill Matrix, Career readiness, recommendation/roadmap flows, and Flyway migrations through V20, among other capabilities. It also distinguishes unimplemented Notion, AI generation, company-specific readiness, and other planned workflows.
+`AGENTS.md` §4 is the repository's current *documented* implementation and verification baseline. It reports GitHub repository collection/synchronization, deterministic analysis and Rule Engine, Skill Matrix, Career readiness, recommendation/roadmap flows, Notion knowledge ingestion/retrieval, validated AI generation, and Flyway migrations through V28, among other capabilities. It also distinguishes still-unimplemented company-specific readiness, Portfolio/Resume/Interview, administration, and other planned workflows.
 
 Do **not** use the former initial-V1 baseline as current status. Before making or reviewing a change, verify the relevant claims against the actual source tree, migrations, contracts, Git status, and fresh test output. If `AGENTS.md` disagrees with the repository, report the discrepancy and use verified code and authoritative specifications rather than guessing. Prior test results are historical evidence, not proof that a new change passes.
 
 ## 6. ADR Gates
 
-Accepted baseline includes modular monolith and hexagonal architecture (ADR-001/002), PostgreSQL (003), contract-first REST (005), deterministic/AI separation (006), React architecture (012/013), Java 21/Spring Boot and React/TypeScript (020/021), separated JPA persistence models (024), Flyway (025), OAuth2 with opaque server session (026), testing stack (032), and simplified GitHub Flow (035).
+Accepted baseline includes modular monolith and hexagonal architecture (ADR-001/002), PostgreSQL (003), contract-first REST (005), deterministic/AI separation (006), React architecture (012/013), Java 21/Spring Boot and React/TypeScript (020/021), separated JPA persistence models (024), Flyway (025), OAuth2 with opaque server session (026), PostgreSQL durable jobs and transactional outbox (027), PostgreSQL pgvector with mandatory metadata filters (028), S3-compatible object-storage port with a local/test-only filesystem adapter (029), capability-specific embedding/generation provider ports (030), testing stack (032), and simplified GitHub Flow (035).
 
 Do not silently choose technologies governed by Proposed ADRs:
 
 | ADR | Area |
 |---|---|
-| ADR-027 | Background job technology |
-| ADR-028 | Vector database |
-| ADR-029 | Object storage |
-| ADR-030 | AI provider SDK strategy |
 | ADR-031 | Observability technology |
 | ADR-033 | Deployment platform |
 | ADR-034 | Production secrets management |

@@ -57,30 +57,29 @@ DevPath는 AI 보조 개발자 커리어 인텔리전스 플랫폼이다. GitHub
 - Company catalog 조회. 회사별 readiness와 추천 정책은 아직 포함하지 않음
 - `recommendation-v1` 결정론 추천과 `roadmap-v1` 학습 로드맵
 - owner-scoped REST API와 구현된 범위의 OpenAPI 계약
-- React Query 기반 세션 bootstrap 및 repository, analysis, skill, readiness, roadmap 화면
-- PostgreSQL, Spring Data JPA adapter, Flyway V1~V20 migration
-- repository sync 및 analysis를 위한 현재 프로세스 내부 작업 실행 기반
+- Notion OAuth 연결·공유 페이지 메타데이터, owner-scoped 지식 수집(정규화, chunk, Ollama embedding adapter, PostgreSQL pgvector), 보관·재색인 수명주기, owner 필터를 강제하는 semantic retrieval(M35~M37 구현 근거. live provider 검증과 owner 승인은 미완료)
+- 검증된 AI 생성 workflow: `SKILL_ANALYSIS_EXPLANATION`, `REPOSITORY_REVIEW`, `REPOSITORY_SUMMARY`, `CAREER_COACHING`, `LEARNING_RECOMMENDATION`. 불변 PromptContext, 버전 template, Ollama generation adapter, 취소, 최대 2회 재시도, validator 통과 후 `VALIDATED` GeneratedArtifact 저장(M42~M43 구현 근거. live 평가와 owner 승인은 미완료)
+- ADR-029 object storage port와 local/test 전용 filesystem adapter
+- React Query 기반 세션 bootstrap 및 repository, analysis, skill, readiness, roadmap, knowledge 화면과 AI 생성 패널
+- PostgreSQL, Spring Data JPA adapter, Flyway V1~V28 migration
+- ADR-027 PostgreSQL durable job·transactional outbox 기반 repository sync, analysis, knowledge ingestion, AI generation worker
 - 도메인, 애플리케이션, 영속성, 보안, 아키텍처 및 프론트엔드 테스트
 
 구현되지 않음:
 
-- Notion 연동과 지식 수집·검색 파이프라인
-- 외부 queue 기반 background job 기술
-- vector database, object storage, AI provider SDK
-- AI 설명 및 초안 생성 workflow
 - 회사별 readiness 및 회사별 추천 modifier
 - 외부 강의, 도서, 자격증 자동 추천
 - Portfolio, Resume, Interview, Administration workflow
+- 생성 산출물 목록(API-AI-006), 수동 재시도(API-AI-004), 산출물 편집·내보내기
+- production S3 호환 object storage adapter와 ADR-031 telemetry
 - production 배포와 production secret 관리
 
-현재 검증 근거:
+기록된 검증 근거(재실행 결과가 아님):
 
-- Docker와 `DOCKER_API_VERSION=1.44`를 사용한 백엔드 테스트: 146건 중 144건 PASS, 실패 0건, 외부 DB 환경변수 조건부 테스트 2건 SKIP
-- Testcontainers 기반 PostgreSQL 통합 테스트 14건 PASS
-- 백엔드 build PASS
-- 프론트엔드 Vitest 35개 파일 83건 PASS, Playwright Chromium 및 axe 사용자 여정 6건 PASS, production build와 전체 npm audit PASS
+- 2026-09-28 `docs/20_MVP_Release_Evidence.md` §3 기록: 백엔드 전체 219건 중 217건 PASS, 실패 0건, 환경변수 조건부 SKIP 2건. Testcontainers PostgreSQL 20건 중 18건 PASS, SKIP 2건. AI generation 29건 PASS. 프론트엔드 Vitest 43개 파일 108건 PASS, Playwright Chromium·axe 사용자 여정 7건 PASS, production build와 npm audit PASS
 - 플랫폼 중립 `security:check`가 민감 파일·고신뢰 credential·위험한 JPA schema mode·브라우저 credential 저장·브라우저 provider 직접 호출을 차단
-- OpenAPI 유효성 검사 PASS. 기존 권고 경고 8건 존재
+- OpenAPI lint PASS. 오류 0건, 권고 경고 9건
+- 2026-10-15 미커밋 로컬 변경(KnowledgeDetailPage 회귀 테스트, 테스트 API base URL 고정) 기준 프론트엔드 Vitest 44개 파일 114건 PASS
 
 계획된 모듈을 구현된 기능으로 표현하지 않는다. 이 기준선 이후의 변경은 실제 코드와 검증 결과에 근거해서만 갱신한다.
 
@@ -97,20 +96,20 @@ DevPath는 AI 보조 개발자 커리어 인텔리전스 플랫폼이다. GitHub
 - ADR-024: 별도 persistence model을 사용하는 Spring Data JPA/Hibernate
 - ADR-025: 변경 불가 SQL Flyway migration
 - ADR-026: opaque server-managed session 기반 GitHub OAuth2
+- ADR-027: PostgreSQL 기반 durable job과 transactional outbox
+- ADR-028: owner/source/document/model-version 필터를 강제하는 PostgreSQL pgvector
+- ADR-029: S3 호환 object storage port. filesystem adapter는 local/test 전용
+- ADR-030: 기능별 embedding/generation provider port
 - ADR-032: 현재 테스트 도구 체계
 - ADR-035: 단순화된 GitHub Flow
 
 다음 Proposed ADR 대상 기술을 임의로 선택하지 않는다.
 
-- ADR-027 background job 기술
-- ADR-028 vector database
-- ADR-029 object storage
-- ADR-030 AI provider SDK 전략
 - ADR-031 observability 기술
 - ADR-033 배포 플랫폼
 - ADR-034 production secret 관리
 
-Proposed ADR은 해당 결정이 실제로 필요한 작업만 차단한다. 그 결정과 무관한 모듈 작업은 계속할 수 있다. 현재 프로세스 내부 작업 실행기를 외부 queue 기술 선정으로 표현하지 않는다.
+Proposed ADR은 해당 결정이 실제로 필요한 작업만 차단한다. 그 결정과 무관한 모듈 작업은 계속할 수 있다. ADR-027의 PostgreSQL durable job 모델을 외부 queue 기술 선정으로 표현하지 않는다.
 
 ## 6. 저장소 구조
 

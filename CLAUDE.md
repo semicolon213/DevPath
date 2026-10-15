@@ -60,15 +60,15 @@ Frontend code is feature-oriented. React Query owns server state. `GET /api/v1/u
 
 ## 5. Current Implementation State
 
-Use `AGENTS.md` §4 as the current **documented** implementation and test baseline rather than the former initial-V1 list. That document reports implemented repository collection/synchronization, deterministic analysis/Rule Engine, Skill Matrix, Career readiness, recommendation/roadmap flows, and Flyway migrations through V20, while distinguishing still-planned features.
+Use `AGENTS.md` §4 as the current **documented** implementation and test baseline rather than the former initial-V1 list. That document reports implemented repository collection/synchronization, deterministic analysis/Rule Engine, Skill Matrix, Career readiness, recommendation/roadmap flows, Notion knowledge ingestion/retrieval, validated AI generation, and Flyway migrations through V28, while distinguishing still-planned features.
 
 Before QA or implementation, confirm relevant claims against actual code, migrations, contracts, requirements, and fresh test evidence. `AGENTS.md` is a status guide, not proof of correctness; report discrepancies instead of treating old prose as the source of truth. Never report historical test results as newly executed tests.
 
 ## 6. Decision Gates
 
-Accepted architecture includes ADR-001/002, 003, 005, 006, 012/013, 020/021, 024, 025, 026, 032, and 035.
+Accepted architecture includes ADR-001/002, 003, 005, 006, 012/013, 020/021, 024, 025, 026, 027 (PostgreSQL durable jobs and transactional outbox), 028 (PostgreSQL pgvector with mandatory metadata filters), 029 (S3-compatible object-storage port; filesystem adapter local/test only), 030 (capability-specific embedding/generation provider ports), 032, and 035.
 
-Do not implement a technology choice that depends on these Proposed ADRs without an explicit decision: ADR-027 background jobs, ADR-028 vector database, ADR-029 object storage, ADR-030 AI SDK strategy, ADR-031 observability technology, ADR-033 deployment platform, and ADR-034 production secrets. A Proposed ADR blocks only its affected area; unrelated work may continue.
+Do not implement a technology choice that depends on these Proposed ADRs without an explicit decision: ADR-031 observability technology, ADR-033 deployment platform, and ADR-034 production secrets. A Proposed ADR blocks only its affected area; unrelated work may continue.
 
 ## 7. Claude Working Method
 

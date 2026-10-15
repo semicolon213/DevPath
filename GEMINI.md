@@ -78,14 +78,10 @@ Previous evidence includes Java 21 compilation, non-container backend tests/buil
 
 ## 6. Technology Decision Boundaries
 
-Accepted baseline decisions include ADR-001/002, ADR-003, ADR-005, ADR-006, ADR-012/013, ADR-020/021, ADR-024, ADR-025, ADR-026, ADR-032, and ADR-035.
+Accepted baseline decisions include ADR-001/002, ADR-003, ADR-005, ADR-006, ADR-012/013, ADR-020/021, ADR-024, ADR-025, ADR-026, ADR-027 (PostgreSQL durable jobs and transactional outbox), ADR-028 (PostgreSQL pgvector with mandatory metadata filters), ADR-029 (S3-compatible object-storage port; filesystem adapter local/test only), ADR-030 (capability-specific embedding/generation provider ports), ADR-032, and ADR-035.
 
 Do not select or add technology controlled by these Proposed ADRs:
 
-- ADR-027 background jobs.
-- ADR-028 vector database.
-- ADR-029 object storage.
-- ADR-030 AI provider SDK strategy.
 - ADR-031 observability technology.
 - ADR-033 deployment platform.
 - ADR-034 production secrets management.
@@ -170,8 +166,4 @@ Do not mark a roadmap milestone complete; provide evidence for coordinator revie
 
 ## 12. Recommended Next Work
 
-1. Re-run Docker/PostgreSQL Testcontainers and startup evidence.
-2. Define secure server-side GitHub credential storage for private repositories.
-3. Confirm repository connection/list/import/synchronization API contracts.
-4. Implement repository identity and metadata without queue coupling.
-5. Resolve ADR-027 before implementing asynchronous workers or queues.
+Choose the next capability from the current `docs/19_Roadmap.md`, confirmed requirements, Accepted ADRs, and verified repository state, as `AGENT.md` §13 requires. Do not reuse historical next-work lists without verification.

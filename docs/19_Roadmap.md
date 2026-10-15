@@ -28,8 +28,8 @@ This roadmap defines dependency and completion logic, not contractual delivery d
 | Testing | Specified | `15_Test_Architecture.md` exists |
 | Deployment | Specified | `16_Deployment_Guide.md` exists |
 | Coding standards | Specified | `17_Coding_Standards.md` exists |
-| ADR status | Foundation and Job Decisions Accepted | ADR-024 through ADR-027 are accepted; knowledge, artifact, AI, observability, deployment, and secrets decisions remain phase-specific |
-| Implementation status | Deterministic MVP Core In Review | Identity, GitHub connection, repository synchronization/snapshots, baseline rule analysis, Skill Matrix, career/company catalogs, and composed frontend views exist; M05 readiness policy and response contracts remain unresolved |
+| ADR status | Foundation, Job, Knowledge, Storage, and AI Provider Decisions Accepted | ADR-024 through ADR-030 are accepted; observability (ADR-031), deployment (ADR-033), and secrets (ADR-034) remain Proposed |
+| Implementation status | Deterministic MVP Core, Knowledge, and First AI Capabilities In Review | Identity, GitHub connection, repository synchronization/snapshots, baseline rule analysis, Skill Matrix, Backend/Frontend readiness with `readiness-v1`, recommendations/roadmaps, career/company catalogs, Notion knowledge ingestion/retrieval, and five validated AI generation tasks exist; owner approvals, live-provider exercises, and company readiness remain open |
 
 ## 3. Roadmap Assumptions and Constraints
 
@@ -908,6 +908,19 @@ findings, and normalized evidence. The validator rejects malformed summaries and
 that supplied context. Local implementation checks cover prompt composition, validation, owner-authorized generation and
 artifact retrieval, and safe analysis-detail rendering. Live-provider evaluation and owner approval remain required; this
 does not complete M43 or authorize Portfolio or later workflows.
+
+The priority-two `CAREER_COACHING` capability reuses the same generation job and validated-artifact flow with an immutable
+PromptContext owner-linked to a stored Career Readiness result. The `career-coaching-v1` template explains only the supplied
+deterministic readiness, skill gaps, recommendations, and roadmap, and `career-advice-validator-v2` requires the exact
+summary, strength, gap, next-step, and confidence fields, next steps that follow the supplied recommendation IDs in order,
+and safe text without numeric claims. The Career Readiness page renders only the validated `CAREER_ADVICE` artifact.
+
+The priority-two AI-008 `LEARNING_RECOMMENDATION` capability links its PromptContext to an owner's stored Learning Roadmap.
+The `learning-recommendation-v1` template explains the deterministic roadmap, and `learning-recommendation-validator-v2`
+rejects plans that omit roadmap steps (`INCOMPLETE_LEARNING_PLAN`) or change their order (`ROADMAP_ORDER_CHANGED`) and
+validates each step's milestone explanation, objective, and practice task. The Learning Roadmap page renders only the
+validated artifact. `docs/20_MVP_Release_Evidence.md` records one local live-provider AI-008 response; owner approval and
+broader live-provider evaluation remain required for both capabilities, and neither completes M43.
 
 Do not implement all prompt categories simultaneously.
 
