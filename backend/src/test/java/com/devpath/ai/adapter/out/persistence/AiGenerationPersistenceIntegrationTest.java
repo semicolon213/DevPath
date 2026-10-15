@@ -1,11 +1,17 @@
 package com.devpath.ai.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.devpath.ai.application.StoredPromptContext;
 import com.devpath.ai.domain.GenerationJob;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -14,6 +20,11 @@ import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -31,6 +42,75 @@ class AiGenerationPersistenceIntegrationTest {
     }
     @Autowired JpaGenerationPersistenceAdapter persistence;
     @Autowired JdbcTemplate jdbc;
+    @Autowired PlatformTransactionManager transactionManager;
+
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void cancelWaitsForTheExistingOwnerScopedLock() throws Exception {
+        Instant now = Instant.parse("2026-09-28T00:00:00Z");
+        Instant canceledAt = now.plusSeconds(1);
+        UUID owner = UUID.randomUUID(), matrix = UUID.randomUUID(), context = UUID.randomUUID();
+        UUID jobId = UUID.randomUUID();
+        var transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        transaction.executeWithoutResult(ignored -> {
+            insertUser(owner, now);
+            insertMatrix(matrix, owner, now);
+            var template = persistence.loadActiveTemplate("SKILL_ANALYSIS_EXPLANATION");
+            persistence.saveContext(new StoredPromptContext(context, owner, template.id(), matrix, null, null, null,
+                "SKILL_ANALYSIS_EXPLANATION", 4096, "c".repeat(64), "{}", "safe prompt", now));
+            persistence.saveJob(new GenerationJob(jobId, owner, context, "cancel-lock-" + jobId,
+                "SKILL_ANALYSIS_EXPLANATION", com.devpath.ai.domain.GenerationJobStatus.QUEUED, "PENDING", 0,
+                null, now, null, null));
+        });
+
+        var locked = new CountDownLatch(1);
+        var attempted = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        var executor = Executors.newFixedThreadPool(2);
+        Future<?> holder = null;
+        Future<GenerationJob> waiter = null;
+        try {
+            holder = executor.submit(() -> {
+                transaction.executeWithoutResult(ignored -> {
+                    var current = persistence.findJobForUpdate(owner, jobId).orElseThrow();
+                    locked.countDown();
+                    await(release);
+                    persistence.saveJob(current.cancel(canceledAt));
+                });
+            });
+            assertThat(locked.await(5, TimeUnit.SECONDS)).isTrue();
+
+            waiter = executor.submit(() -> transaction.execute(ignored -> {
+                attempted.countDown();
+                return persistence.findJobForUpdate(owner, jobId).orElseThrow();
+            }));
+            assertThat(attempted.await(5, TimeUnit.SECONDS)).isTrue();
+            var waiting = waiter;
+            assertThatThrownBy(() -> waiting.get(250, TimeUnit.MILLISECONDS)).isInstanceOf(TimeoutException.class);
+
+            release.countDown();
+            holder.get(5, TimeUnit.SECONDS);
+            var canceled = waiter.get(5, TimeUnit.SECONDS);
+            assertThat(canceled.status().name()).isEqualTo("CANCELED");
+            assertThat(canceled.completedAt()).isEqualTo(canceledAt);
+        } finally {
+            release.countDown();
+            if (holder != null) holder.cancel(true);
+            if (waiter != null) waiter.cancel(true);
+            executor.shutdownNow();
+            try {
+                assertThat(executor.awaitTermination(5, TimeUnit.SECONDS)).isTrue();
+            } finally {
+                transaction.executeWithoutResult(ignored -> {
+                    jdbc.update("delete from ai_tasks where ai_task_id = ?", jobId);
+                    jdbc.update("delete from prompt_contexts where prompt_context_id = ?", context);
+                    jdbc.update("delete from skill_matrices where skill_matrix_id = ?", matrix);
+                    jdbc.update("delete from users where user_id = ?", owner);
+                });
+            }
+        }
+    }
 
     @Test
     void immutableContextExecutionValidationAndArtifactRemainOwnerScoped() {
@@ -115,6 +195,15 @@ class AiGenerationPersistenceIntegrationTest {
                 "REPOSITORY_BASELINE", java.sql.Timestamp.from(now));
         } finally {
             jdbc.execute("set session_replication_role = origin");
+        }
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Timed out waiting for test release");
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for test release", exception);
         }
     }
 }
