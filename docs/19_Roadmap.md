@@ -758,6 +758,14 @@ events, metadata-only REST responses, and a refresh-recoverable frontend journey
 only when explicitly selected (and by the local default); selecting a future production adapter without its implementation
 fails dependency wiring instead of silently storing private content on local disk. Automated adapter, application,
 PostgreSQL/pgvector, security, frontend, browser, accessibility, contract, and build checks provide implementation evidence.
+A KnowledgeDetailPage regression test exercises the real route, React Query, and API client layers with mocked fetch: it
+covers document metadata and chunk summary rendering without raw page/chunk text or embedding vectors in the DOM, archive
+confirmation (cancel sends no CSRF or archive request; approval sends the archive POST with the CSRF header), CSRF-guarded
+re-index with the accepted job ID reflected in the URL and job status/progress announced, a `role="status"` loading
+state, and `role="alert"` load, re-index, and archive failure states with load-failure retry. Independent QA on
+2026-10-15 passed `node scripts/run-frontend.mjs run test -- src/pages/KnowledgeDetailPage.test.tsx` (6 tests) and
+`npm run frontend:test` (44 files, 114 tests); this is mocked-fetch component evidence, not browser, live Notion, or
+provider evidence.
 A live Notion-to-configured-embedding-provider exercise, production S3-compatible provider selection, ADR-031 telemetry
 selection, retrieval authorization proof, and owner approval remain gates. M36 is therefore not declared complete here.
 
