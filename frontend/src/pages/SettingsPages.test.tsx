@@ -38,11 +38,12 @@ describe("Settings workspace", () => {
   it("shows a disconnected GitHub state without treating login identity as repository access", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(envelope({ connections: [] }))));
 
-    renderWithProviders(<AppRoutes />, ["/settings/integrations"]);
+    const { container } = renderWithProviders(<AppRoutes />, ["/settings/integrations"]);
 
     expect(screen.getByRole("heading", { name: "외부 서비스 연결", level: 1 })).toBeInTheDocument();
     expect(await screen.findAllByText("미연결")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "GitHub 저장소 연결" })).toBeInTheDocument();
+    expect(container.querySelector("#github")).toContainElement(screen.getByText("GitHub 저장소 접근"));
     expect(screen.queryByText("접근 가능한 저장소")).not.toBeInTheDocument();
   });
 });

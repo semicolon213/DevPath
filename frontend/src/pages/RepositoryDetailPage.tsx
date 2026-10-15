@@ -14,8 +14,9 @@ import {
 import { repositoriesKey } from "../features/repositories/model/useRepositories";
 import { ApiError, rateLimitMessage } from "../shared/api/apiClient";
 import { syncLabel } from "./RepositoriesPage";
-import { useAnalysisJob, useRequestAnalysis } from "../features/analysis/model/useAnalysis";
+import { analysisHistoryKey, useAnalysisJob, useRequestAnalysis } from "../features/analysis/model/useAnalysis";
 import { currentSkillMatrixKey } from "../features/skills/model/useSkillMatrix";
+import { dashboardKey } from "../features/dashboard/model/useDashboard";
 
 export function RepositoryDetailPage() {
   const { repositoryId } = useParams();
@@ -44,6 +45,8 @@ export function RepositoryDetailPage() {
   useEffect(() => {
     if (analysisJob.data?.status === "succeeded") {
       queryClient.invalidateQueries({ queryKey: currentSkillMatrixKey });
+      queryClient.invalidateQueries({ queryKey: analysisHistoryKey });
+      queryClient.invalidateQueries({ queryKey: dashboardKey });
     }
   }, [analysisJob.data?.status, queryClient]);
 

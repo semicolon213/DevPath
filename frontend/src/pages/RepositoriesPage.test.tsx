@@ -39,6 +39,7 @@ it("renders a visible repository workspace with summaries and registered reposit
   expect(screen.getByRole("link", { name: "owner/devpath" })).toBeInTheDocument();
   expect(screen.getByText("메타데이터만 등록됨")).toBeInTheDocument();
   expect(screen.getByRole("checkbox", { name: "보관 저장소 포함" })).not.toBeChecked();
+  expect(screen.getByRole("link", { name: "저장소 추가" })).toHaveAttribute("href", "/settings/integrations#github");
 });
 
 it("archives, filters, and restores an owned repository from the workspace", async () => {
@@ -74,6 +75,7 @@ it("archives, filters, and restores an owned repository from the workspace", asy
   expect(screen.getByText(/기존 스냅샷과 분석 결과는 유지/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "보관 확인" }));
   expect(await screen.findByRole("heading", { name: "표시할 활성 저장소가 없습니다" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "GitHub 저장소 선택" })).toHaveAttribute("href", "/settings/integrations#github");
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/archive"), expect.objectContaining({ method: "POST" }));
 
   fireEvent.click(screen.getByRole("checkbox", { name: "보관 저장소 포함" }));

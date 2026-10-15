@@ -10,4 +10,5 @@ it("shows the selected career from the authoritative catalog", async () => {
   expect(await screen.findByRole("heading", { name: "지원 커리어" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "백엔드 엔지니어" })).toBeInTheDocument();
   expect(screen.getByText("현재 목표")).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "목표 직무 설정" })).toHaveAttribute("href", "/settings/profile#targets");
 });

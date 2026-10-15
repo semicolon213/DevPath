@@ -17,9 +17,11 @@ it("renders profile and authoritative career target controls", async () => {
           : { careerId: "backend", companyId: "toss", updatedAt: "2026-08-11T00:00:00Z" };
     return Promise.resolve(Response.json({ data, metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T00:00:00Z" } }));
   }));
-  renderWithProviders(<ProfilePanel />);
+  const { container } = renderWithProviders(<ProfilePanel />);
   expect(await screen.findByDisplayValue("DevPath User")).toBeInTheDocument();
   expect(screen.getByDisplayValue("Building APIs")).toBeInTheDocument();
   expect(screen.getByRole("option", { name: "백엔드 엔지니어", selected: true })).toBeInTheDocument();
   expect(screen.getByRole("option", { name: "토스", selected: true })).toBeInTheDocument();
+  expect(container.querySelector("#targets")).toContainElement(screen.getByRole("combobox", { name: "목표 직무" }));
+  expect(container.querySelector("#targets")).toContainElement(screen.getByRole("combobox", { name: "목표 회사" }));
 });

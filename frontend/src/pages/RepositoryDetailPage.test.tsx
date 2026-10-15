@@ -1,10 +1,14 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { QueryClient } from "@tanstack/react-query";
 import { afterEach, expect, it, vi } from "vitest";
 import { Route, Routes } from "react-router-dom";
 import { renderWithProviders } from "../test/renderWithProviders";
 import { RepositoryDetailPage } from "./RepositoryDetailPage";
+import { analysisHistoryKey } from "../features/analysis/model/useAnalysis";
+import { dashboardKey } from "../features/dashboard/model/useDashboard";
+import { currentSkillMatrixKey } from "../features/skills/model/useSkillMatrix";
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => { vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 it("shows synchronization controls and immutable snapshot history separately from analysis", async () => {
   const repository = {
@@ -221,6 +225,37 @@ it("restores a completed synchronization from the URL and links its immutable re
   expect(screen.getByRole("link", { name: "생성된 불변 스냅샷 보기" })).toHaveAttribute("href", `/repositories/${repositoryId}/snapshots/${snapshotId}`);
   expect(screen.getByRole("link", { name: "스냅샷 상세 보기" })).toHaveAttribute("href", `/repositories/${repositoryId}/snapshots/${snapshotId}`);
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining(`/repository-sync-jobs/${jobId}`), expect.anything());
+});
+
+it("invalidates analysis-derived caches when a restored analysis job succeeds", async () => {
+  const repositoryId = "3fd75d74-17d4-4dc5-bf3b-251f611633f2";
+  const jobId = "38393675-fd18-410d-9fb8-cff66200fa46";
+  const metadata = { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T00:00:00Z" };
+  const repository = { repositoryId, providerRepositoryId: "42", name: "devpath", fullName: "owner/devpath",
+    owner: "owner", visibility: "PUBLIC", defaultBranch: "main", providerArchived: false, lifecycle: "DISCOVERED",
+    syncStatus: "NOT_SYNCED", htmlUrl: "https://github.com/owner/devpath", discoveredAt: metadata.timestamp,
+    lastSyncedAt: null, currentSnapshotId: null };
+  const invalidateQueries = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/analysis-jobs/")) return Promise.resolve(Response.json({ data: {
+      jobId, jobType: "REPOSITORY_ANALYSIS", status: "succeeded", phase: "COMPLETED", progressPercent: 100,
+      attemptCount: 1, maxAttempts: 3, submittedAt: metadata.timestamp, startedAt: metadata.timestamp,
+      completedAt: metadata.timestamp, pollingUrl: `/api/v1/analysis-jobs/${jobId}`,
+      resultResourceUrl: "/api/v1/analyses/analysis-id", errorCode: null, errorMessage: null, retryable: false
+    }, metadata }));
+    if (url.endsWith("/snapshots")) return Promise.resolve(Response.json({ data: { snapshots: [] }, metadata }));
+    return Promise.resolve(Response.json({ data: repository, metadata }));
+  }));
+
+  renderWithProviders(<Routes><Route path="/repositories/:repositoryId" element={<RepositoryDetailPage />} /></Routes>,
+    [`/repositories/${repositoryId}?analysisJobId=${jobId}`]);
+
+  await waitFor(() => {
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: currentSkillMatrixKey });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: analysisHistoryKey });
+    expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: dashboardKey });
+  });
 });
 
 it("explains a non-retryable large-repository failure without claiming a partial snapshot", async () => {
