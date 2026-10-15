@@ -58,24 +58,11 @@ Controllers call application use cases, JPA entities remain separate from domain
 
 Frontend code is feature-oriented. React Query owns server state. Components never calculate official business results and never call GitHub, Notion, or LLM providers directly. Authentication uses GitHub OAuth2 and an opaque HttpOnly server-managed session; browser storage must never contain provider tokens, session IDs, refresh tokens, or credentials.
 
-## 5. Current Baseline
+## 5. Current Implementation Baseline
 
-Implemented:
+`AGENTS.md` §4 is the repository's current *documented* implementation and verification baseline. It reports GitHub repository collection/synchronization, deterministic analysis and Rule Engine, Skill Matrix, Career readiness, recommendation/roadmap flows, and Flyway migrations through V20, among other capabilities. It also distinguishes unimplemented Notion, AI generation, company-specific readiness, and other planned workflows.
 
-- Internal `User` and GitHub `ExternalIdentity` foundation.
-- GitHub OAuth2 login and PostgreSQL-backed Spring Session.
-- JPA adapters with separated persistence models and Flyway V1 migration.
-- Current-user, CSRF, logout, and internal-health endpoints.
-- React Query session bootstrap and the implemented OpenAPI subset.
-- Backend domain, application, security, architecture tests and frontend tests.
-
-Not implemented:
-
-- GitHub repository collection and synchronization, Notion integration, and background jobs.
-- Rule, Career, Company, Knowledge, Prompt, AI, Recommendation, Learning, Portfolio, Resume, Interview, Dashboard, and Administration workflows.
-- Production deployment and production secret management.
-
-Java 21 compilation, non-container backend tests/build, frontend tests/build, and OpenAPI validation have passed previously. Local PostgreSQL-backed startup has been observed. Re-run Docker/Testcontainers verification before claiming the persistence foundation complete; do not present planned modules as implemented.
+Do **not** use the former initial-V1 baseline as current status. Before making or reviewing a change, verify the relevant claims against the actual source tree, migrations, contracts, Git status, and fresh test output. If `AGENTS.md` disagrees with the repository, report the discrepancy and use verified code and authoritative specifications rather than guessing. Prior test results are historical evidence, not proof that a new change passes.
 
 ## 6. ADR Gates
 
@@ -99,7 +86,7 @@ A Proposed ADR blocks only work that genuinely requires that decision. Unrelated
 
 | Role | Responsibility | Typical Ownership |
 |---|---|---|
-| Coordinator | Scope, dependency graph, ownership, decision gates, integration, final evidence | Shared files and merge order |
+| Coordinator (Claude Code preferred, subject to Orca support) | Scope, dependency graph, ownership, decision gates, integration, final evidence | Shared files and merge order |
 | Domain/Backend Worker | Domain model, use cases, ports, backend adapters | One module or use case |
 | Data/Contract Worker | OpenAPI, schema mapping, migration compatibility | One contract or migration stage |
 | Frontend Worker | React Query flow and accessible UI states | One frontend feature |
@@ -201,12 +188,146 @@ npm run verify
 
 For local development, run `.\gradlew.bat bootRun` from `backend/` in PowerShell and `npm run dev` from `frontend/`. Java 21 and environment variables described by `backend/.env.example` are required. Spring Boot does not automatically load `.env`. Docker must run for PostgreSQL/Testcontainers verification.
 
-## 13. Recommended Next Slice
+## 13. Next Work Selection
 
-1. Re-run full Docker/PostgreSQL Testcontainers and startup verification.
-2. Define server-side encrypted GitHub provider credential handling required for private repository access.
-3. Settle the repository connection, list, import, and synchronization contract subset.
-4. Implement repository identity and metadata without coupling it to a queue.
-5. Resolve ADR-027 before implementing asynchronous queue or worker execution.
+Choose the next capability from the current `docs/19_Roadmap.md`, confirmed requirements, Accepted ADRs, and actual repository status. Do not reuse historical next-slice recommendations without verification. A Proposed ADR blocks only work that requires that decision.
 
-Repository discovery and metadata modeling may proceed before ADR-027; asynchronous synchronization execution may not.
+## 14. Codex Implementation → Claude Independent QA
+
+This section governs the **Orca-managed Codex/Claude workflow**. It does not assert that Orca automatically discovers `AGENT.md`, reuses an existing terminal session, or implements a state machine merely because this document exists. The coordinator must explicitly load these instructions, inspect the installed Orca orchestration skill, and verify supported CLI/API operations before starting workers. If orchestration capabilities are missing, stop and report rather than invent commands or silently substitute manual work.
+
+### Roles and isolation
+
+- **Coordinator:** owns task scope, worktree strategy, handoff, evidence, QA verdict handling, retry count, integration, and user-facing completion. A coordinator session must not simultaneously be treated as an independent reviewer.
+- **Codex implementation worker:** owns the assigned capability's implementation, relevant tests, and fixes. Follow `AGENTS.md` and the scoped task specification.
+- **Claude QA worker:** independently checks requirements, diff, tests, security, architecture, and regressions. Follow `CLAUDE.md` in **Independent QA Mode**. It must not modify application source or shared configuration during QA. Enforce read-only permissions at the worker/tool/worktree level where supported; instructions alone are not a permission boundary.
+- Use separate worker contexts. A QA worker must see the **same immutable commit/diff or explicitly identified integrated snapshot** that is being reviewed. Do not review a stale worktree or an unintegrated branch by accident.
+
+### Capability lifecycle
+
+1. **Intake:** coordinator defines one coherent end-to-end capability, requirement IDs, acceptance criteria, exclusions, dependencies, accepted/proposed ADR gates, ownership, verification commands, and stop conditions.
+2. **Dispatch:** coordinator creates/assigns an Orca-managed implementation task to Codex using commands verified against the installed orchestration skill. Record task/worker IDs and target worktree/revision.
+3. **Implementation:** Codex checks existing changes, implements only owned scope, runs targeted then relevant broader tests, performs the repository's existing `@ponytail-review` step when available, and hands off exact changed files, diff/revision, tests, and risks. An unavailable `@ponytail-review` must be reported, not claimed as run.
+4. **Review readiness:** coordinator checks worker completion **from an actual terminal state/event**, validates ownership and snapshot visibility, and marks the task `REVIEW_READY`. Do not infer completion from elapsed time or chat prose alone.
+5. **Independent QA:** coordinator dispatches Claude with the original requirements, acceptance criteria, exact implementation snapshot, changed-file list, verification evidence, and read-only scope. Claude returns exactly one of `PASS`, `FAIL`, `BLOCKED`, with supporting evidence.
+6. **PASS:** coordinator verifies QA evidence and required acceptance criteria, then dispatches a separate Claude documentation-maintenance task if documentation requires updates. Do not declare `DONE` or select the next capability until documentation consistency is checked and coordinator approval is complete. A Claude PASS is necessary but not sufficient for final acceptance.
+7. **FAIL:** coordinator assigns actionable findings to Codex, preserving task scope and ownership. Codex fixes and reruns affected tests; Claude reviews the **new** snapshot independently. Allow at most **three QA cycles total**, counting the first review. After the third FAIL, stop and escalate with unresolved findings; never loop indefinitely.
+8. **BLOCKED:** pause the capability, record missing environment/evidence/decision, and request resolution. Do not turn BLOCKED into PASS or automatically start the next feature.
+
+### Required handoff protocol
+
+Implementation handoff:
+
+```text
+TASK_ID:
+STATUS: REVIEW_READY | BLOCKED
+REQUIREMENTS:
+ACCEPTANCE_CRITERIA:
+SNAPSHOT: <commit, diff, or worktree revision identifier>
+FILES_CHANGED:
+IMPLEMENTATION_SUMMARY:
+TESTS: <exact command and PASS | FAIL | NOT RUN>
+API_DATA_SECURITY_IMPACT:
+KNOWN_RISKS:
+BLOCKERS:
+```
+
+Independent QA handoff:
+
+```text
+TASK_ID:
+SNAPSHOT:
+STATUS: PASS | FAIL | BLOCKED
+REQUIREMENTS_CHECKED:
+TESTS: <exact command and PASS | FAIL | NOT RUN>
+FINDINGS: <severity, file/line, evidence, reproduction>
+REQUIRED_FIXES:
+UNVERIFIED_ITEMS:
+```
+
+### Safety and completion rules
+
+- Preserve user changes and enforce one writer per file; review must not race against an implementation still changing files.
+- Never automatically commit, push, merge, deploy, remove worktrees, change ADR status, or update roadmap completion without explicit authorization and evidence.
+- Do not run destructive tests, real provider mutations, or production-facing operations without explicit approval.
+- If worker completion events, worker type selection, read-only isolation, or revision handoff are unsupported, state the limitation and obtain a different verified mechanism before claiming automation.
+- A feature advances only after verified QA PASS, required post-PASS documentation synchronization, and coordinator acceptance; report exact tests not run and any residual risk.
+
+
+## 15. Post-PASS Claude Documentation Maintenance
+
+Documentation maintenance is a **separate Orca task after independent QA PASS**, never part of the read-only QA dispatch.
+
+1. The coordinator validates the QA verdict, task/dispatch IDs, implementation snapshot, acceptance evidence, and remaining risks. `FAIL` and `BLOCKED` must not trigger documentation edits.
+2. The coordinator identifies Markdown files affected by the verified implementation, and creates a **documentation-only** task with exact allowed paths, source snapshot, requirement IDs, scope, and acceptance criteria. If no Markdown changes are necessary, record `DOCS_NOT_NEEDED` with a reason and proceed to final review.
+3. Dispatch Claude in **Documentation Maintenance Mode**, preferably as a separate worker/dispatch from the QA reviewer. The coordinator must explicitly grant ownership of each permitted file.
+4. Claude updates only assigned Markdown files using verified code, migrations, API contracts, tests, and authoritative specifications. Keep implemented/planned status accurate; preserve product invariants and document precedence.
+5. Changes to `AGENT.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `DESIGN.md`, `docs/18_ADR.md`, `docs/19_Roadmap.md`, or authoritative requirement documents require explicit coordinator/owner approval and assigned ownership. Do not silently approve Proposed ADRs, invent requirements, or declare roadmap milestones complete.
+6. The coordinator verifies the documentation diff, checks for unauthorized non-Markdown/source changes, resolves conflicts with other workers, and confirms that documentation reflects the **same accepted implementation snapshot**. If changes are invalid, reassign documentation correction without silently changing the QA verdict. If documentation reveals a code/requirement defect, stop and reopen implementation/QA rather than editing code under the documentation task.
+7. Only after the documentation task is accepted (or documented as unnecessary) may the coordinator mark the capability `DONE` and proceed.
+
+Documentation handoff:
+
+```text
+TASK_ID:
+SOURCE_QA_TASK_ID:
+IMPLEMENTATION_SNAPSHOT:
+STATUS: DONE | BLOCKED
+FILES_UPDATED:
+IMPLEMENTATION_REFERENCES:
+CHANGES_SUMMARY:
+CONSISTENCY_CHECK:
+NON_MARKDOWN_FILES_CHANGED: none
+REMAINING_GAPS:
+```
+
+Documentation workers must not modify source code, tests, migrations, machine-readable OpenAPI, dependency manifests, or lockfiles. A behavioral instruction is not an OS permission boundary; enforce file ownership and verify the diff. Never automatically commit, push, merge, or deploy.
+
+
+## 16. Claude-First Coordinator and Token Budget Policy
+
+### Default role allocation
+
+- **Claude Coordinator (preferred):** intake, targeted repository inspection, requirement/ADR lookup, task planning, Orca Run/Task/Dispatch management, worker completion/event verification, QA triage, documentation dispatch, final review and concise user report. This preference is conditional on verifying that the installed Orca version supports a Claude coordinator; never assume a session can take over an existing Run.
+- **Codex implementation worker:** implement a tightly scoped, self-contained change, execute relevant tests, and address actionable QA FAIL findings. Do not use Codex as the default planner, coordinator, documentation editor, or independent QA reviewer.
+- **Claude independent QA worker:** separate Claude session/dispatch from the Coordinator, read-only review of the exact implementation snapshot. The Coordinator must not self-approve its own work.
+- **Claude documentation worker:** separate post-PASS task, limited to explicitly owned Markdown files, followed by Coordinator diff review.
+- Keep worker count minimal. Do not start a second worker merely to reduce tokens if it creates a conflict or duplicates exploration.
+
+### Context and budget discipline
+
+1. Coordinator prepares a compact implementation packet: task objective, requirement IDs, Accepted ADRs, relevant file paths and exact symbols, expected behavior, out-of-scope constraints, acceptance criteria, tests, and known existing changes. Include sufficient source references for the worker to verify claims; do not paste entire documents or the full repository.
+2. Codex worker reads only relevant files and follows the packet. Do not repeat broad architecture discovery already completed by the Coordinator unless evidence conflicts.
+3. Prefer targeted tests first; run broader tests/build only at agreed gates. Do not repeat passing full suites on unchanged snapshots without a reason.
+4. Summarize findings once per handoff, with exact paths/lines and snapshot identifiers. Avoid repeated status polling, verbose duplicated summaries, and redundant worker restarts.
+5. A usage-limit warning or quota exhaustion is a checkpoint, not permission to change scope or silently replace the implementation agent. Preserve Run/Task/Dispatch state, report remaining work and `BLOCKED` when progress cannot safely continue.
+6. Do not assume Claude and Codex subscriptions share quotas or that a Claude Coordinator can use Codex's subscription. Verify each CLI session independently.
+
+### Codex worker prompt delivery and submit recovery
+
+On Windows, Orca 1.4.226 with Codex CLI 0.162.1 can leave a large `worker-start` prompt pasted but unsubmitted in the Codex composer as `[Pasted Content N chars]` (upstream stablyai/orca #11343, #14822). Apply these rules until an Orca release verifiably fixes it:
+
+1. Keep each Codex `worker-start --spec` under about 800 characters: role, absolute path of a spec file, and completion condition. Put the detailed §8 packet in that spec file, stored outside the repository where the worker can read it. Never create spec files in tracked DevPath paths.
+2. If `worker-start` returns `ready` or an observed turn start, send no further terminal input.
+3. Send one bare Enter (`orca terminal send --terminal <handle> --enter --json`) only when all checks pass:
+   1. the `worker-start` receipt is `outcome_unknown` with stage `turn_start_unobserved`;
+   2. `worker-show` reports the Dispatch `pending`, no observed turn start, and an `assigneeHandle` equal to the receipt's agent terminal (re-read the handle from the Dispatch);
+   3. `terminal read --screen` shows the Codex composer (`draft` or the `› ` line) holding only one or more `[Pasted Content N chars]` markers;
+   4. the screen shows no `Working`, `esc to interrupt`, confirmation, selection, or permission prompt (the static `permissions: <mode>` header is not a prompt);
+   5. two screen reads 5 seconds apart are identical;
+   6. Dispatch state and screen are re-checked immediately before sending.
+4. Do not use `terminal wait --for tui-idle` as a recovery precondition: Codex reports no agent status before its first turn, so the wait times out in exactly this state.
+5. After the Enter, confirm that the marker cleared and `Working` appeared, then require a `worker_done` with matching Task and Dispatch IDs. Orca may not record `turn_started` after a manual Enter; screen state plus `worker_done` is the evidence.
+6. If any check fails, the screen is unexpected, or no turn starts, stop with `BLOCKED`. Never repeat Enter, resend the prompt, or patch Orca.
+7. `scripts/orca/codex-submit-guard.mjs <worker-start-receipt.json>` implements checks 3–6. It is a dry run by default; only `--execute` sends, at most one Enter per Dispatch, guarded by an exclusive per-Dispatch marker (exit 0: `RECOVERED`, `NO_ACTION`, or `WOULD_SEND`; exit 2: `BLOCKED`). Re-validate it after every Orca or Codex upgrade.
+
+### Coordinator migration safety
+
+- Before moving from a Codex Coordinator to a Claude Coordinator, inspect the installed `orca skills get orchestration --full`, current Run/Task/Dispatch state, pending deliveries, ownership and worker terminals.
+- If a Run is active, do not silently transfer ownership or abandon outstanding deliveries. Either finish the current lifecycle or use an explicitly documented Orca handoff procedure.
+- Start a fresh Run under Claude only after the installed CLI confirms the supported coordinator lifecycle and the user approves the transition. Preserve old Run history and existing user worktrees.
+- If Claude coordinator support cannot be confirmed, keep the existing supported Coordinator and reduce Codex consumption through narrowly scoped worker prompts; do not invent CLI commands or unsupported role flags.
+
+### Final completion gate
+
+Codex implementation evidence → separate Claude QA PASS → separate Claude Markdown maintenance DONE (or explicitly documented no-change-needed) → Coordinator validates exact snapshots, tests, diff and protected files → final acceptance. QA PASS remains recorded if documentation is BLOCKED, but the overall capability must not be reported DONE. Never auto-commit, push, merge, or deploy.
