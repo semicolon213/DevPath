@@ -139,7 +139,7 @@ UX-1과 UX-2를 시작하기 전에 메뉴 항목, AI 패널 위치와 표시 �
 | C-2 | 일괄 insert | ID를 미리 정하는 하위 entity 때문에 snapshot과 지식 저장 시 INSERT마다 SELECT가 한 번씩 더 실행됨 |
 | C-3 | 일괄 조회 | Skill Matrix, rule evaluation, 추천 이력 조회와 커리어 코칭 요청 경로에 N+1 쿼리가 있음 |
 | C-4 | AI 작업 lease와 산출물 index | **해결 (2026-10-16):** V29가 `ai_tasks.next_attempt_at`을 추가했다. 실행 시각이 된 QUEUED 작업과 15분 lease가 만료된 RUNNING 작업을 가져가고, 재시도 간격은 30초에서 최대 5분까지 늘어나며, 시도 한도에서 lease가 만료되면 `WORKER_LEASE_EXPIRED`로 실패한다. 산출물 조회는 사용자 범위로 제한되고 index가 있다. 근거: 독립 QA PASS, 백엔드 테스트 230개 실패 0 |
-| C-5 | worker 작업 선점과 실패 로그 | 잠긴 행을 건너뛰지 않고 대기하며, worker 세 곳이 예상치 못한 실패를 로그에 남기지 않고, 지식 worker에 단위 테스트가 없음 |
+| C-5 | worker 작업 선점과 실패 로그 | **해결 (2026-10-16):** 분석, 저장소 동기화, AI 작업 선점 쿼리가 잠긴 행을 건너뛴다(`FOR NO KEY UPDATE SKIP LOCKED`). 취소에 쓰는 ID별 잠금은 그대로 대기한다. 분석, 동기화, AI worker는 예상치 못한 실패 시 작업 ID와 예외 클래스 이름만 담은 WARN 로그를 남긴다. 새 지식 worker 단위 테스트가 성공과 실패 매핑 네 가지를 검증한다. 근거: 독립 QA PASS, 백엔드 테스트 239개 실패 0, 환경 조건부 건너뜀 2개. 남은 과제(Low): skip-locked 테스트에 다음 행으로 넘어가는 경우를 명시적으로 확인하는 사례가 없음 |
 | C-6 | 프론트엔드 캐시 갱신 | **해결 (2026-10-16):** 분석이 성공하면 분석 이력과 대시보드 query도 무효화한다. 근거: 커밋 `6e078ac`, 독립 QA PASS |
 
 무제한 이력 endpoint의 페이지 처리 같은 계약 변경, 오류 상태 코드 재매핑, Proposed ADR-031·ADR-033·ADR-034에 의존하는
