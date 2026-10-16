@@ -122,6 +122,12 @@ UI/UX 진단은 27개 경로 전체를 `DESIGN.md`와 대조했고, 25개 경로
 
 UX-1과 UX-2를 시작하기 전에 메뉴 항목, AI 패널 위치와 표시 문구, 기술별 근거 부족 기준을 제품 차원에서 결정해야 한다.
 
+다음 세 발견 사항은 독립 QA PASS 후 커밋 `6e078ac`에서 해결했다. 그 밖의 UX-1, UX-2 항목은 아직 열려 있다.
+
+- UI-02 (UX-1): 저장소 추가 링크가 `/settings/integrations#github`로 이동한다.
+- UI-12 (UX-1): 커리어 화면의 목표 직무 설정 버튼이 `/settings/profile#targets`로 이동한다.
+- UI-05 (UX-2): 로드맵의 AI 학습 가이드는 공식 로드맵 단계 뒤의 별도 표시 영역에 놓인다.
+
 ### 6.2 백엔드와 프론트엔드 코드
 
 코드 진단에서 헥사고날 경계, provider 호출 주변의 transaction 범위, 오류 응답, 로깅은 문제가 없었다. 발견 사항은
@@ -132,9 +138,9 @@ UX-1과 UX-2를 시작하기 전에 메뉴 항목, AI 패널 위치와 표시 �
 | C-1 | snapshot 읽기 경로 | snapshot 목록이 개수를 세려고 모든 snapshot의 하위 데이터를 전부 불러오고, 기술·근거 화면도 snapshot 전체를 불러옴 |
 | C-2 | 일괄 insert | ID를 미리 정하는 하위 entity 때문에 snapshot과 지식 저장 시 INSERT마다 SELECT가 한 번씩 더 실행됨 |
 | C-3 | 일괄 조회 | Skill Matrix, rule evaluation, 추천 이력 조회와 커리어 코칭 요청 경로에 N+1 쿼리가 있음 |
-| C-4 | AI 작업 lease와 산출물 index | 비정상 종료된 RUNNING AI 작업을 다시 가져가지 않고, prompt context 기준 산출물 조회에 index가 없음(새 migration 필요) |
+| C-4 | AI 작업 lease와 산출물 index | **해결 (2026-10-16):** V29가 `ai_tasks.next_attempt_at`을 추가했다. 실행 시각이 된 QUEUED 작업과 15분 lease가 만료된 RUNNING 작업을 가져가고, 재시도 간격은 30초에서 최대 5분까지 늘어나며, 시도 한도에서 lease가 만료되면 `WORKER_LEASE_EXPIRED`로 실패한다. 산출물 조회는 사용자 범위로 제한되고 index가 있다. 근거: 독립 QA PASS, 백엔드 테스트 230개 실패 0 |
 | C-5 | worker 작업 선점과 실패 로그 | 잠긴 행을 건너뛰지 않고 대기하며, worker 세 곳이 예상치 못한 실패를 로그에 남기지 않고, 지식 worker에 단위 테스트가 없음 |
-| C-6 | 프론트엔드 캐시 갱신 | 분석이 끝난 뒤에도 분석 이력과 대시보드가 갱신되지 않음 |
+| C-6 | 프론트엔드 캐시 갱신 | **해결 (2026-10-16):** 분석이 성공하면 분석 이력과 대시보드 query도 무효화한다. 근거: 커밋 `6e078ac`, 독립 QA PASS |
 
 무제한 이력 endpoint의 페이지 처리 같은 계약 변경, 오류 상태 코드 재매핑, Proposed ADR-031·ADR-033·ADR-034에 의존하는
 작업은 이 묶음에서 제외했다.

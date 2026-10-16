@@ -119,6 +119,13 @@ and axe reported one violation type on two comparison routes.
 Navigation items, AI panel placement and labeling, and the per-skill insufficient-evidence rule need product decisions
 before UX-1 and UX-2 start.
 
+Three individual findings were resolved in commit `6e078ac` after independent QA PASS; UX-1 and UX-2 otherwise remain
+open:
+
+- UI-02 (UX-1): repository-add links now open `/settings/integrations#github`.
+- UI-12 (UX-1): the careers target CTA now opens `/settings/profile#targets`.
+- UI-05 (UX-2): the roadmap AI learning guide sits in its own labelled region after the official roadmap steps.
+
 ### 6.2 Backend and Frontend Code
 
 The code audit found the hexagonal boundaries, transaction scopes around provider calls, error responses, and logging
@@ -129,9 +136,9 @@ clean. It recorded 19 findings, mostly read and write amplification at realistic
 | C-1 | Snapshot read paths | Snapshot lists fully hydrate every snapshot's children to compute counts; technology and evidence views load whole snapshots |
 | C-2 | Bulk inserts | Assigned-UUID child entities trigger a SELECT before every INSERT during snapshot and knowledge persistence |
 | C-3 | Batched hydration | N+1 queries in Skill Matrix, rule evaluation, and recommendation history reads, including the career-coaching request path |
-| C-4 | AI job lease and artifact index | Crashed RUNNING AI tasks are never reclaimed; artifact lookup by prompt context has no index (new migration required) |
+| C-4 | AI job lease and artifact index | **Resolved (2026-10-16):** V29 adds `ai_tasks.next_attempt_at`; claims take due QUEUED tasks or RUNNING tasks whose 15-minute lease expired, retries back off from 30s up to 5 min, expiry at the attempt limit fails with `WORKER_LEASE_EXPIRED`, and artifact lookup is owner-scoped and indexed. Evidence: independent QA PASS; backend 230 tests, 0 failures |
 | C-5 | Worker claims and failure logs | Claims block instead of skipping locked rows; three workers log nothing on unexpected failures; knowledge worker lacks unit tests |
-| C-6 | Frontend cache invalidation | Analysis history and dashboard stay stale after an analysis completes |
+| C-6 | Frontend cache invalidation | **Resolved (2026-10-16):** a successful analysis now also invalidates analysis history and dashboard queries. Evidence: commit `6e078ac`, independent QA PASS |
 
 Contract changes such as pagination for unbounded history endpoints, error-status remapping, and work that depends on
 Proposed ADR-031, ADR-033, or ADR-034 are excluded from these slices.

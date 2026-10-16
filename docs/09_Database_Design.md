@@ -325,7 +325,7 @@ context purpose without storing query text, excerpts, object references, or vect
 
 | Table | Purpose | Primary Key | Foreign Keys | Important Columns | Relationships | Lifecycle |
 |---|---|---|---|---|---|---|
-| ai_tasks | Stores AI task requests. | ai_task_id | user_id, prompt_execution_id | task type, status, provider policy, requested time | One task may have multiple model executions | Requested, running, completed, failed, canceled |
+| ai_tasks | Stores AI task requests. | ai_task_id | user_id, prompt_execution_id | task type, status, provider policy, requested time, next attempt/lease time | One task may have multiple model executions | Requested, running, completed, failed, canceled |
 | model_executions | Stores LLM provider execution attempts. | model_execution_id | ai_task_id | provider, model identifier, attempt number, status, token usage summary | One execution may produce AIResponse | Submitted, completed, timed out, failed, retried |
 | ai_responses | Stores AI response metadata. | ai_response_id | model_execution_id, prompt_context_id | validation status, confidence, response content reference, received time | Validated response may create artifact | Received, validated, rejected |
 | response_validation_results | Stores response validation outcomes. | validation_result_id | ai_response_id | validation status, failure reason, grounding status, format status | One response has validation result history | Passed, failed, needs review |
