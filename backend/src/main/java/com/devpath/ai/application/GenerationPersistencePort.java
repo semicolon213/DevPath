@@ -15,7 +15,7 @@ public interface GenerationPersistencePort {
     Optional<GenerationJob> findJob(UUID userId, UUID jobId);
     Optional<GenerationJob> findJobForUpdate(UUID userId, UUID jobId);
     UUID findSourceResourceId(UUID promptContextId);
-    Optional<GenerationWorkItem> claim(Instant now);
+    Optional<GenerationWorkItem> claim(Instant now, int maxAttempts);
     UUID saveSubmittedExecution(GenerationWorkItem item, String provider, String model, Instant submittedAt);
     void completeExecution(UUID executionId, long latencyMs, Integer promptTokens, Integer completionTokens, Instant now);
     void failExecution(UUID executionId, String failureCode, long latencyMs, Instant now);
@@ -23,6 +23,6 @@ public interface GenerationPersistencePort {
         List<String> violations, Instant now);
     void saveValidatedArtifact(GenerationWorkItem item, UUID executionId, UUID artifactId,
         String contentReference, Instant now);
-    Optional<UUID> findArtifactIdByPromptContext(UUID promptContextId);
+    Optional<UUID> findArtifactIdByPromptContext(UUID userId, UUID promptContextId);
     Optional<ArtifactRecord> findArtifact(UUID userId, UUID artifactId);
 }

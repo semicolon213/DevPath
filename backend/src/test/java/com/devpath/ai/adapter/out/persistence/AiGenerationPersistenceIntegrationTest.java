@@ -61,7 +61,7 @@ class AiGenerationPersistenceIntegrationTest {
                 "SKILL_ANALYSIS_EXPLANATION", 4096, "c".repeat(64), "{}", "safe prompt", now));
             persistence.saveJob(new GenerationJob(jobId, owner, context, "cancel-lock-" + jobId,
                 "SKILL_ANALYSIS_EXPLANATION", com.devpath.ai.domain.GenerationJobStatus.QUEUED, "PENDING", 0,
-                null, now, null, null));
+                null, now, null, null, now));
         });
 
         var locked = new CountDownLatch(1);
@@ -123,7 +123,7 @@ class AiGenerationPersistenceIntegrationTest {
             "SKILL_ANALYSIS_EXPLANATION", 4096, "a".repeat(64), "{}", "safe prompt", now));
         var queued = persistence.saveJob(GenerationJob.queue(owner, context, "key", "SKILL_ANALYSIS_EXPLANATION", now));
 
-        var item = persistence.claim(now.plusSeconds(1)).orElseThrow();
+        var item = persistence.claim(now.plusSeconds(1), 2).orElseThrow();
         UUID execution = persistence.saveSubmittedExecution(item, "OLLAMA", "qwen-test", now.plusSeconds(1));
         persistence.completeExecution(execution, 12, 10, 5, now.plusSeconds(2));
         UUID artifact = UUID.randomUUID();
@@ -135,6 +135,8 @@ class AiGenerationPersistenceIntegrationTest {
         assertThat(persistence.findJobForUpdate(owner, queued.id())).isPresent().get().satisfies(value ->
             assertThat(value.id()).isEqualTo(queued.id()));
         assertThat(persistence.findByOwnerAndIdempotencyKey(other, "key")).isEmpty();
+        assertThat(persistence.findArtifactIdByPromptContext(owner, context)).contains(artifact);
+        assertThat(persistence.findArtifactIdByPromptContext(other, context)).isEmpty();
         assertThat(persistence.findArtifact(owner, artifact)).isPresent().get().satisfies(value -> {
             assertThat(value.skillMatrixId()).isEqualTo(matrix);
             assertThat(value.contextHash()).isEqualTo("a".repeat(64));
@@ -157,7 +159,7 @@ class AiGenerationPersistenceIntegrationTest {
             "REPOSITORY_REVIEW", 8192, "b".repeat(64), "{}", "safe review prompt", now));
         persistence.saveJob(GenerationJob.queue(owner, context, "review-key", "REPOSITORY_REVIEW", now));
 
-        var item = persistence.claim(now.plusSeconds(1)).orElseThrow();
+        var item = persistence.claim(now.plusSeconds(1), 2).orElseThrow();
         UUID execution = persistence.saveSubmittedExecution(item, "OLLAMA", "qwen-test", now.plusSeconds(1));
         persistence.completeExecution(execution, 12, 10, 5, now.plusSeconds(2));
         UUID artifact = UUID.randomUUID();
@@ -168,6 +170,32 @@ class AiGenerationPersistenceIntegrationTest {
             assertThat(value.artifactType()).isEqualTo("REPOSITORY_REVIEW");
             assertThat(value.validatorVersion()).isEqualTo("repository-review-validator-v2");
         });
+    }
+
+    @Test
+    void reclaimsExpiredRunningTaskAndFailsItWhenTheFinalLeaseExpires() {
+        Instant now = Instant.parse("2026-08-31T00:00:00Z");
+        UUID owner = UUID.randomUUID(), matrix = UUID.randomUUID(), context = UUID.randomUUID();
+        insertUser(owner, now);
+        insertMatrix(matrix, owner, now);
+        var template = persistence.loadActiveTemplate("SKILL_ANALYSIS_EXPLANATION");
+        persistence.saveContext(new StoredPromptContext(context, owner, template.id(), matrix, null, null, null,
+            "SKILL_ANALYSIS_EXPLANATION", 4096, "d".repeat(64), "{}", "safe prompt", now));
+        persistence.saveJob(GenerationJob.queue(owner, context, "lease-recovery", "SKILL_ANALYSIS_EXPLANATION", now));
+
+        var first = persistence.claim(now, 2).orElseThrow();
+        assertThat(persistence.claim(first.job().nextAttemptAt().minusMillis(1), 2)).isEmpty();
+
+        var recovered = persistence.claim(first.job().nextAttemptAt(), 2).orElseThrow();
+        assertThat(recovered.job().status().name()).isEqualTo("RUNNING");
+        assertThat(recovered.job().attemptCount()).isEqualTo(2);
+        assertThat(recovered.job().failureCode()).isEqualTo("WORKER_LEASE_RECOVERED");
+
+        var exhausted = persistence.claim(recovered.job().nextAttemptAt(), 2).orElseThrow();
+        assertThat(exhausted.job().status().name()).isEqualTo("FAILED");
+        assertThat(exhausted.job().failureCode()).isEqualTo("WORKER_LEASE_EXPIRED");
+        assertThat(exhausted.job().completedAt()).isEqualTo(recovered.job().nextAttemptAt());
+        assertThat(persistence.findJob(owner, exhausted.job().id())).contains(exhausted.job());
     }
 
     private void insertUser(UUID id, Instant now) {

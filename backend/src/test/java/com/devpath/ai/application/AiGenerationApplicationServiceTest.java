@@ -116,7 +116,7 @@ class AiGenerationApplicationServiceTest {
                 "Never calculate scores.", "Return JSON.")))
             .thenReturn(new PromptPackage("{}", "prompt", "a".repeat(64), 4096));
         when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+        when(persistence.findArtifactIdByPromptContext(any(), any())).thenReturn(Optional.empty());
 
         GenerationJobView result = service.request(owner, AiGenerationApplicationService.SKILL_EXPLANATION_TASK,
             List.of(matrixId), AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT, "key");
@@ -228,6 +228,42 @@ class AiGenerationApplicationServiceTest {
         verify(audit, never()).record(eq(AiAuditEvent.GENERATION_FAILED), any(), any(), any());
     }
 
+    @Test
+    void ignoresProviderFailureFromAnExpiredAttemptAfterReclaim() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), execution = UUID.randomUUID();
+        GenerationJob first = GenerationJob.queue(owner, context, "late-attempt",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minusSeconds(1800))
+            .claim(NOW.minusSeconds(1800), Duration.ofMinutes(15), 2);
+        GenerationJob reclaimed = first.claim(NOW, Duration.ofMinutes(15), 2);
+        GenerationWorkItem stale = new GenerationWorkItem(first, UUID.randomUUID(), null, null, null,
+            "prompt", "{}", null);
+        when(persistence.findJob(owner, first.id())).thenReturn(Optional.of(reclaimed));
+
+        service.providerFailed(stale, execution, "UPSTREAM_FAILURE", 12);
+
+        verify(persistence).failExecution(execution, "UPSTREAM_FAILURE", 12, NOW);
+        verify(persistence, never()).saveJob(any());
+        verify(audit, never()).record(eq(AiAuditEvent.GENERATION_FAILED), any(), any(), any());
+    }
+
+    @Test
+    void ignoresProviderSuccessFromAnExpiredAttemptAfterReclaim() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), execution = UUID.randomUUID();
+        GenerationJob first = GenerationJob.queue(owner, context, "late-success-attempt",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minusSeconds(1800))
+            .claim(NOW.minusSeconds(1800), Duration.ofMinutes(15), 2);
+        GenerationJob reclaimed = first.claim(NOW, Duration.ofMinutes(15), 2);
+        GenerationWorkItem stale = new GenerationWorkItem(first, UUID.randomUUID(), null, null, null,
+            "prompt", "{}", null);
+        var transactionService = new AiGenerationTransactionService(persistence,
+            new AiGenerationProperties("http://localhost", "qwen-test", Duration.ofSeconds(1),
+                Duration.ofSeconds(2), 2));
+        when(persistence.findJob(owner, first.id())).thenReturn(Optional.of(reclaimed));
+
+        assertThat(transactionService.providerCompleted(stale, execution,
+            new GenerationProviderResult("raw", 1, 1), 12, NOW)).isEmpty();
+    }
+
     @ParameterizedTest
     @MethodSource("cancelableJobs")
     void cancelsLockedQueuedOrRunningJobsAndAudits(GenerationJob current) {
@@ -275,8 +311,10 @@ class AiGenerationApplicationServiceTest {
     void retriesProviderFailuresBeforeRecordingOneTerminalFailure() {
         UUID owner = UUID.randomUUID(), context = UUID.randomUUID();
         GenerationJob firstAttempt = GenerationJob.queue(owner, context, "retry",
-            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minusSeconds(2)).start(NOW.minusSeconds(1));
-        GenerationJob finalAttempt = firstAttempt.retryOrFail("UPSTREAM_FAILURE", 2, NOW).start(NOW);
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minus(Duration.ofMinutes(20)))
+            .start(NOW.minus(Duration.ofMinutes(19)));
+        GenerationJob retryQueued = firstAttempt.retryOrFail("UPSTREAM_FAILURE", 2, NOW.minus(Duration.ofMinutes(10)));
+        GenerationJob finalAttempt = retryQueued.claim(NOW.minus(Duration.ofMinutes(5)), Duration.ofMinutes(15), 2);
         GenerationWorkItem firstItem = new GenerationWorkItem(firstAttempt, UUID.randomUUID(), null, null, null, "prompt", "{}", null);
         GenerationWorkItem finalItem = new GenerationWorkItem(finalAttempt, UUID.randomUUID(), null, null, null, "prompt", "{}", null);
         when(persistence.findJob(owner, firstAttempt.id())).thenReturn(Optional.of(firstAttempt), Optional.of(finalAttempt));
@@ -292,7 +330,26 @@ class AiGenerationApplicationServiceTest {
         verify(persistence, times(2)).saveJob(saved.capture());
         assertThat(saved.getAllValues().stream().map(GenerationJob::status))
             .containsExactly(GenerationJobStatus.QUEUED, GenerationJobStatus.FAILED);
+        assertThat(saved.getAllValues().get(0).nextAttemptAt()).isAfter(NOW)
+            .isBeforeOrEqualTo(NOW.plus(Duration.ofMinutes(5)));
         verify(audit).record(AiAuditEvent.GENERATION_FAILED, owner, finalAttempt.id(), NOW);
+    }
+
+    @Test
+    void auditsAnExhaustedWorkerLeaseWithoutSendingItToTheProvider() {
+        UUID owner = UUID.randomUUID();
+        GenerationJob running = GenerationJob.queue(owner, UUID.randomUUID(), "expired-lease",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW.minusSeconds(1801))
+            .claim(NOW.minusSeconds(1800), Duration.ofMinutes(15), 2)
+            .claim(NOW.minusSeconds(900), Duration.ofMinutes(15), 2)
+            .claim(NOW, Duration.ofMinutes(15), 2);
+        GenerationWorkItem exhausted = new GenerationWorkItem(running, UUID.randomUUID(), null, null, null,
+            "prompt", "{}", null);
+        when(persistence.claim(NOW, 2)).thenReturn(Optional.of(exhausted));
+
+        assertThat(service.claim()).isEmpty();
+
+        verify(audit).record(AiAuditEvent.GENERATION_FAILED, owner, running.id(), NOW);
     }
 
     @Test
@@ -341,7 +398,7 @@ class AiGenerationApplicationServiceTest {
                 "Never calculate scores.", "Return JSON.")))
             .thenReturn(new PromptPackage("{}", "review prompt", "b".repeat(64), 8192));
         when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+        when(persistence.findArtifactIdByPromptContext(any(), any())).thenReturn(Optional.empty());
 
         service.request(owner, AiGenerationApplicationService.REPOSITORY_REVIEW_TASK, List.of(analysisId),
             AiGenerationApplicationService.REPOSITORY_REVIEW_OUTPUT, "review-key");
@@ -374,7 +431,7 @@ class AiGenerationApplicationServiceTest {
         when(coachingPrompts.build(readinessView, set, roadmap, template))
             .thenReturn(new PromptPackage("{}", "coaching prompt", "c".repeat(64), 8192));
         when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+        when(persistence.findArtifactIdByPromptContext(any(), any())).thenReturn(Optional.empty());
 
         service.request(owner, AiGenerationApplicationService.CAREER_COACHING_TASK, List.of(readinessId),
             AiGenerationApplicationService.CAREER_COACHING_OUTPUT, "coaching-key");
@@ -408,7 +465,7 @@ class AiGenerationApplicationServiceTest {
         when(learningPrompts.build(readinessView, set, roadmap, template))
             .thenReturn(new PromptPackage("{}", "learning prompt", "d".repeat(64), 8192));
         when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+        when(persistence.findArtifactIdByPromptContext(any(), any())).thenReturn(Optional.empty());
 
         service.request(owner, AiGenerationApplicationService.LEARNING_RECOMMENDATION_TASK, List.of(roadmapId),
             AiGenerationApplicationService.LEARNING_RECOMMENDATION_OUTPUT, "learning-key");
@@ -466,7 +523,7 @@ class AiGenerationApplicationServiceTest {
         when(synchronization.getTechnologies(owner, repositoryId, snapshotId)).thenReturn(technologies);
         when(summaryPrompts.build(repository, analysis, evaluation, List.of(), evidence, template)).thenReturn(prompt);
         when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+        when(persistence.findArtifactIdByPromptContext(any(), any())).thenReturn(Optional.empty());
 
         GenerationJobView requested = service.request(owner, AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, List.of(analysisId), AiGenerationApplicationService.REPOSITORY_SUMMARY_OUTPUT, "summary-key");
         verify(synchronization).getTechnologies(owner, repositoryId, snapshotId);
@@ -494,7 +551,8 @@ class AiGenerationApplicationServiceTest {
         GenerationJob started = GenerationJob.queue(owner, context, "summary-rejected", AiGenerationApplicationService.REPOSITORY_SUMMARY_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
         GenerationJob running = new GenerationJob(started.id(), started.userId(), started.promptContextId(),
             started.idempotencyKey(), started.taskType(), started.status(), started.validationStatus(), 2,
-            started.failureCode(), started.requestedAt(), started.startedAt(), started.completedAt());
+            started.failureCode(), started.requestedAt(), started.startedAt(), started.completedAt(),
+            started.nextAttemptAt());
         GenerationWorkItem item = new GenerationWorkItem(running, matrixId, analysisId, null, null, "prompt", "{}", null);
         var analysis = new AnalysisResultView(analysisId, UUID.randomUUID(), UUID.randomUUID(), evaluationId, matrixId, "REPOSITORY_BASELINE", true, NOW);
         RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
@@ -590,7 +648,7 @@ class AiGenerationApplicationServiceTest {
         when(prompts.build(eq(matrixView), eq(evaluationView), any(), eq(template)))
             .thenReturn(new PromptPackage("{}", "prompt", "a".repeat(64), 4096));
         when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(persistence.findArtifactIdByPromptContext(any())).thenReturn(Optional.empty());
+        when(persistence.findArtifactIdByPromptContext(any(), any())).thenReturn(Optional.empty());
 
         service.request(first, AiGenerationApplicationService.SKILL_EXPLANATION_TASK, List.of(matrix), AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT, "shared-key");
         service.request(second, AiGenerationApplicationService.SKILL_EXPLANATION_TASK, List.of(matrix), AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT, "shared-key");

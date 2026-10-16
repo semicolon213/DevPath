@@ -17,6 +17,8 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.Duration;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 @Repository
@@ -64,6 +66,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
         entity.status = value.status().name(); entity.validationStatus = value.validationStatus();
         entity.attemptCount = value.attemptCount(); entity.failureCode = value.failureCode();
         entity.requestedAt = value.requestedAt(); entity.startedAt = value.startedAt(); entity.completedAt = value.completedAt();
+        entity.nextAttemptAt = value.nextAttemptAt();
         return toDomain(tasks.save(entity));
     }
 
@@ -86,14 +89,14 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
     }
 
     @Override
-    public Optional<GenerationWorkItem> claim(Instant now) {
-        return tasks.findFirstByStatusOrderByRequestedAtAsc("QUEUED").map(entity -> {
-            GenerationJob started = saveJob(toDomain(entity).start(now));
-            PromptContextJpaEntity context = contexts.findById(started.promptContextId())
+    public Optional<GenerationWorkItem> claim(Instant now, int maxAttempts) {
+        return tasks.findClaimable(now, PageRequest.of(0, 1)).stream().findFirst().map(entity -> {
+            GenerationJob claimed = saveJob(toDomain(entity).claim(now, Duration.ofMinutes(15), maxAttempts));
+            PromptContextJpaEntity context = contexts.findById(claimed.promptContextId())
                 .orElseThrow(() -> new IllegalStateException("Prompt context is unavailable"));
             PromptTemplateVersionJpaEntity template = templates.findById(context.templateVersionId)
                 .orElseThrow(() -> new IllegalStateException("Prompt template is unavailable"));
-            return new GenerationWorkItem(started, context.skillMatrixId, context.analysisId,
+            return new GenerationWorkItem(claimed, context.skillMatrixId, context.analysisId,
                 context.careerReadinessId, context.learningRoadmapId,
                 trustedInstructions(context.providerPrompt, context.contextPayload), context.contextPayload, template.systemPrompt);
         });
@@ -159,8 +162,8 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
     }
 
     @Override
-    public Optional<UUID> findArtifactIdByPromptContext(UUID promptContextId) {
-        return artifacts.findByPromptContextId(promptContextId).map(value -> value.id);
+    public Optional<UUID> findArtifactIdByPromptContext(UUID userId, UUID promptContextId) {
+        return artifacts.findByPromptContextIdAndUserId(promptContextId, userId).map(value -> value.id);
     }
 
     @Override
@@ -221,7 +224,7 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
     private GenerationJob toDomain(AiTaskJpaEntity value) {
         return new GenerationJob(value.id, value.userId, value.promptContextId, value.idempotencyKey, value.taskType,
             GenerationJobStatus.valueOf(value.status), value.validationStatus, value.attemptCount, value.failureCode,
-            value.requestedAt, value.startedAt, value.completedAt);
+            value.requestedAt, value.startedAt, value.completedAt, value.nextAttemptAt);
     }
 
 }

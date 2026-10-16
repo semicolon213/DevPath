@@ -181,7 +181,14 @@ public class AiGenerationApplicationService {
 
     @Transactional
     public Optional<GenerationWorkItem> claim() {
-        return persistence.claim(clock.instant());
+        Instant now = clock.instant();
+        Optional<GenerationWorkItem> claimed = persistence.claim(now, properties.maxAttempts());
+        if (claimed.filter(item -> item.job().status() == GenerationJobStatus.FAILED).isPresent()) {
+            GenerationJob failed = claimed.orElseThrow().job();
+            audit.record(AiAuditEvent.GENERATION_FAILED, failed.userId(), failed.id(), now);
+            return Optional.empty();
+        }
+        return claimed;
     }
 
     @Transactional
@@ -194,7 +201,8 @@ public class AiGenerationApplicationService {
         Instant now = clock.instant();
         persistence.failExecution(executionId, code, latencyMs, now);
         GenerationJob current = job(item.job().userId(), item.job().id());
-        if (current.status() != GenerationJobStatus.RUNNING) return;
+        if (current.status() != GenerationJobStatus.RUNNING
+            || current.attemptCount() != item.job().attemptCount()) return;
         GenerationJob failed = persistence.saveJob(current.retryOrFail(code, properties.maxAttempts(), now));
         if (failed.status() == GenerationJobStatus.FAILED) {
             audit.record(AiAuditEvent.GENERATION_FAILED, failed.userId(), failed.id(), now);
@@ -304,7 +312,8 @@ public class AiGenerationApplicationService {
     }
 
     private GenerationJobView view(GenerationJob job) {
-        return GenerationJobView.from(job, persistence.findArtifactIdByPromptContext(job.promptContextId()).orElse(null));
+        return GenerationJobView.from(job,
+            persistence.findArtifactIdByPromptContext(job.userId(), job.promptContextId()).orElse(null));
     }
 
     private GeneratedArtifactView artifactView(ArtifactRecord value, Object content) {

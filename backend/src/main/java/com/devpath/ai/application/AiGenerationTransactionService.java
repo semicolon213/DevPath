@@ -25,7 +25,7 @@ class AiGenerationTransactionService {
     ) {
         persistence.completeExecution(executionId, latencyMs, result.promptTokens(), result.completionTokens(), now);
         return persistence.findJob(item.job().userId(), item.job().id())
-            .filter(job -> job.status() == GenerationJobStatus.RUNNING);
+            .filter(job -> isCurrentAttempt(job, item));
     }
 
     @Transactional
@@ -34,7 +34,7 @@ class AiGenerationTransactionService {
         GenerationProviderResult result, Instant now
     ) {
         if (persistence.findJob(item.job().userId(), item.job().id())
-            .filter(job -> job.status() == GenerationJobStatus.RUNNING).isEmpty()) return false;
+            .filter(job -> isCurrentAttempt(job, item)).isEmpty()) return false;
         persistence.saveValidatedArtifact(item, executionId, artifactId, reference, now);
         return true;
     }
@@ -44,7 +44,7 @@ class AiGenerationTransactionService {
         GenerationWorkItem item, UUID executionId, String reference, List<String> violations, Instant now
     ) {
         Optional<GenerationJob> current = persistence.findJob(item.job().userId(), item.job().id())
-            .filter(job -> job.status() == GenerationJobStatus.RUNNING);
+            .filter(job -> isCurrentAttempt(job, item));
         if (current.isEmpty()) return false;
         persistence.recordRejectedResponse(item, executionId, reference, violations, now);
         persistence.saveJob(current.get().rejectOrRetry(properties.maxAttempts(), now));
@@ -54,5 +54,10 @@ class AiGenerationTransactionService {
     @Transactional(readOnly = true)
     ArtifactRecord artifact(UUID userId, UUID artifactId) {
         return persistence.findArtifact(userId, artifactId).orElseThrow(GenerationNotFoundException::new);
+    }
+
+    private static boolean isCurrentAttempt(GenerationJob job, GenerationWorkItem item) {
+        return job.status() == GenerationJobStatus.RUNNING
+            && job.attemptCount() == item.job().attemptCount();
     }
 }

@@ -69,6 +69,7 @@ class AiTaskJpaEntity {
     @Column(name = "requested_at", nullable = false) Instant requestedAt;
     @Column(name = "started_at") Instant startedAt;
     @Column(name = "completed_at") Instant completedAt;
+    @Column(name = "next_attempt_at", nullable = false) Instant nextAttemptAt;
     protected AiTaskJpaEntity() {}
 }
 

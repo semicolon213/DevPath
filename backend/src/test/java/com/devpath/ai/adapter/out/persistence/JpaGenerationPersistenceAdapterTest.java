@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -40,13 +41,13 @@ class JpaGenerationPersistenceAdapterTest {
         task.id = taskId; task.userId = UUID.randomUUID(); task.promptContextId = contextId;
         task.idempotencyKey = "key"; task.taskType = "SKILL_ANALYSIS_EXPLANATION";
         task.status = "QUEUED"; task.validationStatus = "PENDING"; task.attemptCount = 0;
-        task.requestedAt = Instant.EPOCH;
+        task.requestedAt = Instant.EPOCH; task.nextAttemptAt = Instant.EPOCH;
         var context = new PromptContextJpaEntity();
         context.templateVersionId = templateId; context.skillMatrixId = UUID.randomUUID();
         context.contextPayload = contextPayload; context.providerPrompt = providerPrompt;
         var template = new PromptTemplateVersionJpaEntity();
         template.id = templateId; template.systemPrompt = systemPrompt;
-        when(tasks.findFirstByStatusOrderByRequestedAtAsc("QUEUED")).thenReturn(Optional.of(task));
+        when(tasks.findClaimable(any(), any())).thenReturn(List.of(task));
         when(tasks.findById(taskId)).thenReturn(Optional.of(task));
         when(tasks.save(any(AiTaskJpaEntity.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(contexts.findById(contextId)).thenReturn(Optional.of(context));
@@ -55,6 +56,6 @@ class JpaGenerationPersistenceAdapterTest {
             Mockito.mock(ModelExecutionJpaRepository.class), Mockito.mock(AiResponseJpaRepository.class),
             Mockito.mock(ResponseValidationResultJpaRepository.class), Mockito.mock(GeneratedArtifactJpaRepository.class));
 
-        return adapter.claim(Instant.EPOCH.plusSeconds(1)).orElseThrow();
+        return adapter.claim(Instant.EPOCH.plusSeconds(1), 2).orElseThrow();
     }
 }
