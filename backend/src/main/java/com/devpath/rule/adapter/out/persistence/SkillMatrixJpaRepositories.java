@@ -22,11 +22,26 @@ interface SkillAssessmentJpaRepository extends JpaRepository<SkillAssessmentJpaE
     List<SkillAssessmentJpaEntity> findAllByMatrixIdOrderBySkillIdAsc(UUID matrixId);
 }
 interface SkillEvidenceLinkJpaRepository extends JpaRepository<SkillEvidenceLinkJpaEntity, UUID> {
-    List<SkillEvidenceLinkJpaEntity> findAllByAssessmentIdOrderByEvidenceIdAsc(UUID assessmentId);
+    List<SkillEvidenceLinkView> findAllByAssessmentIdInOrderByAssessmentIdAscEvidenceIdAsc(List<UUID> assessmentIds);
 }
 interface SkillRepositoryLinkJpaRepository extends JpaRepository<SkillRepositoryLinkJpaEntity, UUID> {
-    List<SkillRepositoryLinkJpaEntity> findAllByAssessmentIdOrderByRepositoryIdAsc(UUID assessmentId);
+    List<SkillRepositoryLinkView> findAllByAssessmentIdInOrderByAssessmentIdAscRepositoryIdAsc(List<UUID> assessmentIds);
 }
 interface SkillAssessmentFactJpaRepository extends JpaRepository<SkillAssessmentFactJpaEntity, UUID> {
-    List<SkillAssessmentFactJpaEntity> findAllByAssessmentIdOrderByOrderIndexAsc(UUID assessmentId);
+    List<SkillAssessmentFactView> findAllByAssessmentIdInOrderByAssessmentIdAscOrderIndexAsc(List<UUID> assessmentIds);
+}
+
+interface SkillEvidenceLinkView {
+    UUID getAssessmentId();
+    UUID getEvidenceId();
+}
+
+interface SkillRepositoryLinkView {
+    UUID getAssessmentId();
+    UUID getRepositoryId();
+}
+
+interface SkillAssessmentFactView {
+    UUID getAssessmentId();
+    String getValue();
 }

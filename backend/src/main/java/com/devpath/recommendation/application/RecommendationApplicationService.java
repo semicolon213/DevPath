@@ -58,6 +58,12 @@ public class RecommendationApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public RecommendationSetView getSetByReadiness(UUID userId, UUID careerReadinessId) {
+        return persistence.findSetByReadiness(userId, careerReadinessId).map(this::view)
+            .orElseThrow(RecommendationNotFoundException::new);
+    }
+
+    @Transactional(readOnly = true)
     public RecommendationSetListView listRecommendationSets(UUID userId) {
         return new RecommendationSetListView(persistence.findSetsByOwner(userId).stream().map(this::view).toList());
     }
@@ -87,6 +93,12 @@ public class RecommendationApplicationService {
     @Transactional(readOnly = true)
     public LearningRoadmapView getRoadmap(UUID userId, UUID roadmapId) {
         return persistence.findRoadmapByIdAndOwner(roadmapId, userId).map(this::view)
+            .orElseThrow(RecommendationNotFoundException::new);
+    }
+
+    @Transactional(readOnly = true)
+    public LearningRoadmapView getRoadmapBySet(UUID userId, UUID recommendationSetId) {
+        return persistence.findRoadmapBySet(userId, recommendationSetId).map(this::view)
             .orElseThrow(RecommendationNotFoundException::new);
     }
 

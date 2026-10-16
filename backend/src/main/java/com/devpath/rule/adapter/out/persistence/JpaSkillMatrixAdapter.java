@@ -84,6 +84,7 @@ class JpaSkillMatrixAdapter implements SkillMatrixPersistencePort {
             current.supersede(); matrices.saveAndFlush(current);
         });
         matrices.saveAndFlush(new SkillMatrixJpaEntity(matrix));
+        List<SkillAssessmentFactJpaEntity> storedFacts = new ArrayList<>();
         for (SkillAssessment assessment : matrix.assessments()) {
             assessments.save(new SkillAssessmentJpaEntity(matrix.matrixId(), assessment));
             for (UUID evidenceId : assessment.evidenceIds()) {
@@ -93,31 +94,41 @@ class JpaSkillMatrixAdapter implements SkillMatrixPersistencePort {
                 repositoryLinks.save(new SkillRepositoryLinkJpaEntity(assessment.assessmentId(), repositoryId));
             }
             for (int index = 0; index < assessment.recommendationInputFacts().size(); index++) {
-                facts.save(new SkillAssessmentFactJpaEntity(assessment.assessmentId(), index,
+                storedFacts.add(new SkillAssessmentFactJpaEntity(assessment.assessmentId(), index,
                     assessment.recommendationInputFacts().get(index)));
             }
         }
+        facts.saveAll(storedFacts);
         facts.flush();
         return matrix;
     }
 
     private SkillMatrix hydrate(SkillMatrixJpaEntity matrix) {
         List<SkillAssessmentJpaEntity> stored = assessments.findAllByMatrixIdOrderBySkillIdAsc(matrix.id());
+        List<UUID> assessmentIds = stored.stream().map(SkillAssessmentJpaEntity::id).toList();
         Map<UUID, SkillJpaEntity> skillById = skills.findAllById(stored.stream().map(SkillAssessmentJpaEntity::skillId).toList())
             .stream().collect(Collectors.toMap(SkillJpaEntity::id, Function.identity()));
+        Map<UUID, List<UUID>> evidenceByAssessment = evidenceLinks
+            .findAllByAssessmentIdInOrderByAssessmentIdAscEvidenceIdAsc(assessmentIds).stream()
+            .collect(Collectors.groupingBy(SkillEvidenceLinkView::getAssessmentId, Collectors.mapping(
+                SkillEvidenceLinkView::getEvidenceId, Collectors.toList())));
+        Map<UUID, List<UUID>> repositoriesByAssessment = repositoryLinks
+            .findAllByAssessmentIdInOrderByAssessmentIdAscRepositoryIdAsc(assessmentIds).stream()
+            .collect(Collectors.groupingBy(SkillRepositoryLinkView::getAssessmentId, Collectors.mapping(
+                SkillRepositoryLinkView::getRepositoryId, Collectors.toList())));
+        Map<UUID, List<String>> factsByAssessment = facts
+            .findAllByAssessmentIdInOrderByAssessmentIdAscOrderIndexAsc(assessmentIds).stream()
+            .collect(Collectors.groupingBy(SkillAssessmentFactView::getAssessmentId, Collectors.mapping(
+                SkillAssessmentFactView::getValue, Collectors.toList())));
         var hydrated = new ArrayList<SkillAssessment>();
         for (SkillAssessmentJpaEntity value : stored) {
             SkillJpaEntity skill = skillById.get(value.skillId());
             var definition = new SkillDefinition(skill.id(), skill.stableKey(), skill.name(), RuleCategory.valueOf(skill.category()));
-            List<UUID> evidenceIds = evidenceLinks.findAllByAssessmentIdOrderByEvidenceIdAsc(value.id()).stream()
-                .map(SkillEvidenceLinkJpaEntity::evidenceId).toList();
-            List<UUID> repositoryIds = repositoryLinks.findAllByAssessmentIdOrderByRepositoryIdAsc(value.id()).stream()
-                .map(SkillRepositoryLinkJpaEntity::repositoryId).toList();
-            List<String> inputFacts = facts.findAllByAssessmentIdOrderByOrderIndexAsc(value.id()).stream()
-                .map(SkillAssessmentFactJpaEntity::value).toList();
             hydrated.add(new SkillAssessment(value.id(), definition, value.score(), SkillLevel.valueOf(value.level()),
                 value.confidence(), value.strength(), value.weakness(), value.growthTrend(), value.aggregateReference(),
-                evidenceIds, repositoryIds, inputFacts, value.ruleSetVersion()));
+                evidenceByAssessment.getOrDefault(value.id(), List.of()),
+                repositoriesByAssessment.getOrDefault(value.id(), List.of()),
+                factsByAssessment.getOrDefault(value.id(), List.of()), value.ruleSetVersion()));
         }
         return new SkillMatrix(matrix.id(), matrix.userId(), matrix.evaluationId(), matrix.policyId(), matrix.policyVersion(),
             matrix.ruleSetVersion(), matrix.status(), matrix.generatedAt(), hydrated);

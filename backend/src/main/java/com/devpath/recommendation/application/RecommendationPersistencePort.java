@@ -14,6 +14,7 @@ public interface RecommendationPersistencePort {
     RoadmapPolicy loadActiveRoadmapPolicy(UUID recommendationPolicyId, UUID careerProfileVersionId);
     void supersedeCurrent(UUID userId, java.time.Instant now);
     Optional<RecommendationSet> findSetByBasis(UUID userId, UUID readinessId, UUID policyId);
+    Optional<RecommendationSet> findSetByReadiness(UUID userId, UUID readinessId);
     Optional<RecommendationSet> findCurrentSet(UUID userId);
     Optional<RecommendationSet> findSetByIdAndOwner(UUID setId, UUID userId);
     Optional<RecommendationSet> findSetByRecommendationIdAndOwner(UUID recommendationId, UUID userId);
@@ -21,6 +22,7 @@ public interface RecommendationPersistencePort {
     List<RecommendationEvidence> findEvidenceByRecommendationAndOwner(UUID recommendationId, UUID userId);
     RecommendationSet saveSet(RecommendationSet set);
     Optional<LearningRoadmap> findRoadmapByBasis(UUID userId, UUID setId, UUID policyId);
+    Optional<LearningRoadmap> findRoadmapBySet(UUID userId, UUID setId);
     Optional<LearningRoadmap> findActiveRoadmap(UUID userId);
     Optional<LearningRoadmap> findRoadmapByIdAndOwner(UUID roadmapId, UUID userId);
     List<LearningRoadmap> findRoadmapsByOwner(UUID userId);

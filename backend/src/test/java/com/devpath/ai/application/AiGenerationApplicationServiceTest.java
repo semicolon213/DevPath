@@ -18,7 +18,6 @@ import com.devpath.analysis.application.AnalysisResultView;
 import com.devpath.career.application.CareerReadinessApplicationService;
 import com.devpath.career.application.CareerReadinessNotFoundException;
 import com.devpath.career.application.CareerReadinessView;
-import com.devpath.learning.application.LearningRoadmapListView;
 import com.devpath.learning.application.LearningRoadmapView;
 import com.devpath.prompt.application.CareerCoachingPromptBuilder;
 import com.devpath.prompt.application.LearningRecommendationPromptBuilder;
@@ -33,7 +32,6 @@ import com.devpath.repository.application.TechnologySummaryView;
 import com.devpath.repository.application.RepositoryView;
 import com.devpath.recommendation.application.RecommendationApplicationService;
 import com.devpath.recommendation.application.RecommendationNotFoundException;
-import com.devpath.recommendation.application.RecommendationSetListView;
 import com.devpath.recommendation.application.RecommendationSetView;
 import com.devpath.rule.application.CompletedRuleEvaluationApplicationService;
 import com.devpath.rule.application.RuleEvidenceListView;
@@ -423,11 +421,9 @@ class AiGenerationApplicationServiceTest {
         when(readiness.get(owner, readinessId)).thenReturn(readinessView);
         when(readinessView.status()).thenReturn("COMPLETED");
         when(readinessView.skillMatrixId()).thenReturn(matrixId);
-        when(set.careerReadinessId()).thenReturn(readinessId);
         when(set.recommendationSetId()).thenReturn(setId);
-        when(recommendations.listRecommendationSets(owner)).thenReturn(new RecommendationSetListView(List.of(set)));
-        when(roadmap.recommendationSetId()).thenReturn(setId);
-        when(recommendations.listRoadmaps(owner)).thenReturn(new LearningRoadmapListView(List.of(roadmap)));
+        when(recommendations.getSetByReadiness(owner, readinessId)).thenReturn(set);
+        when(recommendations.getRoadmapBySet(owner, setId)).thenReturn(roadmap);
         when(coachingPrompts.build(readinessView, set, roadmap, template))
             .thenReturn(new PromptPackage("{}", "coaching prompt", "c".repeat(64), 8192));
         when(persistence.saveJob(any())).thenAnswer(invocation -> invocation.getArgument(0));
@@ -441,6 +437,43 @@ class AiGenerationApplicationServiceTest {
         assertThat(context.getValue().careerReadinessId()).isEqualTo(readinessId);
         assertThat(context.getValue().skillMatrixId()).isEqualTo(matrixId);
         assertThat(context.getValue().analysisId()).isNull();
+        verify(recommendations, never()).listRecommendationSets(owner);
+        verify(recommendations, never()).listRoadmaps(owner);
+    }
+
+    @Test
+    void keepsCareerCoachingRecommendationNotFoundBehavior() {
+        UUID owner = UUID.randomUUID(), readinessId = UUID.randomUUID();
+        CareerReadinessView readinessView = org.mockito.Mockito.mock(CareerReadinessView.class);
+        when(persistence.findByOwnerAndIdempotencyKey(owner, "coaching-missing")).thenReturn(Optional.empty());
+        when(persistence.loadActiveTemplate(AiGenerationApplicationService.CAREER_COACHING_TASK)).thenReturn(
+            new PromptTemplateVersion(UUID.randomUUID(), AiGenerationApplicationService.CAREER_COACHING_TASK,
+                "v1", "trusted", "json"));
+        when(readiness.get(owner, readinessId)).thenReturn(readinessView);
+        when(readinessView.status()).thenReturn("COMPLETED");
+        when(recommendations.getSetByReadiness(owner, readinessId)).thenThrow(new RecommendationNotFoundException());
+
+        assertThatThrownBy(() -> service.request(owner, AiGenerationApplicationService.CAREER_COACHING_TASK,
+            List.of(readinessId), AiGenerationApplicationService.CAREER_COACHING_OUTPUT, "coaching-missing"))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Career recommendations are unavailable");
+    }
+
+    @Test
+    void keepsCareerCoachingValidationNotFoundBehavior() {
+        UUID owner = UUID.randomUUID(), execution = UUID.randomUUID(), readinessId = UUID.randomUUID();
+        GenerationJob running = GenerationJob.queue(owner, UUID.randomUUID(), "coaching-validation",
+            AiGenerationApplicationService.CAREER_COACHING_TASK, NOW.minusSeconds(1)).start(NOW.minusMillis(500));
+        GenerationWorkItem item = new GenerationWorkItem(running, UUID.randomUUID(), null, readinessId, null,
+            "prompt", "{}", null);
+        when(transactions.providerCompleted(item, execution,
+            new GenerationProviderResult("{}", 10, 5), 12, NOW)).thenReturn(Optional.of(running));
+        when(recommendations.getSetByReadiness(owner, readinessId)).thenThrow(new RecommendationNotFoundException());
+
+        assertThatThrownBy(() -> service.providerSucceeded(item, execution,
+            new GenerationProviderResult("{}", 10, 5), 12))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("Career recommendations are unavailable");
     }
 
     @Test

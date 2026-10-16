@@ -21,7 +21,13 @@ interface RuleCategoryEvaluationJpaRepository extends JpaRepository<RuleCategory
     List<RuleCategoryEvaluationJpaEntity> findAllByEvaluationIdOrderByCategoryAsc(UUID evaluationId);
 }
 interface CategoryMissingEvidenceJpaRepository extends JpaRepository<CategoryMissingEvidenceJpaEntity, UUID> {
-    List<CategoryMissingEvidenceJpaEntity> findAllByCategoryEvaluationIdOrderByOrderIndexAsc(UUID categoryEvaluationId);
+    List<CategoryMissingEvidenceView> findAllByCategoryEvaluationIdInOrderByCategoryEvaluationIdAscOrderIndexAsc(
+        List<UUID> categoryEvaluationIds
+    );
+}
+interface CategoryMissingEvidenceView {
+    UUID getCategoryEvaluationId();
+    String getEvidenceKey();
 }
 interface RuleExecutionResultJpaRepository extends JpaRepository<RuleExecutionResultJpaEntity, UUID> {
     List<RuleExecutionResultJpaEntity> findAllByEvaluationIdOrderByCategoryAscRuleIdAsc(UUID evaluationId);

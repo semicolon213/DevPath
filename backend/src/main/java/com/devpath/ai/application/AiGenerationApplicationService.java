@@ -5,6 +5,7 @@ import com.devpath.ai.domain.GenerationJob;
 import com.devpath.ai.domain.GenerationJobStatus;
 import com.devpath.analysis.application.AnalysisApplicationService;
 import com.devpath.career.application.CareerReadinessApplicationService;
+import com.devpath.learning.application.LearningRoadmapView;
 import com.devpath.prompt.application.CareerCoachingPromptBuilder;
 import com.devpath.prompt.application.LearningRecommendationPromptBuilder;
 import com.devpath.prompt.application.SkillExplanationPromptBuilder;
@@ -14,6 +15,8 @@ import com.devpath.prompt.application.PromptPackage;
 import com.devpath.repository.application.RepositoryApplicationService;
 import com.devpath.repository.application.RepositorySynchronizationApplicationService;
 import com.devpath.recommendation.application.RecommendationApplicationService;
+import com.devpath.recommendation.application.RecommendationNotFoundException;
+import com.devpath.recommendation.application.RecommendationSetView;
 import com.devpath.rule.application.CompletedRuleEvaluationApplicationService;
 import com.devpath.rule.application.SkillMatrixApplicationService;
 import com.devpath.shared.application.ObjectContentPort;
@@ -136,12 +139,18 @@ public class AiGenerationApplicationService {
             if (!"COMPLETED".equals(careerReadiness.status())) {
                 throw new IllegalArgumentException("Career coaching requires completed readiness");
             }
-            var recommendationSet = recommendations.listRecommendationSets(userId).recommendationSets().stream()
-                .filter(value -> value.careerReadinessId().equals(sourceId)).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Career recommendations are unavailable"));
-            var roadmap = recommendations.listRoadmaps(userId).roadmaps().stream()
-                .filter(value -> value.recommendationSetId().equals(recommendationSet.recommendationSetId())).findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Career roadmap is unavailable"));
+            RecommendationSetView recommendationSet;
+            LearningRoadmapView roadmap;
+            try {
+                recommendationSet = recommendations.getSetByReadiness(userId, sourceId);
+            } catch (RecommendationNotFoundException exception) {
+                throw new IllegalArgumentException("Career recommendations are unavailable");
+            }
+            try {
+                roadmap = recommendations.getRoadmapBySet(userId, recommendationSet.recommendationSetId());
+            } catch (RecommendationNotFoundException exception) {
+                throw new IllegalArgumentException("Career roadmap is unavailable");
+            }
             matrixId = careerReadiness.skillMatrixId();
             careerReadinessId = sourceId;
             prompt = coachingPrompts.build(careerReadiness, recommendationSet, roadmap, template);
@@ -240,9 +249,13 @@ public class AiGenerationApplicationService {
                 evaluations.getEvidence(item.job().userId(), analysis.evaluationId()));
             content = validation.content(); violations = validation.violations(); fileName = "repository-summary.json";
         } else if (CAREER_COACHING_TASK.equals(item.job().taskType())) {
-            var recommendationSet = recommendations.listRecommendationSets(item.job().userId()).recommendationSets().stream()
-                .filter(value -> value.careerReadinessId().equals(item.careerReadinessId())).findFirst()
-                .orElseThrow(() -> new IllegalStateException("Career recommendations are unavailable"));
+            RecommendationSetView recommendationSet;
+            try {
+                recommendationSet = recommendations.getSetByReadiness(
+                    item.job().userId(), item.careerReadinessId());
+            } catch (RecommendationNotFoundException exception) {
+                throw new IllegalStateException("Career recommendations are unavailable");
+            }
             var validation = adviceValidator.validate(result.content(), recommendationSet);
             content = validation.content(); violations = validation.violations(); fileName = "career-advice.json";
         } else if (LEARNING_RECOMMENDATION_TASK.equals(item.job().taskType())) {

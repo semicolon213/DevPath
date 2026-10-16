@@ -127,14 +127,19 @@ class JpaRuleEvaluationAdapter implements RuleEvaluationPersistencePort {
         Map<UUID, List<String>> referencesByRule = referencesByRule(evaluation.id());
         Map<String, List<RuleExecutionResultJpaEntity>> rulesByCategory = storedRules.stream()
             .collect(Collectors.groupingBy(RuleExecutionResultJpaEntity::category, LinkedHashMap::new, Collectors.toList()));
+        List<RuleCategoryEvaluationJpaEntity> storedCategories = categories
+            .findAllByEvaluationIdOrderByCategoryAsc(evaluation.id());
+        Map<UUID, List<String>> missingByCategory = missingEvidence
+            .findAllByCategoryEvaluationIdInOrderByCategoryEvaluationIdAscOrderIndexAsc(
+                storedCategories.stream().map(RuleCategoryEvaluationJpaEntity::id).toList())
+            .stream().collect(Collectors.groupingBy(CategoryMissingEvidenceView::getCategoryEvaluationId,
+                Collectors.mapping(CategoryMissingEvidenceView::getEvidenceKey, Collectors.toList())));
         var categoryScores = new ArrayList<RuleCategoryScore>();
-        for (RuleCategoryEvaluationJpaEntity category : categories.findAllByEvaluationIdOrderByCategoryAsc(evaluation.id())) {
+        for (RuleCategoryEvaluationJpaEntity category : storedCategories) {
             List<RuleExecutionResult> hydratedRules = rulesByCategory.getOrDefault(category.category(), List.of()).stream()
                 .map(rule -> toDomain(rule, referencesByRule.getOrDefault(rule.id(), List.of()))).toList();
-            List<String> missing = missingEvidence.findAllByCategoryEvaluationIdOrderByOrderIndexAsc(category.id()).stream()
-                .map(CategoryMissingEvidenceJpaEntity::evidenceKey).toList();
             categoryScores.add(new RuleCategoryScore(RuleCategory.valueOf(category.category()), category.score(), category.weight(),
-                category.confidence(), hydratedRules, missing));
+                category.confidence(), hydratedRules, missingByCategory.getOrDefault(category.id(), List.of())));
         }
         List<String> warningMessages = warnings.findAllByEvaluationIdOrderByOrderIndexAsc(evaluation.id()).stream()
             .map(EvaluationWarningJpaEntity::message).toList();

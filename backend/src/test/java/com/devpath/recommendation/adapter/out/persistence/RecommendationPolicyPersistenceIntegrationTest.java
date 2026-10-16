@@ -7,12 +7,18 @@ import com.devpath.recommendation.domain.RecommendationType;
 import com.devpath.recommendation.domain.Recommendation;
 import com.devpath.recommendation.domain.RecommendationSet;
 import com.devpath.learning.domain.DeterministicRoadmapEngine;
+import com.devpath.learning.domain.LearningRoadmap;
+import com.devpath.learning.domain.RoadmapMilestone;
+import com.devpath.learning.domain.RoadmapStep;
 import com.devpath.rule.domain.RuleCategory;
+import jakarta.persistence.EntityManagerFactory;
+import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.List;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
+import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -24,7 +30,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@DataJpaTest(properties={"spring.jpa.hibernate.ddl-auto=validate","spring.flyway.enabled=true","spring.flyway.locations=classpath:db/migration"})
+@DataJpaTest(properties={"spring.jpa.hibernate.ddl-auto=validate","spring.jpa.properties.hibernate.generate_statistics=true","spring.flyway.enabled=true","spring.flyway.locations=classpath:db/migration"})
 @AutoConfigureTestDatabase(replace=AutoConfigureTestDatabase.Replace.NONE) @Testcontainers(disabledWithoutDocker=true)
 class RecommendationPolicyPersistenceIntegrationTest {
     @Container static final PostgreSQLContainer<?> POSTGRES=new com.devpath.test.PgVectorPostgreSQLContainer();
@@ -33,6 +39,7 @@ class RecommendationPolicyPersistenceIntegrationTest {
     @Autowired RecommendationSetJpaRepository sets;@Autowired RecommendationJpaRepository recommendations;@Autowired RecommendationEvidenceJpaRepository evidence;
     @Autowired RoadmapPolicyJpaRepository roadmapPolicies;@Autowired LearningRoadmapJpaRepository roadmaps;@Autowired RoadmapMilestoneJpaRepository milestones;@Autowired RoadmapStepJpaRepository steps;
     @Autowired JdbcTemplate jdbc;@Autowired TestEntityManager entityManager;
+    @Autowired EntityManagerFactory entityManagerFactory;
     @Test void loadsApprovedBackendAndFrontendPolicies(){
         var adapter=new JpaRecommendationAdapter(policies,templates,sets,recommendations,evidence,roadmapPolicies,roadmaps,milestones,steps);
         var backend=adapter.loadActivePolicy(UUID.fromString("32000000-0000-0000-0000-000000000101"));
@@ -67,6 +74,72 @@ class RecommendationPolicyPersistenceIntegrationTest {
         assertThat(archived.status()).isEqualTo("ARCHIVED");
         assertThat(adapter.findRoadmapByIdAndOwner(roadmap.roadmapId(),user)).get().satisfies(value->{assertThat(value.status()).isEqualTo("ARCHIVED");assertThat(value.updatedAt()).isEqualTo(archivedAt);assertThat(value.steps()).hasSize(1);});
         assertThat(adapter.findSetByIdAndOwner(setId,UUID.randomUUID())).isEmpty();
+    }
+
+    @Test void batchesOwnerHistoryAndKeepsDeterministicSelectionAndOrdering(){
+        var adapter=new JpaRecommendationAdapter(policies,templates,sets,recommendations,evidence,roadmapPolicies,roadmaps,milestones,steps);
+        UUID user=UUID.randomUUID(),identity=UUID.randomUUID(),repository=UUID.randomUUID(),snapshot=UUID.randomUUID(),evaluation=UUID.randomUUID(),matrix=UUID.randomUUID(),assessment=UUID.randomUUID(),readiness=UUID.randomUUID(),gap=UUID.randomUUID(),evidenceId=UUID.randomUUID();
+        UUID otherUser=UUID.randomUUID(),otherIdentity=UUID.randomUUID(),otherRepository=UUID.randomUUID(),otherSnapshot=UUID.randomUUID(),otherEvaluation=UUID.randomUUID(),otherMatrix=UUID.randomUUID(),otherAssessment=UUID.randomUUID(),otherReadiness=UUID.randomUUID(),otherGap=UUID.randomUUID(),otherEvidence=UUID.randomUUID();
+        Instant now=Instant.parse("2026-08-25T00:00:00Z");
+        seedBasis(user,identity,repository,snapshot,evaluation,matrix,assessment,readiness,gap,evidenceId,now);
+        seedBasis(otherUser,otherIdentity,otherRepository,otherSnapshot,otherEvaluation,otherMatrix,otherAssessment,otherReadiness,otherGap,otherEvidence,now);
+        UUID legacyPolicy=UUID.fromString("41000000-0000-0000-0000-000000000099");
+        UUID legacyRoadmapPolicy=UUID.fromString("42000000-0000-0000-0000-000000000099");
+        seedLegacyPolicies(legacyPolicy,legacyRoadmapPolicy,now);
+        UUID activePolicy=UUID.fromString("41000000-0000-0000-0000-000000000001");
+        UUID activeRoadmapPolicy=UUID.fromString("42000000-0000-0000-0000-000000000001");
+        RecommendationSet older=set(UUID.fromString("51000000-0000-0000-0000-000000000001"),user,readiness,legacyPolicy,"recommendation-v0",gap,evidenceId,now);
+        RecommendationSet newer=set(UUID.fromString("51000000-0000-0000-0000-000000000002"),user,readiness,activePolicy,"recommendation-v1",gap,evidenceId,now);
+        RecommendationSet foreign=set(UUID.fromString("51000000-0000-0000-0000-000000000003"),otherUser,otherReadiness,activePolicy,"recommendation-v1",otherGap,otherEvidence,now);
+        adapter.saveSet(older);adapter.saveSet(newer);adapter.saveSet(foreign);
+        LearningRoadmap olderRoadmap=roadmap(UUID.fromString("52000000-0000-0000-0000-000000000001"),older,legacyRoadmapPolicy,"roadmap-v0","ARCHIVED",now);
+        LearningRoadmap newerRoadmap=roadmap(UUID.fromString("52000000-0000-0000-0000-000000000002"),newer,activeRoadmapPolicy,"roadmap-v1","CREATED",now);
+        LearningRoadmap foreignRoadmap=roadmap(UUID.fromString("52000000-0000-0000-0000-000000000003"),foreign,activeRoadmapPolicy,"roadmap-v1","CREATED",now);
+        adapter.saveRoadmap(olderRoadmap);adapter.saveRoadmap(newerRoadmap);adapter.saveRoadmap(foreignRoadmap);
+        entityManager.flush();entityManager.clear();
+        var statistics=entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+
+        statistics.clear();
+        assertThat(adapter.findSetsByOwner(user)).containsExactly(newer,older);
+        long twoSetQueries=statistics.getPrepareStatementCount();
+        statistics.clear();
+        assertThat(adapter.findSetsByOwner(otherUser)).containsExactly(foreign);
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(twoSetQueries);
+        assertThat(twoSetQueries).isEqualTo(4);
+        assertThat(adapter.findSetByReadiness(user,readiness)).contains(newer);
+
+        statistics.clear();
+        assertThat(adapter.findRoadmapsByOwner(user)).containsExactly(newerRoadmap,olderRoadmap);
+        long twoRoadmapQueries=statistics.getPrepareStatementCount();
+        statistics.clear();
+        assertThat(adapter.findRoadmapsByOwner(otherUser)).containsExactly(foreignRoadmap);
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(twoRoadmapQueries);
+        assertThat(twoRoadmapQueries).isEqualTo(4);
+        assertThat(adapter.findRoadmapBySet(user,newer.recommendationSetId())).contains(newerRoadmap);
+        assertThat(adapter.findSetByReadiness(otherUser,readiness)).isEmpty();
+        assertThat(adapter.findRoadmapBySet(otherUser,newer.recommendationSetId())).isEmpty();
+    }
+
+    private RecommendationSet set(UUID id,UUID user,UUID readiness,UUID policy,String version,UUID gap,UUID evidenceId,Instant now){
+        Recommendation recommendation=new Recommendation(UUID.randomUUID(),gap,RuleCategory.TESTING,RecommendationType.PROJECT,
+            RecommendationPriority.HIGH,"CAREER_REQUIRED_GAP","Add testing","Reach 60",List.of("test files"),
+            List.of(evidenceId),16,0,"PROPOSED");
+        return new RecommendationSet(id,user,readiness,policy,version,"PUBLISHED",List.of(recommendation),now);
+    }
+
+    private LearningRoadmap roadmap(UUID id,RecommendationSet set,UUID policy,String version,String status,Instant now){
+        Recommendation recommendation=set.recommendations().getFirst();UUID milestoneId=UUID.randomUUID();
+        var milestone=new RoadmapMilestone(milestoneId,0,RuleCategory.TESTING,"Testing","PLANNED");
+        var step=new RoadmapStep(UUID.randomUUID(),milestoneId,recommendation.recommendationId(),0,RuleCategory.TESTING,
+            recommendation.title(),"INTERMEDIATE",recommendation.effortHours(),List.of(),
+            recommendation.completionCriteria(),recommendation.expectedEvidence(),"NOT_STARTED");
+        return new LearningRoadmap(id,set.userId(),set.recommendationSetId(),policy,version,status,
+            new BigDecimal("0.00"),List.of(milestone),List.of(step),now,now);
+    }
+
+    private void seedLegacyPolicies(UUID recommendationPolicy,UUID roadmapPolicy,Instant now){var at=now.atOffset(ZoneOffset.UTC);
+        jdbc.update("INSERT INTO recommendation_policies(recommendation_policy_id,version_label,status,effective_at,created_at) VALUES (?,?,?,?,?)",recommendationPolicy,"recommendation-v0","SUPERSEDED",at,at);
+        jdbc.update("INSERT INTO roadmap_policies(roadmap_policy_id,version_label,recommendation_policy_id,status,effective_at,created_at) VALUES (?,?,?,?,?,?)",roadmapPolicy,"roadmap-v0",recommendationPolicy,"SUPERSEDED",at,at);
     }
     private void seedBasis(UUID user,UUID identity,UUID repository,UUID snapshot,UUID evaluation,UUID matrix,UUID assessment,UUID readiness,UUID gap,UUID evidence,Instant now){var at=now.atOffset(ZoneOffset.UTC);
         jdbc.update("INSERT INTO users(user_id,account_status,display_name,created_at,updated_at,version) VALUES (?,?,?,?,?,0)",user,"ACTIVE","Test",at,at);

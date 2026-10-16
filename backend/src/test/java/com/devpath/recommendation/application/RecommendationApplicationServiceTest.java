@@ -1,6 +1,7 @@
 package com.devpath.recommendation.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -26,6 +27,27 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 
 class RecommendationApplicationServiceTest {
+    @Test
+    void readsRecommendationSetAndRoadmapByTheirOwnerScopedBasis() {
+        UUID userId=UUID.randomUUID(),readinessId=UUID.randomUUID(),setId=UUID.randomUUID(),roadmapId=UUID.randomUUID();
+        Instant now=Instant.parse("2026-08-25T00:00:00Z");
+        RecommendationSet set=new RecommendationSet(setId,userId,readinessId,UUID.randomUUID(),
+            "recommendation-v1","PUBLISHED",List.of(),now);
+        LearningRoadmap roadmap=new LearningRoadmap(roadmapId,userId,setId,UUID.randomUUID(),
+            "roadmap-v1","CREATED",BigDecimal.ZERO,List.of(),List.of(),now,now);
+        RecommendationPersistencePort persistence=mock(RecommendationPersistencePort.class);
+        when(persistence.findSetByReadiness(userId,readinessId)).thenReturn(java.util.Optional.of(set));
+        when(persistence.findRoadmapBySet(userId,setId)).thenReturn(java.util.Optional.of(roadmap));
+        var service=new RecommendationApplicationService(persistence,mock(LearningAuditPort.class),Clock.systemUTC());
+
+        assertThat(service.getSetByReadiness(userId,readinessId).recommendationSetId()).isEqualTo(setId);
+        assertThat(service.getRoadmapBySet(userId,setId).roadmapId()).isEqualTo(roadmapId);
+        assertThatThrownBy(() -> service.getSetByReadiness(userId,UUID.randomUUID()))
+            .isInstanceOf(RecommendationNotFoundException.class);
+        assertThatThrownBy(() -> service.getRoadmapBySet(userId,UUID.randomUUID()))
+            .isInstanceOf(RecommendationNotFoundException.class);
+    }
+
     @Test
     void doesNotInventRecommendationsForInsufficientReadiness() {
         RecommendationPersistencePort persistence=mock(RecommendationPersistencePort.class);
