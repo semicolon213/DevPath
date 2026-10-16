@@ -111,7 +111,7 @@ and axe reported one violation type on two comparison routes.
 |---|---|---|
 | UX-1 | App shell, global navigation, broken links | No global navigation; repository-add and career-target links lead to dead ends |
 | UX-2 | AI content separation | AI panels reuse official-result styling, lack a consistent AI label, and precede official results |
-| UX-3 | Shared label vocabulary | Raw API enums and internal terms reach the UI; one concept has several Korean labels |
+| UX-3 | Shared label vocabulary | **Resolved (2026-10-16):** a shared `shared/ui/labels.ts` gives each enum one Korean label with a neutral "알 수 없음" fallback and replaces duplicated page helpers; repository lifecycle and sync status are worded differently and sync status is shown as a text badge; internal terms (M36, MVP, embedding provider, raw HTTP status codes, English eyebrows) are removed, job error codes map to safe Korean messages, and empty states no longer name specific careers (UI-03, UI-07, UI-08, UI-21, UI-22, UI-26). Evidence: independent QA PASS; frontend 45 files / 129 tests PASS; build PASS. Open Low follow-ups: skill names have no fallback to the API name for future catalog skills, some header lines still use engine names (Rule Engine, Skill Matrix, Skill Gap), repository cards show sync status twice, and a terminal failed job with `RATE_LIMIT_EXCEEDED` can show retry wording |
 | UX-4 | Confirmation dialogs and forms | Roadmap archive has no confirmation; three different confirmation patterns; no field-level form errors |
 | UX-5 | Design tokens and accessibility | No color tokens; invisible focus on dark surfaces; unfocusable scrollable comparison tables |
 | UX-6 | Shared page states | Inconsistent loading and error states; no data freshness on the dashboard |
