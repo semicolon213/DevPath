@@ -7,6 +7,8 @@ import com.devpath.integration.application.GitHubRateLimitExceededException;
 import com.devpath.shared.infrastructure.WorkerShutdownGate;
 import java.time.Clock;
 import java.time.Instant;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "devpath.runtime.worker-enabled", havingValue = "true")
 class RepositorySyncWorker {
+    private static final Logger log = LoggerFactory.getLogger(RepositorySyncWorker.class);
     private final RepositorySynchronizationTransaction transactions;
     private final GitHubConnectionPort github;
     private final Clock clock;
@@ -60,6 +63,8 @@ class RepositorySyncWorker {
                 transactions.fail(item, "DEPENDENCY_UNAVAILABLE", "GitHub repository collection is temporarily unavailable.", clock.instant());
             } catch (RuntimeException exception) {
                 transactions.fail(item, "SYNCHRONIZATION_FAILED", "Repository synchronization failed safely.", clock.instant());
+                log.warn("Repository synchronization attempt failed job_id={} error_type={}",
+                    item.job().id(), exception.getClass().getSimpleName());
             }
         });
     }

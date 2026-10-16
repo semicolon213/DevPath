@@ -1,6 +1,7 @@
 package com.devpath.analysis.adapter.out.persistence;
 
 import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
 import java.time.Instant;
 import java.math.BigDecimal;
 import java.util.List;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 
 interface AnalysisJobJpaRepository extends JpaRepository<AnalysisJobJpaEntity, UUID> {
@@ -21,6 +23,7 @@ interface AnalysisJobJpaRepository extends JpaRepository<AnalysisJobJpaEntity, U
     List<AnalysisJobJpaEntity> findAllByUserIdOrderBySubmittedAtDescIdDesc(UUID userId, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
     @Query("select job from AnalysisJobJpaEntity job where job.nextAttemptAt <= :now and job.status in ('QUEUED', 'RUNNING') order by job.submittedAt")
     List<AnalysisJobJpaEntity> findClaimable(@Param("now") Instant now, Pageable pageable);
 }

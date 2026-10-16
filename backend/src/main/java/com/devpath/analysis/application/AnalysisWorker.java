@@ -5,6 +5,8 @@ import com.devpath.career.application.CareerReadinessApplicationService;
 import com.devpath.recommendation.application.RecommendationApplicationService;
 import com.devpath.shared.infrastructure.WorkerShutdownGate;
 import java.time.Clock;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -12,6 +14,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "devpath.runtime.worker-enabled", havingValue = "true")
 class AnalysisWorker {
+    private static final Logger log = LoggerFactory.getLogger(AnalysisWorker.class);
     private final AnalysisApplicationService analyses;
     private final CompletedRuleEvaluationApplicationService ruleEvaluations;
     private final CareerReadinessApplicationService careerReadiness;
@@ -53,6 +56,8 @@ class AnalysisWorker {
                 analyses.complete(item, completion.evaluation().id(), completion.skillMatrix().matrixId(), clock.instant());
             } catch (RuntimeException exception) {
                 analyses.fail(item, "ANALYSIS_FAILED", "Deterministic analysis failed safely.", clock.instant());
+                log.warn("Analysis attempt failed job_id={} error_type={}",
+                    item.job().id(), exception.getClass().getSimpleName());
             }
         });
     }

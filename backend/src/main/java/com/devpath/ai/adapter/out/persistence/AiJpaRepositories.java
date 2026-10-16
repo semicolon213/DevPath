@@ -1,6 +1,7 @@
 package com.devpath.ai.adapter.out.persistence;
 
 import jakarta.persistence.LockModeType;
+import jakarta.persistence.QueryHint;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +10,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 
 interface PromptTemplateVersionJpaRepository extends JpaRepository<PromptTemplateVersionJpaEntity, UUID> {
@@ -25,6 +27,7 @@ interface AiTaskJpaRepository extends JpaRepository<AiTaskJpaEntity, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<AiTaskJpaEntity> findWithLockByIdAndUserId(UUID id, UUID userId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
     @Query("select task from AiTaskJpaEntity task where task.nextAttemptAt <= :now and task.status in ('QUEUED', 'RUNNING') order by task.requestedAt")
     List<AiTaskJpaEntity> findClaimable(@Param("now") Instant now, Pageable pageable);
 }

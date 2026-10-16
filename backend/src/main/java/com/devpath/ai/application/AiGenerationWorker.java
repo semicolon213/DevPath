@@ -2,6 +2,8 @@ package com.devpath.ai.application;
 
 import com.devpath.shared.infrastructure.WorkerShutdownGate;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConditionalOnProperty(name = "devpath.runtime.worker-enabled", havingValue = "true")
 class AiGenerationWorker {
+    private static final Logger log = LoggerFactory.getLogger(AiGenerationWorker.class);
     private final AiGenerationApplicationService service;
     private final GenerationProviderPort provider;
     private final WorkerShutdownGate shutdownGate;
@@ -36,6 +39,8 @@ class AiGenerationWorker {
                 service.providerFailed(item, executionId, exception.code(), elapsedMillis(started));
             } catch (RuntimeException exception) {
                 service.providerFailed(item, executionId, "AI_GENERATION_FAILED", elapsedMillis(started));
+                log.warn("AI generation attempt failed job_id={} error_type={}",
+                    item.job().id(), exception.getClass().getSimpleName());
             }
         });
     }

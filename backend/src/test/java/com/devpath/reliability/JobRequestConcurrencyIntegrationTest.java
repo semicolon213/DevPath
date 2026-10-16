@@ -2,10 +2,13 @@ package com.devpath.reliability;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.devpath.ai.application.GenerationPersistencePort;
 import com.devpath.analysis.application.AnalysisApplicationService;
 import com.devpath.analysis.application.AnalysisJobView;
+import com.devpath.analysis.application.AnalysisPersistencePort;
 import com.devpath.repository.application.RepositorySyncJobView;
 import com.devpath.repository.application.RepositorySynchronizationApplicationService;
+import com.devpath.repository.application.RepositorySynchronizationPersistencePort;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
@@ -14,10 +17,14 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -44,6 +51,10 @@ class JobRequestConcurrencyIntegrationTest {
     @Autowired JdbcTemplate jdbc;
     @Autowired RepositorySynchronizationApplicationService repositorySync;
     @Autowired AnalysisApplicationService analyses;
+    @Autowired RepositorySynchronizationPersistencePort repositoryJobs;
+    @Autowired AnalysisPersistencePort analysisJobs;
+    @Autowired GenerationPersistencePort aiJobs;
+    @Autowired PlatformTransactionManager transactionManager;
 
     @Test
     void concurrentEquivalentCommandsReturnOneDurableJobPerBasis() throws Exception {
@@ -72,6 +83,58 @@ class JobRequestConcurrencyIntegrationTest {
         assertThat(jdbc.queryForObject(
             "select count(*) from analysis_jobs where snapshot_id = ?", Integer.class, seed.snapshotId()))
             .isEqualTo(1);
+    }
+
+    @Test
+    void claimsSkipRowsLockedByAnotherWorker() throws Exception {
+        jdbc.update("delete from ai_tasks");
+        jdbc.update("delete from analysis_jobs");
+        jdbc.update("delete from repository_sync_jobs");
+        Seed seed = seed();
+        Instant claimAt = Instant.now().plusSeconds(60);
+        UUID syncJobId = repositorySync.request(seed.userId(), seed.repositoryId(), "locked-sync").jobId();
+        UUID analysisJobId = analyses.request(seed.userId(), seed.repositoryId(), seed.snapshotId(),
+            AnalysisApplicationService.REPOSITORY_BASELINE, "locked-analysis").jobId();
+        UUID aiJobId = UUID.randomUUID();
+        withoutForeignKeys(() -> jdbc.update("""
+            insert into ai_tasks(ai_task_id,user_id,prompt_context_id,idempotency_key,task_type,status,
+                validation_status,attempt_count,failure_code,version,requested_at,started_at,completed_at,next_attempt_at)
+            values (?,?,?,'locked-ai','SKILL_ANALYSIS_EXPLANATION','QUEUED','PENDING',0,null,0,?,null,null,?)
+            """, aiJobId, seed.userId(), UUID.randomUUID(), Timestamp.from(claimAt.minusSeconds(1)),
+            Timestamp.from(claimAt.minusSeconds(1))));
+
+        var transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        var locked = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(4)) {
+            Future<?> holder = executor.submit(() -> transaction.executeWithoutResult(ignored -> {
+                jdbc.queryForObject("select job_id from repository_sync_jobs where job_id = ? for update",
+                    UUID.class, syncJobId);
+                jdbc.queryForObject("select job_id from analysis_jobs where job_id = ? for update",
+                    UUID.class, analysisJobId);
+                jdbc.queryForObject("select ai_task_id from ai_tasks where ai_task_id = ? for update",
+                    UUID.class, aiJobId);
+                locked.countDown();
+                await(release);
+            }));
+            assertThat(locked.await(5, TimeUnit.SECONDS)).isTrue();
+
+            Future<Boolean> syncClaim = executor.submit(() ->
+                transaction.execute(ignored -> repositoryJobs.findNextClaimable(claimAt).isEmpty()));
+            Future<Boolean> analysisClaim = executor.submit(() ->
+                transaction.execute(ignored -> analysisJobs.findNextClaimable(claimAt).isEmpty()));
+            Future<Boolean> aiClaim = executor.submit(() ->
+                transaction.execute(ignored -> aiJobs.claim(claimAt, 2).isEmpty()));
+
+            assertThat(syncClaim.get(2, TimeUnit.SECONDS)).isTrue();
+            assertThat(analysisClaim.get(2, TimeUnit.SECONDS)).isTrue();
+            assertThat(aiClaim.get(2, TimeUnit.SECONDS)).isTrue();
+            release.countDown();
+            holder.get(5, TimeUnit.SECONDS);
+        } finally {
+            release.countDown();
+        }
     }
 
     private Callable<UUID> repositoryRequest(Seed seed, String key, CountDownLatch ready, CountDownLatch start) {
@@ -109,6 +172,27 @@ class JobRequestConcurrencyIntegrationTest {
         jdbc.update("update repositories set current_snapshot_id = ?, last_synced_at = ? where repository_id = ?",
             snapshotId, timestamp, repositoryId);
         return new Seed(userId, repositoryId, snapshotId);
+    }
+
+    private void withoutForeignKeys(Runnable action) {
+        var transaction = new TransactionTemplate(transactionManager);
+        transaction.executeWithoutResult(ignored -> {
+            jdbc.execute("set session_replication_role = replica");
+            try {
+                action.run();
+            } finally {
+                jdbc.execute("set session_replication_role = origin");
+            }
+        });
+    }
+
+    private static void await(CountDownLatch latch) {
+        try {
+            if (!latch.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Timed out waiting for test release");
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for test release", exception);
+        }
     }
 
     private record Seed(UUID userId, UUID repositoryId, UUID snapshotId) {}

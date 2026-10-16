@@ -58,6 +58,36 @@ class AiGenerationWorkerTest {
         assertThat(renderedLogs).doesNotContain(trusted, context, raw, nested);
     }
 
+    @Test
+    void logsUnexpectedFailureWithoutExceptionDetails() {
+        var service = mock(AiGenerationApplicationService.class);
+        var provider = mock(GenerationProviderPort.class);
+        var item = work(UUID.randomUUID(), "trusted", "context");
+        UUID execution = UUID.randomUUID();
+        when(service.claim()).thenReturn(Optional.of(item));
+        when(service.beginExecution(item)).thenReturn(execution);
+        when(provider.generate(item.prompt(), item.contextPayload()))
+            .thenThrow(new IllegalStateException("sensitive failure"));
+        Logger logger = (Logger) LoggerFactory.getLogger(AiGenerationWorker.class);
+        var logs = new ListAppender<ILoggingEvent>();
+        logs.start();
+        logger.addAppender(logs);
+
+        try {
+            new AiGenerationWorker(service, provider, new WorkerShutdownGate()).processNext();
+        } finally {
+            logger.detachAppender(logs);
+            logs.stop();
+        }
+
+        verify(service).providerFailed(eq(item), eq(execution), eq("AI_GENERATION_FAILED"), anyLong());
+        assertThat(logs.list).singleElement().satisfies(event -> {
+            assertThat(event.getFormattedMessage()).isEqualTo(
+                "AI generation attempt failed job_id=" + item.job().id() + " error_type=IllegalStateException");
+            assertThat(event.getThrowableProxy()).isNull();
+        });
+    }
+
     private static String throwableText(IThrowableProxy throwable) {
         return throwable == null ? "" : throwable.getMessage() + throwableText(throwable.getCause());
     }
