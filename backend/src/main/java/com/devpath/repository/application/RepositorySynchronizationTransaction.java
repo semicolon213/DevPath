@@ -83,10 +83,7 @@ class RepositorySynchronizationTransaction {
     @Transactional(readOnly = true)
     RepositorySnapshotListView listSnapshots(UUID userId, UUID repositoryId) {
         owned(userId, repositoryId);
-        return new RepositorySnapshotListView(
-            synchronization.findSnapshots(userId, repositoryId).stream()
-                .map(RepositorySnapshotView::from).toList()
-        );
+        return new RepositorySnapshotListView(synchronization.findSnapshotSummaries(userId, repositoryId));
     }
 
     @Transactional(readOnly = true)
@@ -103,7 +100,7 @@ class RepositorySynchronizationTransaction {
         if (repository.currentSnapshotId() == null) {
             throw new RepositoryNotFoundException();
         }
-        return synchronization.findSnapshot(userId, repositoryId, repository.currentSnapshotId())
+        return synchronization.findTechnologySnapshot(userId, repositoryId, repository.currentSnapshotId())
             .map(TechnologySummaryView::from)
             .orElseThrow(RepositoryNotFoundException::new);
     }
@@ -111,7 +108,7 @@ class RepositorySynchronizationTransaction {
     @Transactional(readOnly = true)
     TechnologySummaryView getTechnologies(UUID userId, UUID repositoryId, UUID snapshotId) {
         owned(userId, repositoryId);
-        return synchronization.findSnapshot(userId, repositoryId, snapshotId)
+        return synchronization.findTechnologySnapshot(userId, repositoryId, snapshotId)
             .map(TechnologySummaryView::from)
             .orElseThrow(RepositoryNotFoundException::new);
     }
@@ -122,7 +119,9 @@ class RepositorySynchronizationTransaction {
         if (repository.currentSnapshotId() == null) {
             throw new RepositoryNotFoundException();
         }
-        RepositoryEvidenceSummaryView view = synchronization.findSnapshot(userId, repositoryId, repository.currentSnapshotId())
+        RepositoryEvidenceSummaryView view = synchronization.findEvidenceSnapshot(
+                userId, repositoryId, repository.currentSnapshotId()
+            )
             .map(RepositoryEvidenceSummaryView::from)
             .orElseThrow(RepositoryNotFoundException::new);
         audit.record(RepositoryAuditEvent.REPOSITORY_EVIDENCE_VIEWED, userId, repositoryId, now);

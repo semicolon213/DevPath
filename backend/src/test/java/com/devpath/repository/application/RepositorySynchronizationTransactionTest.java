@@ -68,7 +68,8 @@ class RepositorySynchronizationTransactionTest {
         var synchronization = mock(RepositorySynchronizationPersistencePort.class);
         var audit = mock(RepositoryAuditPort.class);
         when(repositories.findByIdAndOwner(repository.id(), userId)).thenReturn(Optional.of(repository));
-        when(synchronization.findSnapshot(userId, repository.id(), snapshot.id())).thenReturn(Optional.of(snapshot));
+        when(synchronization.findEvidenceSnapshot(userId, repository.id(), snapshot.id()))
+            .thenReturn(Optional.of(snapshot));
         var transactions = new RepositorySynchronizationTransaction(repositories, synchronization, audit);
 
         RepositoryEvidenceSummaryView view = transactions.getEvidence(userId, repository.id(), capturedAt);

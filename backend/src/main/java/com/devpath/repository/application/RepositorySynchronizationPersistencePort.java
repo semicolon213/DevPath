@@ -16,7 +16,9 @@ public interface RepositorySynchronizationPersistencePort {
     List<RepositorySyncJob> findRecentByOwner(UUID userId, int limit);
     RepositorySyncJob saveJob(RepositorySyncJob job);
     RepositorySnapshot saveSnapshot(RepositorySnapshot snapshot);
-    List<RepositorySnapshot> findSnapshots(UUID userId, UUID repositoryId);
+    List<RepositorySnapshotView> findSnapshotSummaries(UUID userId, UUID repositoryId);
     Optional<RepositorySnapshot> findSnapshot(UUID userId, UUID repositoryId, UUID snapshotId);
+    Optional<RepositorySnapshot> findTechnologySnapshot(UUID userId, UUID repositoryId, UUID snapshotId);
+    Optional<RepositorySnapshot> findEvidenceSnapshot(UUID userId, UUID repositoryId, UUID snapshotId);
     void appendOutbox(String aggregateType, UUID aggregateId, String eventType, String payload, Instant occurredAt);
 }

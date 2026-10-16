@@ -1,6 +1,7 @@
 package com.devpath.repository.adapter.out.persistence;
 
 import com.devpath.repository.application.RepositorySynchronizationPersistencePort;
+import com.devpath.repository.application.RepositorySnapshotView;
 import com.devpath.repository.domain.RepositorySnapshot;
 import com.devpath.repository.domain.RepositorySyncJob;
 import java.time.Instant;
@@ -85,12 +86,45 @@ class JpaRepositorySynchronizationAdapter implements RepositorySynchronizationPe
         documents.saveAll(snapshot.documents().stream().map(value -> new RepositoryDocumentJpaEntity(saved.id(), value)).toList());
         return snapshot;
     }
-    public List<RepositorySnapshot> findSnapshots(UUID userId, UUID repositoryId) {
-        return snapshots.findAllByUserIdAndRepositoryIdOrderByCapturedAtDesc(userId, repositoryId).stream()
-            .map(this::hydrate).toList();
+    public List<RepositorySnapshotView> findSnapshotSummaries(UUID userId, UUID repositoryId) {
+        return snapshots.findSummaries(userId, repositoryId).stream().map(value -> new RepositorySnapshotView(
+            value.getSnapshotId(), value.getRepositoryId(), value.getCapturedAt(), value.getSourceRevision(),
+            value.getStatus(), true, value.getContentHash(), Math.toIntExact(value.getBranchCount()),
+            Math.toIntExact(value.getCommitCount()), Math.toIntExact(value.getPullRequestCount()),
+            Math.toIntExact(value.getIssueCount()), Math.toIntExact(value.getDocumentCount())
+        )).toList();
     }
     public Optional<RepositorySnapshot> findSnapshot(UUID userId, UUID repositoryId, UUID snapshotId) {
         return snapshots.findByIdAndUserIdAndRepositoryId(snapshotId, userId, repositoryId).map(this::hydrate);
+    }
+    public Optional<RepositorySnapshot> findTechnologySnapshot(UUID userId, UUID repositoryId, UUID snapshotId) {
+        return snapshots.findByIdAndUserIdAndRepositoryId(snapshotId, userId, repositoryId).map(value -> value.toDomain(
+            List.of(), List.of(),
+            languages.findAllForOwner(snapshotId, userId, repositoryId).stream()
+                .map(RepositoryLanguageJpaEntity::toDomain).toList(),
+            dependencies.findAllForOwner(snapshotId, userId, repositoryId).stream()
+                .map(RepositoryDependencyJpaEntity::toDomain).toList(),
+            List.of(), List.of(), List.of(), List.of()
+        ));
+    }
+    public Optional<RepositorySnapshot> findEvidenceSnapshot(UUID userId, UUID repositoryId, UUID snapshotId) {
+        return snapshots.findByIdAndUserIdAndRepositoryId(snapshotId, userId, repositoryId).map(value -> value.toDomain(
+            branches.findAllForOwner(snapshotId, userId, repositoryId).stream()
+                .map(RepositoryBranchJpaEntity::toDomain).toList(),
+            commits.findAllForOwner(snapshotId, userId, repositoryId).stream()
+                .map(RepositoryCommitJpaEntity::toDomain).toList(),
+            List.of(),
+            dependencies.findAllForOwner(snapshotId, userId, repositoryId).stream()
+                .map(RepositoryDependencyJpaEntity::toDomain).toList(),
+            files.findAllForOwner(snapshotId, userId, repositoryId).stream()
+                .map(RepositoryFileJpaEntity::toDomain).toList(),
+            pullRequests.findAllForOwner(snapshotId, userId, repositoryId).stream()
+                .map(RepositoryPullRequestJpaEntity::toDomain).toList(),
+            issues.findAllForOwner(snapshotId, userId, repositoryId).stream()
+                .map(RepositoryIssueJpaEntity::toDomain).toList(),
+            documents.findAllForOwner(snapshotId, userId, repositoryId).stream()
+                .map(RepositoryDocumentJpaEntity::toDomain).toList()
+        ));
     }
     public void appendOutbox(String aggregateType, UUID aggregateId, String eventType, String payload, Instant occurredAt) {
         outbox.save(new OutboxEventJpaEntity(aggregateType, aggregateId, eventType, payload, occurredAt));
