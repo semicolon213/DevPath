@@ -14,7 +14,7 @@ export function CareerReadinessPage() {
 
   return <Shell>
     <header className="workspace-header">
-      <div><p className="eyebrow">공식 커리어 평가</p><h1>커리어 준비도</h1><p>AI가 아닌 승인된 정책과 현재 Skill Matrix로 계산한 공식 결과입니다.</p></div>
+      <div><p className="eyebrow">공식 커리어 평가</p><h1>커리어 준비도</h1><p>AI가 아닌 승인된 정책과 현재 기술 역량표(Skill Matrix)로 계산한 공식 결과입니다.</p></div>
       <div className="analysis-version"><span>정책 {result.readinessPolicyVersion}</span><span>프로필 {result.careerProfileVersion}</span><span>규칙 {result.ruleSetVersion}</span></div>
     </header>
     <section className="readiness-hero" aria-labelledby="readiness-result-title">

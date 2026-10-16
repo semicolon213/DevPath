@@ -86,7 +86,7 @@ export function AnalysisDetailPage() {
         <div className="historical-skill-list">
           {matrix.skills.map(skill => (
             <article key={skill.assessmentId}>
-              <div><strong>{skillNameLabel(skill.skillKey)}</strong><span>{levelLabel(skill.level)}</span></div>
+              <div><strong>{skillNameLabel(skill.skillKey, skill.skillName)}</strong><span>{levelLabel(skill.level)}</span></div>
               <progress max="100" value={skill.score}>{skill.score}점</progress>
               <small>공식 점수 {formatScore(skill.score)} · 신뢰도 {formatScore(skill.confidence)}%</small>
             </article>

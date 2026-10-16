@@ -15,7 +15,7 @@ export function SkillDetailPage() {
   const skill = detail.skill;
   return <Shell>
     <header className="workspace-header skill-header"><div><p className="eyebrow">현재 공식 역량</p>
-      <h1>{skillNameLabel(skill.skillKey)}</h1><p>현재 적용 중인 불변 Skill Matrix에서 가져온 공식 평가와 정규화된 증거입니다.</p></div>
+      <h1>{skillNameLabel(skill.skillKey, skill.skillName)}</h1><p>현재 적용 중인 불변 Skill Matrix에서 가져온 공식 평가와 정규화된 증거입니다.</p></div>
       <div className="analysis-version" aria-label="기술 평가 버전"><span>정책 {detail.policyVersion}</span><span>규칙 {detail.ruleSetVersion}</span></div>
     </header>
     <section className="skill-summary" aria-label="현재 기술 평가 요약">

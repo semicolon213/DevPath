@@ -33,8 +33,14 @@ describe("shared Korean labels", () => {
     expect(categoryLabel("NEW_INTERNAL_VALUE")).toBe("알 수 없음");
   });
 
+  it("uses an API skill name only when the local skill label is unknown", () => {
+    expect(skillNameLabel("testing-discipline", "API Testing Name")).toBe("테스트 역량");
+    expect(skillNameLabel("new-skill", "새 기술")).toBe("새 기술");
+    expect(skillNameLabel("new-skill")).toBe("알 수 없음");
+  });
+
   it("turns job error codes into safe retry guidance", () => {
-    expect(safeJobErrorMessage("RATE_LIMIT_EXCEEDED", true)).toContain("자동으로 다시 시도");
+    expect(safeJobErrorMessage("RATE_LIMIT_EXCEEDED", true)).toBe("외부 서비스 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.");
     expect(safeJobErrorMessage("PROVIDER_SECRET_FAILURE", false)).toBe("작업을 완료하지 못했습니다. 연결과 접근 권한을 확인한 뒤 다시 시도해 주세요.");
   });
 });

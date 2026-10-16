@@ -68,12 +68,11 @@ export const knowledgeFreshnessLabel = (value: string | null | undefined) => lab
 export const chunkStatusLabel = (value: string | null | undefined) => label(chunkStatusLabels, value);
 export const repositoryLifecycleLabel = (value: string | null | undefined) => label(repositoryLifecycleLabels, value);
 export const repositorySyncStatusLabel = (value: string | null | undefined) => label(repositorySyncStatusLabels, value);
-export const skillNameLabel = (value: string | null | undefined) => label(skillNames, value);
+export const skillNameLabel = (value: string | null | undefined, fallback?: string | null) =>
+  skillNames[value ?? ""] ?? (fallback?.trim() || unknownLabel);
 
 export function safeJobErrorMessage(errorCode: string | null, retryable: boolean) {
   if (errorCode === "COLLECTION_LIMIT_EXCEEDED") return "저장소 규모가 현재 수집 한도를 초과했습니다. 수집 범위를 줄인 뒤 다시 시도해 주세요.";
-  if (errorCode === "RATE_LIMIT_EXCEEDED") return retryable
-    ? "외부 서비스 요청 한도에 도달했습니다. 잠시 후 자동으로 다시 시도합니다."
-    : "외부 서비스 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.";
+  if (errorCode === "RATE_LIMIT_EXCEEDED") return "외부 서비스 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.";
   return retryable ? "작업을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요." : "작업을 완료하지 못했습니다. 연결과 접근 권한을 확인한 뒤 다시 시도해 주세요.";
 }

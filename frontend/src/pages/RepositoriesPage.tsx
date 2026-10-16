@@ -111,7 +111,6 @@ function RepositoryCard({ repository }: { repository: ImportedRepository }) {
       <h3><Link to={`/repositories/${repository.repositoryId}`}>{repository.fullName}</Link></h3>
       <dl className="metadata-list">
         <div><dt>기본 브랜치</dt><dd>{repository.defaultBranch}</dd></div>
-        <div><dt>동기화 상태</dt><dd>{repositorySyncStatusLabel(repository.syncStatus)}</dd></div>
         <div><dt>등록일</dt><dd>{formatDate(repository.discoveredAt)}</dd></div>
       </dl>
       {repository.lifecycle === "ARCHIVED" && repository.providerArchived ? (

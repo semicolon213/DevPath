@@ -79,7 +79,7 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
       <div className="skill-card__heading">
         <div>
           <span className="skill-category">{categoryLabel(skill.category)}</span>
-          <h3><Link to={`/skills/${skill.skillId}`}>{skillNameLabel(skill.skillKey)}</Link></h3>
+          <h3><Link to={`/skills/${skill.skillId}`}>{skillNameLabel(skill.skillKey, skill.skillName)}</Link></h3>
         </div>
         <span className="status-badge">{state}</span>
       </div>

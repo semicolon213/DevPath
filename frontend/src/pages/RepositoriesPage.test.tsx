@@ -37,7 +37,8 @@ it("renders a visible repository workspace with summaries and registered reposit
   expect(screen.getByText("현재 표시된 저장소")).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "등록된 저장소" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "owner/devpath" })).toBeInTheDocument();
-  expect(screen.getAllByText("동기화 전")).not.toHaveLength(0);
+  expect(screen.getByText("동기화: 동기화 전")).toHaveClass("status-badge");
+  expect(screen.queryByText("동기화 상태")).not.toBeInTheDocument();
   expect(screen.getByRole("checkbox", { name: "보관 저장소 포함" })).not.toBeChecked();
   expect(screen.getByRole("link", { name: "저장소 추가" })).toHaveAttribute("href", "/settings/integrations#github");
 });

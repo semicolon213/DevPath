@@ -77,9 +77,27 @@ it("keeps search dependency errors actionable and distinguishes an authorized em
   expect(await screen.findByRole("status")).toHaveTextContent("관련 지식을 찾지 못했습니다");
 });
 
+it("does not promise automatic retry or expose the server error for a failed ingestion job", async () => {
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/users/me/connections")) return Promise.resolve(json({ connections: [] }));
+    if (url.endsWith("/knowledge-documents")) return Promise.resolve(json({ documents: [] }));
+    if (url.endsWith("/knowledge-ingestion-jobs/job-1")) return Promise.resolve(json({
+      ...job("failed"), errorCode: "RATE_LIMIT_EXCEEDED", errorMessage: "raw provider failure", retryable: true
+    }));
+    return Promise.reject(new Error(url));
+  }));
+
+  renderWithProviders(<AppRoutes />, ["/knowledge?job=job-1"]);
+
+  expect(await screen.findByRole("alert")).toHaveTextContent("외부 서비스 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.");
+  expect(screen.queryByText(/자동으로 다시 시도/)).not.toBeInTheDocument();
+  expect(screen.queryByText("raw provider failure")).not.toBeInTheDocument();
+});
+
 function json(data: unknown) { return Response.json({ data, metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-30T00:00:00Z" } }); }
-function job(status: "queued" | "succeeded") { return { jobId: "job-1", jobType: "KNOWLEDGE_INGESTION", status,
-  phase: status === "succeeded" ? "COMPLETED" : "QUEUED", progressPercent: status === "succeeded" ? 100 : 0,
+function job(status: "queued" | "succeeded" | "failed") { return { jobId: "job-1", jobType: "KNOWLEDGE_INGESTION", status,
+  phase: status === "succeeded" ? "COMPLETED" : status === "failed" ? "FAILED" : "QUEUED", progressPercent: status === "succeeded" ? 100 : 0,
   attemptCount: status === "succeeded" ? 1 : 0, maxAttempts: 3, submittedAt: "2026-08-30T00:00:00Z", startedAt: null,
   completedAt: status === "succeeded" ? "2026-08-30T00:01:00Z" : null, pollingUrl: "/api/v1/knowledge-ingestion-jobs/job-1",
   resultResourceUrl: status === "succeeded" ? "/api/v1/knowledge-documents/document-1" : null,

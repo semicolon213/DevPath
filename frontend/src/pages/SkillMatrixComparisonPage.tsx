@@ -42,7 +42,7 @@ function MatrixSummary({ label, matrix }: { label: string; matrix: SkillMatrix }
     <div><strong>{matrix.skills.length}</strong><span>개 역량</span></div><time dateTime={matrix.generatedAt}>{formatDate(matrix.generatedAt)}</time></article>;
 }
 function SkillRow({ skillKey, left, right }: { skillKey: string; left?: SkillAssessment; right?: SkillAssessment }) {
-  return <tr><th scope="row"><strong>{skillNameLabel(skillKey)}</strong><small>{categoryLabel(left?.category ?? right?.category)}</small></th><SkillCell skill={left} /><SkillCell skill={right} /></tr>;
+  return <tr><th scope="row"><strong>{skillNameLabel(skillKey, left?.skillName ?? right?.skillName)}</strong><small>{categoryLabel(left?.category ?? right?.category)}</small></th><SkillCell skill={left} /><SkillCell skill={right} /></tr>;
 }
 function SkillCell({ skill }: { skill?: SkillAssessment }) {
   return <td>{skill ? <><strong>{formatScore(skill.score)}</strong><small>{levelLabel(skill.level)} · 신뢰도 {formatScore(skill.confidence)}% · 증거 {skill.evidenceIds.length}개</small></> : <span>없음</span>}</td>;
