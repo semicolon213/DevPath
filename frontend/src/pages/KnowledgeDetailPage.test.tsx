@@ -32,10 +32,10 @@ it("renders document provenance and chunk metadata without raw content or embedd
   expect(screen.getByText("마지막 갱신")).toBeInTheDocument();
   expect(screen.getByText(new Date(knowledgeDocument.updatedAt).toLocaleString("ko-KR"))).toBeInTheDocument();
   expect(screen.getByText("API 설계")).toBeInTheDocument();
-  expect(screen.getByText("INDEXED · 약 21 토큰")).toBeInTheDocument();
+  expect(screen.getByText("색인됨 · 약 21 토큰")).toBeInTheDocument();
   expect(screen.getByText("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).toBeInTheDocument();
   expect(screen.getByText("청크 2")).toBeInTheDocument();
-  expect(screen.getByText("STALE · 약 13 토큰")).toBeInTheDocument();
+  expect(screen.getByText("갱신 필요 · 약 13 토큰")).toBeInTheDocument();
   expect(screen.getByText("bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb")).toBeInTheDocument();
   expect(globalThis.document.body).not.toHaveTextContent("TOP SECRET DOCUMENT BODY");
   expect(globalThis.document.body).not.toHaveTextContent("PRIVATE CHUNK TEXT");
@@ -99,7 +99,7 @@ it("reindexes through the CSRF boundary and renders the accepted job from the UR
     })
   ));
   expect(await screen.findByTestId("location")).toHaveTextContent("/knowledge/11111111-1111-4111-8111-111111111111?job=55555555-5555-4555-8555-555555555555");
-  expect(await screen.findByRole("status")).toHaveTextContent("재색인 상태: succeeded 100%");
+  expect(await screen.findByRole("status")).toHaveTextContent("재색인 상태: 완료 100%");
 });
 
 it("announces the pending document and chunk load", () => {

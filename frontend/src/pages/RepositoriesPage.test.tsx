@@ -37,7 +37,7 @@ it("renders a visible repository workspace with summaries and registered reposit
   expect(screen.getByText("현재 표시된 저장소")).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "등록된 저장소" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "owner/devpath" })).toBeInTheDocument();
-  expect(screen.getByText("메타데이터만 등록됨")).toBeInTheDocument();
+  expect(screen.getAllByText("동기화 전")).not.toHaveLength(0);
   expect(screen.getByRole("checkbox", { name: "보관 저장소 포함" })).not.toBeChecked();
   expect(screen.getByRole("link", { name: "저장소 추가" })).toHaveAttribute("href", "/settings/integrations#github");
 });
@@ -79,10 +79,10 @@ it("archives, filters, and restores an owned repository from the workspace", asy
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/archive"), expect.objectContaining({ method: "POST" }));
 
   fireEvent.click(screen.getByRole("checkbox", { name: "보관 저장소 포함" }));
-  expect(await screen.findByText("DevPath에서 보관됨")).toBeInTheDocument();
+  expect(await screen.findByText("보관됨")).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("includeArchived=true"), expect.anything());
 
   fireEvent.click(screen.getByRole("button", { name: "복원" }));
-  expect(await screen.findByText("동기화됨")).toBeInTheDocument();
+  expect(await screen.findByText("사용 중")).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/restore"), expect.objectContaining({ method: "POST" }));
 });

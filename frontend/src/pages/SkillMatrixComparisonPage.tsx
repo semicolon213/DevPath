@@ -2,6 +2,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import type { SkillAssessment, SkillMatrix } from "../features/skills/api/skillMatrixApi";
 import { useSkillMatrixComparison } from "../features/skills/model/useSkillMatrix";
 import { ApiError } from "../shared/api/apiClient";
+import { categoryLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 
 export function SkillMatrixComparisonPage() {
   const [params] = useSearchParams();
@@ -18,7 +19,7 @@ export function SkillMatrixComparisonPage() {
 
   return <Shell>
     <header className="workspace-header">
-      <div><p className="eyebrow">Authoritative Skill Comparison</p><h1>기술 역량 비교</h1>
+      <div><p className="eyebrow">공식 기술 역량 비교</p><h1>기술 역량 비교</h1>
         <p>불변 Skill Matrix 두 개의 공식 점수와 등급을 나란히 표시합니다. 이 화면은 차이 점수나 성장 추세를 새로 계산하지 않습니다.</p></div>
       <Link className="button-link" to="/analyses">다른 결과 선택</Link>
     </header>
@@ -41,8 +42,7 @@ function MatrixSummary({ label, matrix }: { label: string; matrix: SkillMatrix }
     <div><strong>{matrix.skills.length}</strong><span>개 역량</span></div><time dateTime={matrix.generatedAt}>{formatDate(matrix.generatedAt)}</time></article>;
 }
 function SkillRow({ skillKey, left, right }: { skillKey: string; left?: SkillAssessment; right?: SkillAssessment }) {
-  const name = left?.skillName ?? right?.skillName ?? skillKey;
-  return <tr><th scope="row"><strong>{name}</strong><small>{left?.category ?? right?.category}</small></th><SkillCell skill={left} /><SkillCell skill={right} /></tr>;
+  return <tr><th scope="row"><strong>{skillNameLabel(skillKey)}</strong><small>{categoryLabel(left?.category ?? right?.category)}</small></th><SkillCell skill={left} /><SkillCell skill={right} /></tr>;
 }
 function SkillCell({ skill }: { skill?: SkillAssessment }) {
   return <td>{skill ? <><strong>{formatScore(skill.score)}</strong><small>{levelLabel(skill.level)} · 신뢰도 {formatScore(skill.confidence)}% · 증거 {skill.evidenceIds.length}개</small></> : <span>없음</span>}</td>;
@@ -58,6 +58,5 @@ function ErrorState({ error, retry }: { error: Error; retry: () => void }) {
 function State({ title, to = "/analyses" }: { title: string; to?: string }) { return <section className="state-panel" role="alert"><h1>{title}</h1><Link className="button-link" to={to}>분석 이력으로 이동</Link></section>; }
 function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/dashboard">대시보드</Link></nav>{children}</main>; }
 function findSkill(matrix: SkillMatrix, key: string) { return matrix.skills.find(skill => skill.skillKey === key); }
-function levelLabel(level: SkillAssessment["level"]) { return { NONE: "근거 없음", BEGINNER: "입문", DEVELOPING: "성장", COMPETENT: "충분", STRONG: "강점" }[level]; }
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
 function formatDate(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }

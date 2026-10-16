@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import type { DashboardSourceStatus, DashboardTarget } from "../features/dashboard/api/dashboardApi";
 import { useDashboard } from "../features/dashboard/model/useDashboard";
 import { ApiError } from "../shared/api/apiClient";
+import { categoryLabel, jobStatusLabel, levelLabel, priorityLabel } from "../shared/ui/labels";
 
 export function DashboardPage() {
   const query = useDashboard();
@@ -13,7 +14,7 @@ export function DashboardPage() {
   return (
     <Shell>
       <header className="workspace-header">
-        <div><p className="eyebrow">MVP 개발 현황</p><h1>내 DevPath 대시보드</h1><p>선택한 목표와 GitHub 근거에서 계산된 최신 공식 결과를 한곳에서 확인합니다.</p></div>
+        <div><p className="eyebrow">개발 현황</p><h1>내 DevPath 대시보드</h1><p>선택한 목표와 GitHub 근거에서 계산된 최신 공식 결과를 한곳에서 확인합니다.</p></div>
         <div className="workspace-actions"><Link to="/repositories">저장소</Link><Link className="button-link" to="/analyses">분석 이력</Link></div>
       </header>
 
@@ -33,34 +34,34 @@ export function DashboardPage() {
         </article>
 
         <article className="dashboard-card">
-          <CardHeading eyebrow="Rule Engine" title="최신 공식 분석" link="/analyses" linkLabel="전체 이력" />
+          <CardHeading eyebrow="공식 분석" title="최신 공식 분석" link="/analyses" linkLabel="전체 이력" />
           {view.analyses.status === "UNAVAILABLE" ? <Unavailable /> : latest ? <><div className="dashboard-score"><strong>{formatScore(latest.overallScore)}</strong><span>/ 100</span></div><h3>{latest.repositoryFullName}</h3><p>{latest.currentForRepository ? "현재 저장소에 적용되는 최신 결과" : "보존된 과거 분석 결과"}</p><Link to={`/analyses/${latest.analysisId}`}>점수 근거 확인</Link></> : <Empty text="완료된 분석이 없습니다." action="저장소에서 분석 시작" to="/repositories" />}
         </article>
 
         <article className="dashboard-card">
-          <CardHeading eyebrow="Skill Matrix" title="강점과 개선 영역" link="/skills" linkLabel="전체 역량" />
+          <CardHeading eyebrow="기술 역량" title="강점과 개선 영역" link="/skills" linkLabel="전체 역량" />
           {view.skillOverview.status === "UNAVAILABLE" ? <Unavailable /> : view.skillOverview.status === "EMPTY" ? <Empty text="기술 역량 결과가 없습니다." action="분석 준비" to="/repositories" /> : <><div className="dashboard-split"><div><strong>{view.skillOverview.strengthCount}</strong><span>강점</span></div><div><strong>{view.skillOverview.weaknessCount}</strong><span>개선 영역</span></div></div><p>정책 {view.skillOverview.policyVersion} · 규칙 {view.skillOverview.ruleSetVersion}</p></>}
         </article>
 
         <article className="dashboard-card">
-          <CardHeading eyebrow="Career Engine" title="커리어 준비도" link="/career-readiness" linkLabel="상세 보기" />
-          {view.readiness.status === "UNAVAILABLE" ? <Unavailable /> : view.readiness.status === "EMPTY" ? <Empty text="아직 준비도 결과가 없습니다." action="분석 준비" to="/repositories" /> : view.readiness.resultStatus === "INSUFFICIENT_EVIDENCE" ? <><span className="status-badge">근거 부족</span><p>확인 불가 범주: {view.readiness.unavailableCategories.join(", ")}</p></> : <><div className="dashboard-score"><strong>{formatScore(view.readiness.score ?? 0)}</strong><span>/ 100</span></div><p>{view.readiness.level} · 신뢰도 {formatScore(view.readiness.confidence ?? 0)}%</p></>}
+          <CardHeading eyebrow="커리어 평가" title="커리어 준비도" link="/career-readiness" linkLabel="상세 보기" />
+          {view.readiness.status === "UNAVAILABLE" ? <Unavailable /> : view.readiness.status === "EMPTY" ? <Empty text="아직 준비도 결과가 없습니다." action="분석 준비" to="/repositories" /> : view.readiness.resultStatus === "INSUFFICIENT_EVIDENCE" ? <><span className="status-badge">근거 부족</span><p>확인 불가 범주: {view.readiness.unavailableCategories.map(categoryLabel).join(", ")}</p></> : <><div className="dashboard-score"><strong>{formatScore(view.readiness.score ?? 0)}</strong><span>/ 100</span></div><p>{levelLabel(view.readiness.level)} · 신뢰도 {formatScore(view.readiness.confidence ?? 0)}%</p></>}
         </article>
 
         <article className="dashboard-card">
-          <CardHeading eyebrow="Recommendation Engine" title="우선 추천" link="/recommendations" linkLabel="추천 전체 보기" />
-          {view.recommendations.status === "UNAVAILABLE" ? <Unavailable /> : view.recommendations.items.length ? <ul className="dashboard-analysis-list">{view.recommendations.items.map(item => <li key={item.recommendationId}><div><strong>{item.title}</strong><span>{item.category} · {item.effortHours}시간</span></div><span>{item.priority}</span></li>)}</ul> : <Empty text="아직 생성된 추천이 없습니다." action="준비도 확인" to="/career-readiness" />}
+          <CardHeading eyebrow="공식 추천" title="우선 추천" link="/recommendations" linkLabel="추천 전체 보기" />
+          {view.recommendations.status === "UNAVAILABLE" ? <Unavailable /> : view.recommendations.items.length ? <ul className="dashboard-analysis-list">{view.recommendations.items.map(item => <li key={item.recommendationId}><div><strong>{item.title}</strong><span>{categoryLabel(item.category)} · {item.effortHours}시간</span></div><span>{priorityLabel(item.priority)}</span></li>)}</ul> : <Empty text="아직 생성된 추천이 없습니다." action="준비도 확인" to="/career-readiness" />}
         </article>
 
         <article className="dashboard-card">
-          <CardHeading eyebrow="Learning Roadmap" title="학습 진행" link="/roadmap" linkLabel="로드맵 보기" />
+          <CardHeading eyebrow="학습 로드맵" title="학습 진행" link="/roadmap" linkLabel="로드맵 보기" />
           {view.roadmap.status === "UNAVAILABLE" ? <Unavailable /> : view.roadmap.status === "EMPTY" ? <Empty text="활성 학습 로드맵이 없습니다." action="추천 확인" to="/roadmap" /> : <><div className="dashboard-score"><strong>{formatScore(view.roadmap.progressPercent ?? 0)}</strong><span>%</span></div><p>마일스톤 {view.roadmap.milestoneCount}개 · 단계 {view.roadmap.stepCount}개</p></>}
         </article>
       </section>
 
       <section className="dashboard-card dashboard-card--wide" aria-labelledby="recent-jobs-title">
-        <CardHeading eyebrow="Background Jobs" title="최근 작업" id="recent-jobs-title" />
-        {view.recentJobs.status === "UNAVAILABLE" ? <Unavailable /> : view.recentJobs.items.length ? <ul className="dashboard-analysis-list">{view.recentJobs.items.map(job => <li key={job.jobId}><div><strong>{job.jobType === "REPOSITORY_SYNC" ? "저장소 동기화" : "분석"}</strong><time dateTime={job.submittedAt}>{formatDate(job.submittedAt)}</time></div><span>{job.progressPercent}%</span><small>{job.status}</small></li>)}</ul> : <Empty text="최근 실행된 작업이 없습니다." action="저장소 확인" to="/repositories" />}
+        <CardHeading eyebrow="백그라운드 작업" title="최근 작업" id="recent-jobs-title" />
+        {view.recentJobs.status === "UNAVAILABLE" ? <Unavailable /> : view.recentJobs.items.length ? <ul className="dashboard-analysis-list">{view.recentJobs.items.map(job => <li key={job.jobId}><div><strong>{job.jobType === "REPOSITORY_SYNC" ? "저장소 동기화" : "분석"}</strong><time dateTime={job.submittedAt}>{formatDate(job.submittedAt)}</time></div><span>{job.progressPercent}%</span><small>{jobStatusLabel(job.status)}</small></li>)}</ul> : <Empty text="최근 실행된 작업이 없습니다." action="저장소 확인" to="/repositories" />}
       </section>
 
       <section className="dashboard-card dashboard-card--wide" aria-labelledby="repository-analysis-title">

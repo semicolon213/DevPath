@@ -3,6 +3,7 @@ import type { SkillAssessment } from "../features/skills/api/skillMatrixApi";
 import { useCurrentSkillMatrix } from "../features/skills/model/useSkillMatrix";
 import { ApiError } from "../shared/api/apiClient";
 import { SkillExplanationPanel } from "../features/ai/ui/SkillExplanationPanel";
+import { categoryLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 
 export function SkillsPage() {
   const query = useCurrentSkillMatrix();
@@ -22,7 +23,7 @@ export function SkillsPage() {
     <PageShell>
       <header className="workspace-header skill-header">
         <div>
-          <p className="eyebrow">결정론적 Rule Engine 결과</p>
+          <p className="eyebrow">공식 기술 역량 결과</p>
           <h1>기술 역량 분석</h1>
           <p>저장소에서 확인된 근거를 버전이 고정된 평가 규칙으로 계산한 공식 결과입니다.</p>
         </div>
@@ -78,7 +79,7 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
       <div className="skill-card__heading">
         <div>
           <span className="skill-category">{categoryLabel(skill.category)}</span>
-          <h3><Link to={`/skills/${skill.skillId}`}>{skillName(skill)}</Link></h3>
+          <h3><Link to={`/skills/${skill.skillId}`}>{skillNameLabel(skill.skillKey)}</Link></h3>
         </div>
         <span className="status-badge">{state}</span>
       </div>
@@ -142,29 +143,6 @@ function PageShell({ children }: { children: React.ReactNode }) {
 
 function Summary({ label, value }: { label: string; value: number }) {
   return <div><strong>{value}</strong><span>{label}</span></div>;
-}
-
-const koreanSkillNames: Record<string, string> = {
-  "language-engineering": "언어 활용",
-  "framework-application": "프레임워크 적용",
-  "database-engineering": "데이터베이스 엔지니어링",
-  "architecture-structure": "아키텍처 구조",
-  "testing-discipline": "테스트 역량",
-  "delivery-operations": "전달 및 운영",
-  "technical-documentation": "기술 문서화",
-  "development-activity": "개발 활동"
-};
-
-function skillName(skill: SkillAssessment) {
-  return koreanSkillNames[skill.skillKey] ?? skill.skillName;
-}
-
-function categoryLabel(category: SkillAssessment["category"]) {
-  return { LANGUAGE: "언어", FRAMEWORK: "프레임워크", DATABASE: "데이터베이스", ARCHITECTURE: "아키텍처", TESTING: "테스트", DEVOPS: "DevOps", DOCUMENTATION: "문서화", ACTIVITY: "활동" }[category];
-}
-
-function levelLabel(level: SkillAssessment["level"]) {
-  return { NONE: "관찰 없음", BEGINNER: "입문", DEVELOPING: "성장", COMPETENT: "충분", STRONG: "강점" }[level];
 }
 
 function growthLabel(trend: SkillAssessment["growthTrend"]) {

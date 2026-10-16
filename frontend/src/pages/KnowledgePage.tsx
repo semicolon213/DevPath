@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useConnections, useNotionWorkspaces } from "../features/connections/model/useConnections";
 import { useImportNotionKnowledge, useKnowledgeDocuments, useKnowledgeJob, useKnowledgeSearch, knowledgeDocumentsKey } from "../features/knowledge/model/useKnowledge";
 import type { KnowledgeIngestionJob } from "../features/knowledge/api/knowledgeApi";
+import { knowledgeFreshnessLabel, safeJobErrorMessage } from "../shared/ui/labels";
 
 export function KnowledgePage() {
   const connections = useConnections();
@@ -36,7 +37,7 @@ export function KnowledgePage() {
   }
 
   return <Shell>
-    <header className="workspace-header"><div><p className="eyebrow">M36 · 지식 수집</p><h1>지식 작업 공간</h1>
+    <header className="workspace-header"><div><p className="eyebrow">지식 수집</p><h1>지식 작업 공간</h1>
       <p>공유된 Notion 페이지를 비공개로 수집하고 버전이 있는 청크와 임베딩으로 보관합니다.</p></div></header>
     <p className="state-panel state-panel--compact">검색 결과는 현재 권한이 있는 Notion 문서의 최신 인덱스만 사용합니다. AI 답변 생성에는 아직 연결하지 않습니다.</p>
     {jobId ? <JobPanel job={job} clear={() => setSearchParams({}, { replace: true })} /> : null}
@@ -46,9 +47,9 @@ export function KnowledgePage() {
         <label>문서 범위<select value={documentFilter} onChange={event => setDocumentFilter(event.target.value)}><option value="">활성 Notion 문서 전체</option>{documents.data?.documents.filter(document => document.status === "ACTIVE").map(document => <option key={document.documentId} value={document.documentId}>{document.title}</option>)}</select></label>
         <button type="submit" disabled={knowledgeSearch.isPending || !query.trim()}>{knowledgeSearch.isPending ? "검색 중…" : "지식 검색"}</button>
       </form>
-      {knowledgeSearch.isError ? <p role="alert">지식 검색을 완료하지 못했습니다. 인덱스와 embedding provider 상태를 확인한 뒤 다시 시도해 주세요.</p> : null}
+      {knowledgeSearch.isError ? <p role="alert">지식 검색을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.</p> : null}
       {knowledgeSearch.data?.results.length === 0 ? <p role="status">현재 권한과 필터 범위에서 관련 지식을 찾지 못했습니다.</p> : null}
-      {knowledgeSearch.data?.results.length ? <div className="knowledge-search-results" aria-live="polite"><p>{knowledgeSearch.data.resultCount}개 결과 · 정책 {knowledgeSearch.data.policyVersion} · {knowledgeSearch.data.durationMs}ms</p><ol>{knowledgeSearch.data.results.map(result => <li key={result.chunkId}><article><div><span className="status-badge status-badge--active">관련도 {(result.relevance * 100).toFixed(0)}%</span><span>{result.freshness === "FRESH" ? "최신 인덱스" : result.freshness}</span></div><h3>{result.heading ?? result.documentTitle}</h3><p>{result.excerpt}</p><div className="connection-actions"><Link to={`/knowledge/${result.documentId}`}>문서 메타데이터</Link>{safeNotionUrl(result.sourceUrl) ? <a href={result.sourceUrl!} target="_blank" rel="noreferrer">Notion 원문 열기</a> : <span>Notion 출처 {result.sourceObjectId}</span>}</div></article></li>)}</ol></div> : null}
+      {knowledgeSearch.data?.results.length ? <div className="knowledge-search-results" aria-live="polite"><p>{knowledgeSearch.data.resultCount}개 결과 · 정책 {knowledgeSearch.data.policyVersion} · {knowledgeSearch.data.durationMs}ms</p><ol>{knowledgeSearch.data.results.map(result => <li key={result.chunkId}><article><div><span className="status-badge status-badge--active">관련도 {(result.relevance * 100).toFixed(0)}%</span><span>{knowledgeFreshnessLabel(result.freshness)}</span></div><h3>{result.heading ?? result.documentTitle}</h3><p>{result.excerpt}</p><div className="connection-actions"><Link to={`/knowledge/${result.documentId}`}>문서 메타데이터</Link>{safeNotionUrl(result.sourceUrl) ? <a href={result.sourceUrl!} target="_blank" rel="noreferrer">Notion 원문 열기</a> : <span>Notion 출처 {result.sourceObjectId}</span>}</div></article></li>)}</ol></div> : null}
     </section>
     <section className="knowledge-section" aria-labelledby="notion-import-title"><h2 id="notion-import-title">Notion 페이지 가져오기</h2>
       {connections.isPending ? <p role="status">Notion 연결 상태를 확인하는 중입니다.</p> : null}
@@ -76,7 +77,7 @@ function JobPanel({ job, clear }: { job: ReturnType<typeof useKnowledgeJob>; cle
   const value = job.data!;
   return <section className="knowledge-job" aria-live="polite"><div><strong>{jobLabel(value)}</strong><span>{value.progressPercent}% · 시도 {value.attemptCount}/{value.maxAttempts}</span></div><progress max={100} value={value.progressPercent}>{value.progressPercent}%</progress>
     {value.status === "succeeded" && value.resultResourceUrl ? <Link className="button-link" to={value.resultResourceUrl.replace("/api/v1/knowledge-documents/", "/knowledge/")}>수집된 문서 보기</Link> : null}
-    {value.status === "failed" ? <p role="alert">{value.errorMessage ?? "지식 수집에 실패했습니다."}</p> : null}
+    {value.status === "failed" ? <p role="alert">{safeJobErrorMessage(value.errorCode, value.retryable)}</p> : null}
     {(value.status === "succeeded" || value.status === "failed") ? <button className="button-secondary" type="button" onClick={clear}>작업 알림 닫기</button> : null}</section>;
 }
 

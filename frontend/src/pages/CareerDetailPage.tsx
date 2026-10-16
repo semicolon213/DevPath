@@ -2,6 +2,7 @@ import { Link, useParams } from "react-router-dom";
 import { useCareer } from "../features/careers/model/useCareers";
 import { usePreferences, useSetCareer } from "../features/profile/model/useProfile";
 import { ApiError } from "../shared/api/apiClient";
+import { categoryLabel, priorityLabel } from "../shared/ui/labels";
 
 export function CareerDetailPage() {
   const { careerId } = useParams();
@@ -34,5 +35,3 @@ function ProfileList({ title, values }: { title: string; values: string[] }) { r
 function ErrorState({ error, retry }: { error: Error | null; retry: () => void }) { if (error instanceof ApiError && error.status === 404) return <div className="state-panel" role="alert"><h1>지원하는 커리어가 아닙니다</h1><Link to="/careers">지원 커리어 보기</Link></div>; if (error instanceof ApiError && error.status === 401) return <div className="state-panel" role="alert"><h1>로그인이 필요합니다</h1><Link to="/">홈으로 이동</Link></div>; return <div className="state-panel" role="alert"><h1>커리어 프로필을 불러오지 못했습니다</h1><button onClick={retry}>다시 시도</button></div>; }
 function PageShell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/careers">← 지원 커리어</Link></nav>{children}</main>; }
 function statusLabel(value: string) { return value === "SUPPORTED" ? "공식 지원" : value; }
-function categoryLabel(value: string) { return ({ LANGUAGE: "언어", FRAMEWORK: "프레임워크", TESTING: "테스트", DOCUMENTATION: "문서화", ACTIVITY: "개발 활동" } as Record<string, string>)[value] ?? value; }
-function priorityLabel(value: string) { return ({ HIGH: "높음", MEDIUM: "보통", LOW: "낮음" } as Record<string, string>)[value] ?? value; }

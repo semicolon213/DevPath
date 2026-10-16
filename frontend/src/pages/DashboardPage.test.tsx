@@ -20,6 +20,11 @@ describe("DashboardPage", () => {
     expect(screen.getAllByText("devpath/backend")).toHaveLength(2);
     expect(screen.getByText("테스트 보강")).toBeInTheDocument();
     expect(screen.getByText("저장소 동기화")).toBeInTheDocument();
+    expect(screen.getByText("충분 · 신뢰도 88%")).toBeInTheDocument();
+    expect(screen.getByText("테스트 · 16시간")).toBeInTheDocument();
+    expect(screen.getByText("높음")).toBeInTheDocument();
+    expect(screen.getByText("완료")).toBeInTheDocument();
+    ["COMPETENT", "TESTING", "HIGH", "SUCCEEDED"].forEach(value => expect(screen.queryByText(value)).not.toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:8080/api/v1/dashboard/summary");
   });

@@ -47,7 +47,7 @@ it("shows the current authoritative skill and its normalized evidence", async ()
 
   renderWithProviders(<Routes><Route path="/skills/:skillId" element={<SkillDetailPage />} /></Routes>, ["/skills/skill-1"]);
 
-  expect(await screen.findByRole("heading", { name: "Testing Discipline" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "테스트 역량" })).toBeInTheDocument();
   expect(screen.getAllByText("72")).toHaveLength(2);
   expect(screen.getByText("테스트 파일이 확인되었습니다.")).toBeInTheDocument();
   expect(screen.getByText(/브라우저는 계산하거나 수정하지 않습니다/)).toBeInTheDocument();
@@ -79,7 +79,7 @@ it("keeps current detail available when only historical matrices fail", async ()
 
   renderWithProviders(<Routes><Route path="/skills/:skillId" element={<SkillDetailPage />} /></Routes>, ["/skills/skill-1"]);
 
-  expect(await screen.findByRole("heading", { name: "Testing Discipline" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "테스트 역량" })).toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "기술 평가 이력만 불러오지 못했습니다." })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "이력 다시 시도" })).toBeInTheDocument();
 });

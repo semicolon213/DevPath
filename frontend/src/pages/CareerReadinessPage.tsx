@@ -1,8 +1,9 @@
 import { Link } from "react-router-dom";
 import { CareerCoachingPanel } from "../features/ai/ui/CareerCoachingPanel";
-import type { ReadinessLevel, RuleCategory, SkillGap } from "../features/readiness/api/careerReadinessApi";
+import type { SkillGap } from "../features/readiness/api/careerReadinessApi";
 import { useCurrentCareerReadiness } from "../features/readiness/model/useCareerReadiness";
 import { ApiError } from "../shared/api/apiClient";
+import { categoryLabel, levelLabel } from "../shared/ui/labels";
 
 export function CareerReadinessPage() {
   const query = useCurrentCareerReadiness();
@@ -13,7 +14,7 @@ export function CareerReadinessPage() {
 
   return <Shell>
     <header className="workspace-header">
-      <div><p className="eyebrow">Deterministic Career Engine</p><h1>커리어 준비도</h1><p>AI가 아닌 승인된 정책과 현재 Skill Matrix로 계산한 공식 결과입니다.</p></div>
+      <div><p className="eyebrow">공식 커리어 평가</p><h1>커리어 준비도</h1><p>AI가 아닌 승인된 정책과 현재 Skill Matrix로 계산한 공식 결과입니다.</p></div>
       <div className="analysis-version"><span>정책 {result.readinessPolicyVersion}</span><span>프로필 {result.careerProfileVersion}</span><span>규칙 {result.ruleSetVersion}</span></div>
     </header>
     <section className="readiness-hero" aria-labelledby="readiness-result-title">
@@ -39,12 +40,10 @@ function GapCard({ gap }: { gap: SkillGap }) {
 }
 
 function ReadinessError({ error, retry }: { error: Error; retry: () => void }) {
-  if (error instanceof ApiError && error.status === 404) return <div className="state-panel"><h1>아직 준비도 결과가 없습니다</h1><p>백엔드 또는 프론트엔드 목표를 선택하고 새 분석을 완료하면 결과가 생성됩니다.</p><Link className="button-link" to="/repositories">분석 준비</Link></div>;
+  if (error instanceof ApiError && error.status === 404) return <div className="state-panel"><h1>아직 준비도 결과가 없습니다</h1><p>지원 직무를 선택하고 새 분석을 완료하면 결과가 생성됩니다.</p><Link className="button-link" to="/repositories">분석 준비</Link></div>;
   if (error instanceof ApiError && error.status === 401) return <div className="state-panel" role="alert"><h1>로그인이 필요합니다</h1><Link className="button-link" to="/">로그인 화면으로 이동</Link></div>;
   return <div className="state-panel" role="alert"><h1>준비도를 불러오지 못했습니다</h1><button type="button" onClick={retry}>다시 시도</button></div>;
 }
 function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/dashboard">← 대시보드</Link></nav>{children}</main>; }
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
-function categoryLabel(value: RuleCategory) { return { LANGUAGE: "언어", FRAMEWORK: "프레임워크", DATABASE: "데이터베이스", ARCHITECTURE: "아키텍처", TESTING: "테스트", DEVOPS: "DevOps", DOCUMENTATION: "문서화", ACTIVITY: "활동" }[value]; }
-function levelLabel(value: ReadinessLevel) { return { NONE: "관찰 없음", BEGINNER: "입문", DEVELOPING: "성장", COMPETENT: "충분", STRONG: "강점" }[value]; }
 function gapStateLabel(value: SkillGap["gapState"]) { return { MISSING: "관찰 없음", WEAK: "약함", PARTIAL: "일부 충족", SUFFICIENT: "충족", STRONG: "강점" }[value]; }

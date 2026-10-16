@@ -130,11 +130,10 @@ it("shows normalized languages frameworks and databases with evidence paths", as
   expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
   expect(screen.getByText("증거: frontend/package.json")).toBeInTheDocument();
   expect(screen.getByText("프레임워크")).toBeInTheDocument();
-  expect(screen.getByText("데이터베이스")).toBeInTheDocument();
+  expect(screen.getAllByText("데이터베이스")).toHaveLength(2);
   expect(await screen.findByRole("heading", { name: "엔지니어링 증거" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "결정론적 분석 시작" })).toBeEnabled();
   expect(screen.getByText("테스트 파일")).toBeInTheDocument();
-  expect(screen.getByText("데이터베이스 근거")).toBeInTheDocument();
   expect(screen.getByText("데이터베이스 마이그레이션")).toBeInTheDocument();
   expect(screen.getByText("컨테이너 설정")).toBeInTheDocument();
   expect(screen.getByText("협업")).toBeInTheDocument();

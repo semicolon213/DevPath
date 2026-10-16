@@ -2,6 +2,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useState, type ReactNode } from "react";
 import type { ImportedRepository } from "../features/repositories/api/repositoryApi";
 import { useArchiveRepository, useRepositories, useRestoreRepository } from "../features/repositories/model/useRepositories";
+import { repositoryLifecycleLabel, repositorySyncStatusLabel } from "../shared/ui/labels";
 
 export function RepositoriesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -32,7 +33,7 @@ export function RepositoriesPage() {
     <Workspace>
       <header className="workspace-header">
         <div>
-          <p className="eyebrow">Repository workspace</p>
+          <p className="eyebrow">저장소 작업 공간</p>
           <h1>내 GitHub 저장소</h1>
           <p>DevPath에 등록한 저장소와 분석 준비 상태를 한곳에서 확인하세요.</p>
         </div>
@@ -104,12 +105,13 @@ function RepositoryCard({ repository }: { repository: ImportedRepository }) {
     <article className={`repository-card${repository.lifecycle === "ARCHIVED" ? " repository-card--archived" : ""}`}>
       <div className="repository-card__topline">
         <span className="status-badge">{repository.visibility === "PRIVATE" ? "비공개" : "공개"}</span>
-        <span>{lifecycleLabel(repository.lifecycle)}</span>
+        <span>{repositoryLifecycleLabel(repository.lifecycle)}</span>
+        <span className="status-badge">동기화: {repositorySyncStatusLabel(repository.syncStatus)}</span>
       </div>
       <h3><Link to={`/repositories/${repository.repositoryId}`}>{repository.fullName}</Link></h3>
       <dl className="metadata-list">
         <div><dt>기본 브랜치</dt><dd>{repository.defaultBranch}</dd></div>
-        <div><dt>분석 준비</dt><dd>{syncLabel(repository.syncStatus)}</dd></div>
+        <div><dt>동기화 상태</dt><dd>{repositorySyncStatusLabel(repository.syncStatus)}</dd></div>
         <div><dt>등록일</dt><dd>{formatDate(repository.discoveredAt)}</dd></div>
       </dl>
       {repository.lifecycle === "ARCHIVED" && repository.providerArchived ? (
@@ -148,25 +150,12 @@ function RepositoryCard({ repository }: { repository: ImportedRepository }) {
   );
 }
 
-function lifecycleLabel(lifecycle: ImportedRepository["lifecycle"]) {
-  if (lifecycle === "ARCHIVED") return "DevPath에서 보관됨";
-  if (lifecycle === "DELETED_EXTERNALLY") return "GitHub에서 삭제됨";
-  if (lifecycle === "ACTIVE") return "동기화됨";
-  return "등록 완료";
-}
-
 function Workspace({ children }: { children: ReactNode }) {
   return <main className="shell workspace"><nav><Link to="/">← DevPath 홈</Link></nav>{children}</main>;
 }
 
 function Summary({ label, value }: { label: string; value: number }) {
   return <div><strong>{value}</strong><span>{label}</span></div>;
-}
-
-export function syncLabel(status: "NOT_SYNCED" | "SYNCHRONIZED" | "FAILED") {
-  if (status === "SYNCHRONIZED") return "동기화 완료";
-  if (status === "FAILED") return "동기화 확인 필요";
-  return "메타데이터만 등록됨";
 }
 
 function formatDate(value: string) {

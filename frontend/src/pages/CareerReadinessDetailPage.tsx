@@ -1,7 +1,8 @@
 import { Link, useParams } from "react-router-dom";
-import type { ReadinessLevel, RuleCategory, SkillGap } from "../features/readiness/api/careerReadinessApi";
+import type { SkillGap } from "../features/readiness/api/careerReadinessApi";
 import { useCareerReadinessWorkspace } from "../features/readiness/model/useCareerReadiness";
 import { ApiError } from "../shared/api/apiClient";
+import { categoryLabel, levelLabel } from "../shared/ui/labels";
 
 export function CareerReadinessDetailPage() {
   const { careerReadinessId } = useParams();
@@ -13,7 +14,7 @@ export function CareerReadinessDetailPage() {
   const needsAction = result.skillGaps.filter(gap => !["SUFFICIENT", "STRONG"].includes(gap.gapState));
 
   return <Shell>
-    <header className="workspace-header"><div><p className="eyebrow">Immutable Career Assessment</p><h1>커리어 준비도 상세</h1>
+    <header className="workspace-header"><div><p className="eyebrow">저장된 커리어 평가</p><h1>커리어 준비도 상세</h1>
       <p>평가 당시 Skill Matrix와 커리어 정책으로 생성된 불변 결과입니다.</p></div>
       <div className="analysis-version"><span>정책 {result.readinessPolicyVersion}</span><span>프로필 {result.careerProfileVersion}</span><span>규칙 {result.ruleSetVersion}</span></div>
     </header>
@@ -38,6 +39,4 @@ function ErrorState({ error, retry }: { error: Error; retry: () => void }) { if 
 function State({ title, to = "/recommendations" }: { title: string; to?: string }) { return <section className="state-panel" role="alert"><h1>{title}</h1><Link className="button-link" to={to}>돌아가기</Link></section>; }
 function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/career-readiness">현재 준비도</Link></nav>{children}</main>; }
 function format(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
-function categoryLabel(value: RuleCategory) { return { LANGUAGE: "언어", FRAMEWORK: "프레임워크", DATABASE: "데이터베이스", ARCHITECTURE: "아키텍처", TESTING: "테스트", DEVOPS: "DevOps", DOCUMENTATION: "문서화", ACTIVITY: "활동" }[value]; }
-function levelLabel(value: ReadinessLevel) { return { NONE: "관찰 없음", BEGINNER: "입문", DEVELOPING: "성장", COMPETENT: "충분", STRONG: "강점" }[value]; }
 function gapStateLabel(value: SkillGap["gapState"]) { return { MISSING: "관찰 없음", WEAK: "약함", PARTIAL: "일부 충족", SUFFICIENT: "충족", STRONG: "강점" }[value]; }

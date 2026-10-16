@@ -4,6 +4,7 @@ import { useAnalysisDetail } from "../features/analysis/model/useAnalysis";
 import { ApiError } from "../shared/api/apiClient";
 import { RepositoryReviewPanel } from "../features/ai/ui/RepositoryReviewPanel";
 import { RepositorySummaryPanel } from "../features/ai/ui/RepositorySummaryPanel";
+import { categoryLabel, evidenceTypeLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 
 export function AnalysisDetailPage() {
   const { analysisId } = useParams();
@@ -85,7 +86,7 @@ export function AnalysisDetailPage() {
         <div className="historical-skill-list">
           {matrix.skills.map(skill => (
             <article key={skill.assessmentId}>
-              <div><strong>{skillName(skill.skillKey, skill.skillName)}</strong><span>{levelLabel(skill.level)}</span></div>
+              <div><strong>{skillNameLabel(skill.skillKey)}</strong><span>{levelLabel(skill.level)}</span></div>
               <progress max="100" value={skill.score}>{skill.score}점</progress>
               <small>공식 점수 {formatScore(skill.score)} · 신뢰도 {formatScore(skill.confidence)}%</small>
             </article>
@@ -148,12 +149,8 @@ function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { ma
 function formatPercent(value: number) { return `${formatScore(value * 100)}%`; }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "long", timeStyle: "short" }).format(new Date(value)); }
 function countScoredRules(categories: RuleCategoryScore[]) { return categories.reduce((count, category) => count + category.ruleResults.filter(rule => rule.status !== "SKIPPED" && rule.status !== "ERROR").length, 0); }
-function categoryLabel(value: RuleCategoryScore["category"]) { return { LANGUAGE: "언어", FRAMEWORK: "프레임워크", TESTING: "테스트", DOCUMENTATION: "문서화", ACTIVITY: "개발 활동" }[value]; }
 function ruleStatusLabel(value: RuleResult["status"]) { return { PASSED: "충족", FAILED: "미충족", PARTIAL: "부분 충족", SKIPPED: "평가 제외", ERROR: "평가 오류" }[value]; }
 function roleLabel(value: RuleEvidence["contributionRole"]) { return { DIRECT: "직접 근거", SUPPORTING: "보조 근거", MISSING: "부족한 근거" }[value]; }
-function evidenceTypeLabel(value: RuleEvidence["evidenceType"]) { return { REPOSITORY_PATH: "저장소 파일", LANGUAGE_STATISTIC: "언어 통계", SNAPSHOT_SIGNAL: "스냅샷 지표" }[value]; }
-function levelLabel(value: string) { return { NONE: "관찰 없음", BEGINNER: "입문", DEVELOPING: "성장", COMPETENT: "충분", STRONG: "강점" }[value] ?? value; }
-function skillName(key: string, fallback: string) { return { "language-engineering": "언어 활용", "framework-application": "프레임워크 적용", "testing-discipline": "테스트 역량", "technical-documentation": "기술 문서화", "development-activity": "개발 활동" }[key] ?? fallback; }
 
 const ruleLabels: Record<string, string> = {
   LANGUAGE_PRIMARY_SHARE: "주 사용 언어 비중", LANGUAGE_DIVERSITY: "사용 언어 다양성", FRAMEWORK_COUNT: "프레임워크 사용 수",

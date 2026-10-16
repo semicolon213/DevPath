@@ -13,7 +13,7 @@ import {
 } from "../features/repositories/model/useRepositories";
 import { repositoriesKey } from "../features/repositories/model/useRepositories";
 import { ApiError, rateLimitMessage } from "../shared/api/apiClient";
-import { syncLabel } from "./RepositoriesPage";
+import { categoryLabel, repositoryLifecycleLabel, repositorySyncStatusLabel } from "../shared/ui/labels";
 import { analysisHistoryKey, useAnalysisJob, useRequestAnalysis } from "../features/analysis/model/useAnalysis";
 import { currentSkillMatrixKey } from "../features/skills/model/useSkillMatrix";
 import { dashboardKey } from "../features/dashboard/model/useDashboard";
@@ -87,7 +87,7 @@ export function RepositoryDetailPage() {
       <nav><Link to="/repositories">← 내 저장소</Link></nav>
       <header className="repository-detail-header">
         <div>
-          <p className="eyebrow">GitHub repository</p>
+          <p className="eyebrow">GitHub 저장소</p>
           <h1>{repository.fullName}</h1>
           <p>GitHub 동기화 상태와 재현 가능한 저장소 스냅샷을 관리합니다.</p>
         </div>
@@ -195,7 +195,7 @@ export function RepositoryDetailPage() {
             <div><dt>소유자</dt><dd>{repository.owner}</dd></div>
             <div><dt>공개 범위</dt><dd>{repository.visibility === "PRIVATE" ? "비공개" : "공개"}</dd></div>
             <div><dt>기본 브랜치</dt><dd>{repository.defaultBranch}</dd></div>
-            <div><dt>DevPath 상태</dt><dd>{repository.lifecycle === "ARCHIVED" ? "보관됨" : "사용 가능"}</dd></div>
+            <div><dt>DevPath 상태</dt><dd>{repositoryLifecycleLabel(repository.lifecycle)}</dd></div>
             <div><dt>GitHub 상태</dt><dd>{repository.providerArchived ? "GitHub에서 보관됨" : "사용 가능"}</dd></div>
           </dl>
           {isProviderArchived && repository.lifecycle === "ARCHIVED" ? (
@@ -207,7 +207,7 @@ export function RepositoryDetailPage() {
         </div>
         <div className="detail-card detail-card--accent">
           <h2>분석 준비 상태</h2>
-          <p className="large-status">{syncLabel(repository.syncStatus)}</p>
+          <p className="large-status">{repositorySyncStatusLabel(repository.syncStatus)}</p>
           <p>
             GitHub 기본 브랜치·브랜치 목록·커밋 이력은 백그라운드 작업으로 수집됩니다.
             공식 점수와 기술 분석은 이후 결정론적 Rule Engine 단계에서 생성됩니다.
@@ -259,7 +259,7 @@ export function RepositoryDetailPage() {
             <article className="technology-card" key={`${technology.category}:${technology.name}:${technology.evidenceLabel}`}>
               <div>
                 <strong>{technology.name}</strong>
-                <span>{technologyCategoryLabel(technology.category)}</span>
+                <span>{categoryLabel(technology.category)}</span>
               </div>
               {technology.percentage !== null ? (
                 <progress max="100" value={technology.percentage}>{technology.percentage}%</progress>
@@ -291,7 +291,7 @@ export function RepositoryDetailPage() {
         <div className="evidence-grid">
           {evidence.data?.categories.map(category => (
             <article className="evidence-card" key={category.category}>
-              <h3>{evidenceCategoryLabel(category.category)}</h3>
+              <h3>{categoryLabel(category.category)}</h3>
               <ul>
                 {category.signals.map(signal => (
                   <li key={signal.signalKey}>
@@ -411,16 +411,6 @@ function analysisJobLabel(status: string, phase: string) {
   return "분석 대기 중";
 }
 
-function technologyCategoryLabel(category: "LANGUAGE" | "FRAMEWORK" | "DATABASE") {
-  if (category === "FRAMEWORK") return "프레임워크";
-  if (category === "DATABASE") return "데이터베이스";
-  return "언어";
-}
-
-function evidenceCategoryLabel(category: "ARCHITECTURE" | "DATABASE" | "TESTING" | "DEVOPS" | "DOCUMENTATION" | "COLLABORATION" | "ACTIVITY") {
-  return { ARCHITECTURE: "아키텍처", DATABASE: "데이터베이스 근거", TESTING: "테스트", DEVOPS: "DevOps", DOCUMENTATION: "문서화", COLLABORATION: "협업", ACTIVITY: "활동" }[category];
-}
-
 const evidenceLabels: Record<string, string> = {
   HEXAGONAL_BOUNDARIES: "헥사고날 경계",
   LAYERED_BOUNDARIES: "계층형 경계",
@@ -477,5 +467,5 @@ function syncRequestError(error: Error) {
   if (error.status === 404) return "현재 계정에서 이 저장소를 찾을 수 없습니다.";
   if (error.status === 400) return "보관되었거나 동기화할 수 없는 저장소입니다.";
   if (error.status === 503) return "GitHub 연결 또는 저장소 권한을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.";
-  return `동기화를 요청하지 못했습니다. 서버 응답 코드: ${error.status}`;
+  return "동기화를 요청하지 못했습니다. 잠시 후 다시 시도해 주세요.";
 }
