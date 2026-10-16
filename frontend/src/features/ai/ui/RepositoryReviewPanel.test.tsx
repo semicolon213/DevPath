@@ -15,6 +15,8 @@ describe("RepositoryReviewPanel", () => {
 
   it("starts a repository review request", () => {
     render(<RepositoryReviewPanel analysisId="analysis-id" />);
+    expect(screen.getByText("AI가 공식 점수를 바꾸지 않고, 이 분석에 연결된 공식 분석 결과(Rule Engine)와 근거만 영역별로 설명합니다.")).toBeInTheDocument();
+    expect(screen.queryByText(/Rule Engine 결과/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "리뷰 생성" }));
     expect(mutate).toHaveBeenCalledOnce();
   });

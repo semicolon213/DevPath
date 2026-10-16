@@ -9,7 +9,7 @@ export function SkillExplanationPanel({ skillMatrixId }: { skillMatrixId: string
       <div>
         <p className="eyebrow">검증된 AI 설명</p>
         <h2 id="skill-explanation-title">기술 분석 설명</h2>
-        <p>공식 점수는 Rule Engine 결과 그대로 유지하며, AI는 근거가 확인된 강점과 개선 영역만 설명합니다.</p>
+        <p>공식 점수는 공식 분석 결과(Rule Engine) 그대로 유지하며, AI는 근거가 확인된 강점과 개선 영역만 설명합니다.</p>
       </div>
       {!job && <button type="button" disabled={generation.request.isPending}
         onClick={() => generation.request.mutate()}>

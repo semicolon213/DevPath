@@ -15,6 +15,8 @@ describe("SkillExplanationPanel", () => {
 
   it("starts an owner-scoped explanation request", () => {
     render(<SkillExplanationPanel skillMatrixId="matrix-id" />);
+    expect(screen.getByText("공식 점수는 공식 분석 결과(Rule Engine) 그대로 유지하며, AI는 근거가 확인된 강점과 개선 영역만 설명합니다.")).toBeInTheDocument();
+    expect(screen.queryByText(/Rule Engine 결과/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "설명 생성" }));
     expect(mutate).toHaveBeenCalledOnce();
   });

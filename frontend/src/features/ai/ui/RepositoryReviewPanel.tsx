@@ -9,7 +9,7 @@ export function RepositoryReviewPanel({ analysisId }: { analysisId: string }) {
       <div>
         <p className="eyebrow">검증된 AI 리뷰</p>
         <h2 id="repository-review-title">저장소 리뷰</h2>
-        <p>AI가 공식 점수를 바꾸지 않고, 이 분석에 연결된 Rule Engine 결과와 근거만 영역별로 설명합니다.</p>
+        <p>AI가 공식 점수를 바꾸지 않고, 이 분석에 연결된 공식 분석 결과(Rule Engine)와 근거만 영역별로 설명합니다.</p>
       </div>
       {!job && <button type="button" disabled={generation.request.isPending}
         onClick={() => generation.request.mutate()}>
