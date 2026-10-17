@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../../../test/renderWithProviders";
 import { ConnectionPanel } from "./ConnectionPanel";
@@ -195,3 +195,50 @@ it("shows a separate error state when connection lookup fails", async () => {
 
   expect(await screen.findByRole("alert")).toHaveTextContent("외부 서비스 연결 상태를 불러오지 못했습니다");
 });
+
+it("uses the shared dialog before either provider is disconnected", async () => {
+  let githubActive = true;
+  let notionActive = true;
+  const metadata = { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T00:00:00Z" };
+  const fetchMock = vi.fn((input: string | URL | Request, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/csrf")) return Promise.resolve(Response.json({ data: { headerName: "X-CSRF-TOKEN", parameterName: "_csrf", token: "csrf" }, metadata }));
+    if (url.endsWith("/integrations/github") && init?.method === "DELETE") {
+      githubActive = false;
+      return Promise.resolve(Response.json({ data: connection("GITHUB", "REVOKED"), metadata }));
+    }
+    if (url.endsWith("/integrations/notion") && init?.method === "DELETE") {
+      notionActive = false;
+      return Promise.resolve(Response.json({ data: connection("NOTION", "REVOKED"), metadata }));
+    }
+    if (url.endsWith("/github/repositories")) return Promise.resolve(Response.json({ data: { repositories: [] }, metadata }));
+    if (url.endsWith("/notion/workspaces")) return Promise.resolve(Response.json({ data: { workspaces: [] }, metadata }));
+    const connections = [connection("GITHUB", githubActive ? "ACTIVE" : "REVOKED"), connection("NOTION", notionActive ? "ACTIVE" : "REVOKED")];
+    return Promise.resolve(Response.json({ data: { connections }, metadata }));
+  });
+  vi.stubGlobal("fetch", fetchMock);
+  renderWithProviders(<ConnectionPanel />);
+
+  fireEvent.click(await screen.findByRole("button", { name: "연결 해제" }));
+  expect(screen.getByRole("dialog")).toHaveTextContent("저장된 GitHub 자격 증명을 폐기");
+  expect(fetchMock.mock.calls.some(([, init]) => init?.method === "DELETE")).toBe(false);
+  fireEvent.click(screen.getByRole("button", { name: "취소" }));
+  const githubDisconnect = screen.getByRole("button", { name: "연결 해제" });
+  githubDisconnect.focus();
+  fireEvent.click(githubDisconnect);
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "GitHub 연결 해제" }));
+  expect(await screen.findByRole("button", { name: "GitHub 다시 연결" })).toBeInTheDocument();
+  const githubMessage = await screen.findByText("GitHub 연결을 해제했습니다.");
+  expect(githubMessage).toHaveAttribute("role", "status");
+  await waitFor(() => expect(githubMessage).toHaveFocus());
+
+  fireEvent.click(screen.getByRole("button", { name: "Notion 연결 해제" }));
+  expect(screen.getByRole("dialog")).toHaveTextContent("저장된 Notion 자격 증명과 페이지 메타데이터를 제거");
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Notion 연결 해제" }));
+  await waitFor(() => expect(notionActive).toBe(false));
+  expect(await screen.findByText("Notion 연결을 해제했습니다.")).toHaveAttribute("role", "status");
+});
+
+function connection(provider: "GITHUB" | "NOTION", status: "ACTIVE" | "REVOKED") {
+  return { connectionId: `${provider.toLowerCase()}-id`, provider, status, scopes: [], connectedAt: "2026-08-11T00:00:00Z", expiresAt: null };
+}

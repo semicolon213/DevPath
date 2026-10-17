@@ -10,6 +10,8 @@ import {
 import { Link } from "react-router-dom";
 import { useImportRepository } from "../../repositories/model/useRepositories";
 import { rateLimitMessage } from "../../../shared/api/apiClient";
+import { useRef, useState } from "react";
+import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 
 export function ConnectionPanel() {
   const connections = useConnections();
@@ -20,6 +22,9 @@ export function ConnectionPanel() {
   const githubActive = github?.status === "ACTIVE";
   const repositories = useGitHubRepositories(githubActive);
   const callbackResult = new URLSearchParams(window.location.search).get("githubConnection");
+  const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
+  const [disconnectMessage, setDisconnectMessage] = useState("");
+  const disconnectMessageRef = useRef<HTMLParagraphElement>(null);
 
   if (connections.isPending) {
     return <p role="status">외부 서비스 연결 상태를 확인하는 중입니다…</p>;
@@ -39,16 +44,10 @@ export function ConnectionPanel() {
     connect();
   }
 
-  function disconnectConnection() {
-    if (window.confirm("GitHub 저장소 연결을 해제할까요? 다시 연결하기 전까지 저장소에 접근할 수 없습니다.")) {
-      disconnect.mutate();
-    }
-  }
-
   return (
     <>
     <section id="github" className="connection-panel" aria-labelledby="connection-title">
-      <h3 id="connection-title">외부 서비스 연결</h3>
+      <h2 id="connection-title">외부 서비스 연결</h2>
       {callbackResult === "installation-required" ? (
         <p role="alert">GitHub App을 저장소에 설치한 뒤 다시 연결해 주세요.</p>
       ) : null}
@@ -80,14 +79,14 @@ export function ConnectionPanel() {
             className="button-secondary"
             type="button"
             disabled={authorize.isPending || disconnect.isPending}
-            onClick={disconnectConnection}
+            onClick={() => { disconnect.reset(); setDisconnectMessage(""); setConfirmingDisconnect(true); }}
           >
             {disconnect.isPending ? "연결 해제 중…" : "연결 해제"}
           </button>
         </div>
       )}
       {authorize.isError ? <p role="alert">GitHub 연결을 시작하지 못했습니다. 서버 설정을 확인해 주세요.</p> : null}
-      {disconnect.isError ? <p role="alert">GitHub 연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.</p> : null}
+      <p ref={disconnectMessageRef} role="status" tabIndex={-1}>{disconnectMessage}</p>
       {importRepository.isSuccess ? (
         <p role="status">
           <strong>{importRepository.data.fullName}</strong> 저장소를 DevPath에 추가했습니다.{" "}
@@ -104,6 +103,7 @@ export function ConnectionPanel() {
           refreshConnection={() => connections.refetch()}
         />
       ) : null}
+      <ConfirmDialog open={confirmingDisconnect} title="GitHub 저장소 연결을 해제할까요?" description="저장된 GitHub 자격 증명을 폐기하고 원격 토큰 폐기를 시도합니다. 다시 연결하기 전까지 GitHub 저장소를 조회하거나 동기화할 수 없습니다." confirmLabel="GitHub 연결 해제" destructive pending={disconnect.isPending} error={disconnect.isError ? "GitHub 연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요." : undefined} returnFocusFallback={disconnectMessageRef} onCancel={() => setConfirmingDisconnect(false)} onConfirm={() => disconnect.mutate(undefined, { onSuccess: () => { setDisconnectMessage("GitHub 연결을 해제했습니다."); setConfirmingDisconnect(false); } })} />
     </section>
     <NotionConnectionPanel connections={connections} />
     </>
@@ -117,20 +117,17 @@ function NotionConnectionPanel({ connections }: { connections: ReturnType<typeof
   const active = notion?.status === "ACTIVE";
   const workspaces = useNotionWorkspaces(active);
   const callbackResult = new URLSearchParams(window.location.search).get("notionConnection");
+  const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
+  const [disconnectMessage, setDisconnectMessage] = useState("");
+  const disconnectMessageRef = useRef<HTMLParagraphElement>(null);
 
   function connect() {
     authorize.mutate(undefined, { onSuccess: result => window.location.assign(result.authorizationUrl) });
   }
 
-  function disconnectConnection() {
-    if (window.confirm("Notion 연결을 해제할까요? 저장된 페이지 메타데이터와 토큰이 더 이상 갱신되지 않습니다.")) {
-      disconnect.mutate();
-    }
-  }
-
   return (
     <section id="notion" className="connection-panel" aria-labelledby="notion-connection-title">
-      <h3 id="notion-connection-title">Notion 워크스페이스</h3>
+      <h2 id="notion-connection-title">Notion 워크스페이스</h2>
       <p>연결에 공유된 페이지의 제목과 수정 시각만 탐색합니다. 페이지 본문은 저장하지 않습니다.</p>
       {callbackResult === "failed" ? <p role="alert">Notion 연결에 실패했습니다. 권한과 서버 설정을 확인해 주세요.</p> : null}
       {callbackResult === "success" ? <p role="status">Notion 워크스페이스 연결을 완료했습니다.</p> : null}
@@ -150,14 +147,15 @@ function NotionConnectionPanel({ connections }: { connections: ReturnType<typeof
           <button type="button" disabled={authorize.isPending || disconnect.isPending} onClick={connect}>
             {authorize.isPending ? "Notion으로 이동하는 중…" : "Notion 권한 다시 승인"}
           </button>
-          <button className="button-secondary" type="button" disabled={authorize.isPending || disconnect.isPending} onClick={disconnectConnection}>
+          <button className="button-secondary" type="button" disabled={authorize.isPending || disconnect.isPending} onClick={() => { disconnect.reset(); setDisconnectMessage(""); setConfirmingDisconnect(true); }}>
             {disconnect.isPending ? "Notion 연결 해제 중…" : "Notion 연결 해제"}
           </button>
         </div>
       )}
       {authorize.isError ? <p role="alert">Notion 연결을 시작하지 못했습니다. 서버 설정을 확인해 주세요.</p> : null}
-      {disconnect.isError ? <p role="alert">Notion 연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요.</p> : null}
+      <p ref={disconnectMessageRef} role="status" tabIndex={-1}>{disconnectMessage}</p>
       {active ? <NotionWorkspaceList workspaces={workspaces} /> : null}
+      <ConfirmDialog open={confirmingDisconnect} title="Notion 연결을 해제할까요?" description="저장된 Notion 자격 증명과 페이지 메타데이터를 제거하고 원격 토큰 폐기를 시도합니다. 연결된 문서는 더 이상 검색하거나 갱신할 수 없습니다." confirmLabel="Notion 연결 해제" destructive pending={disconnect.isPending} error={disconnect.isError ? "Notion 연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요." : undefined} returnFocusFallback={disconnectMessageRef} onCancel={() => setConfirmingDisconnect(false)} onConfirm={() => disconnect.mutate(undefined, { onSuccess: () => { setDisconnectMessage("Notion 연결을 해제했습니다."); setConfirmingDisconnect(false); } })} />
     </section>
   );
 }
@@ -171,7 +169,7 @@ function NotionWorkspaceList({ workspaces }: { workspaces: ReturnType<typeof use
   if (workspaces.data.workspaces.length === 0) return <p>연결된 Notion 워크스페이스가 없습니다.</p>;
   return <div className="repository-list notion-page-list">
     {workspaces.data.workspaces.map(workspace => <div key={workspace.workspaceId}>
-      <div className="section-heading"><div><h4>{workspace.workspaceName}</h4><p>공유된 활성 항목 {activeNotionPages(workspace.pages).length}개 · 마지막 확인 {new Date(workspace.discoveredAt).toLocaleString("ko-KR")}</p></div>
+      <div className="section-heading"><div><h3>{workspace.workspaceName}</h3><p>공유된 활성 항목 {activeNotionPages(workspace.pages).length}개 · 마지막 확인 {new Date(workspace.discoveredAt).toLocaleString("ko-KR")}</p></div>
         <button className="button-secondary" type="button" disabled={workspaces.isFetching} onClick={() => workspaces.refetch()}>
           {workspaces.isFetching ? "새로 고침 중…" : "페이지 목록 새로 고침"}
         </button>
@@ -230,7 +228,7 @@ function RepositoryList({
     <div className="repository-list">
       <div className="section-heading">
         <div>
-          <h4>접근 가능한 저장소</h4>
+          <h3>접근 가능한 저장소</h3>
           <p>분석할 저장소를 DevPath 작업 공간에 먼저 추가하세요.</p>
         </div>
         <Link to="/repositories">내 저장소 보기</Link>

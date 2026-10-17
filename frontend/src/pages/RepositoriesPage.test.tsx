@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../test/renderWithProviders";
 import { RepositoriesPage } from "./RepositoriesPage";
@@ -72,10 +72,15 @@ it("archives, filters, and restores an owned repository from the workspace", asy
 
   renderWithProviders(<RepositoriesPage />, ["/repositories"]);
 
-  fireEvent.click(await screen.findByRole("button", { name: "보관" }));
-  expect(screen.getByText(/기존 스냅샷과 분석 결과는 유지/)).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("button", { name: "보관 확인" }));
+  const archiveTrigger = await screen.findByRole("button", { name: "보관" });
+  archiveTrigger.focus();
+  fireEvent.click(archiveTrigger);
+  expect(screen.getByText(/기존 메타데이터, 불변 스냅샷과 공식 분석 결과는 유지/)).toBeInTheDocument();
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "저장소 보관" }));
   expect(await screen.findByRole("heading", { name: "표시할 활성 저장소가 없습니다" })).toBeInTheDocument();
+  const archiveMessage = await screen.findByText("owner/devpath 저장소를 보관했습니다.");
+  expect(archiveMessage).toHaveAttribute("role", "status");
+  await waitFor(() => expect(archiveMessage).toHaveFocus());
   expect(screen.getByRole("link", { name: "GitHub 저장소 선택" })).toHaveAttribute("href", "/settings/integrations#github");
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/archive"), expect.objectContaining({ method: "POST" }));
 

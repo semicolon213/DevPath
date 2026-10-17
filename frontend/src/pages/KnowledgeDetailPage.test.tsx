@@ -1,4 +1,4 @@
-import { act, fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { useLocation } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
 import { AppRoutes } from "../routes/AppRoutes";
@@ -45,8 +45,6 @@ it("renders document provenance and chunk metadata without raw content or embedd
 });
 
 it("requires archive confirmation and sends the confirmed request through the CSRF boundary", async () => {
-  const confirmMock = vi.fn(() => false);
-  vi.stubGlobal("confirm", confirmMock);
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const path = new URL(String(input)).pathname;
     if (path === "/api/v1/knowledge-documents/11111111-1111-4111-8111-111111111111") return Promise.resolve(json(knowledgeDocument));
@@ -59,15 +57,15 @@ it("requires archive confirmation and sends the confirmed request through the CS
 
   const archiveButton = await screen.findByRole("button", { name: "문서 보관" });
   fireEvent.click(archiveButton);
-  expect(confirmMock).toHaveBeenCalledTimes(1);
+  expect(screen.getByRole("dialog", { name: "이 문서를 보관할까요?" })).toHaveTextContent("활성 지식 검색 범위에서는 제외");
   await act(async () => {});
   expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/csrf"))).toBe(false);
   expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/archive"))).toBe(false);
   expect(archiveButton).toBeEnabled();
 
-  confirmMock.mockReturnValue(true);
+  fireEvent.click(screen.getByRole("button", { name: "취소" }));
   fireEvent.click(archiveButton);
-  expect(confirmMock).toHaveBeenCalledTimes(2);
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "문서 보관" }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
     expect.stringMatching(/\/api\/v1\/knowledge-documents\/11111111-1111-4111-8111-111111111111\/archive$/),
     expect.objectContaining({
@@ -75,6 +73,7 @@ it("requires archive confirmation and sends the confirmed request through the CS
       headers: expect.objectContaining({ "X-CSRF-TOKEN": "csrf-token" })
     })
   ));
+  expect(await screen.findByText("문서를 보관했습니다.")).toHaveAttribute("role", "status");
 });
 
 it("reindexes through the CSRF boundary and renders the accepted job from the URL", async () => {
@@ -99,7 +98,7 @@ it("reindexes through the CSRF boundary and renders the accepted job from the UR
     })
   ));
   expect(await screen.findByTestId("location")).toHaveTextContent("/knowledge/11111111-1111-4111-8111-111111111111?job=55555555-5555-4555-8555-555555555555");
-  expect(await screen.findByRole("status")).toHaveTextContent("재색인 상태: 완료 100%");
+  expect(await screen.findByText("재색인 상태: 완료 100%")).toHaveAttribute("role", "status");
 });
 
 it("announces the pending document and chunk load", () => {
@@ -132,7 +131,6 @@ it("announces a load failure and retries both resources", async () => {
 });
 
 it("announces reindex and archive failures", async () => {
-  vi.stubGlobal("confirm", vi.fn(() => true));
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const path = new URL(String(input)).pathname;
     if (path === "/api/v1/knowledge-documents/11111111-1111-4111-8111-111111111111") return Promise.resolve(json(knowledgeDocument));
@@ -148,8 +146,11 @@ it("announces reindex and archive failures", async () => {
   fireEvent.click(await screen.findByRole("button", { name: "재색인" }));
   expect(await screen.findByRole("alert")).toHaveTextContent("재색인 작업을 시작하지 못했습니다.");
   fireEvent.click(screen.getByRole("button", { name: "문서 보관" }));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "문서 보관" }));
   await waitFor(() => expect(screen.getAllByRole("alert")).toHaveLength(2));
-  expect(screen.getAllByRole("alert")[1]).toHaveTextContent("문서를 보관하지 못했습니다.");
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  expect(within(screen.getByRole("dialog")).getByRole("alert")).toHaveTextContent("문서를 보관하지 못했습니다.");
+  expect(within(screen.getByRole("dialog")).getByRole("button", { name: "문서 보관" })).toBeEnabled();
 });
 
 function renderPage(fetchMock: ReturnType<typeof vi.fn>, showLocation = false) {

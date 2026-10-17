@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -17,11 +17,14 @@ import { categoryLabel, repositoryLifecycleLabel, repositorySyncStatusLabel } fr
 import { analysisHistoryKey, useAnalysisJob, useRequestAnalysis } from "../features/analysis/model/useAnalysis";
 import { currentSkillMatrixKey } from "../features/skills/model/useSkillMatrix";
 import { dashboardKey } from "../features/dashboard/model/useDashboard";
+import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 
 export function RepositoryDetailPage() {
   const { repositoryId } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
   const [confirmingArchive, setConfirmingArchive] = useState(false);
+  const [lifecycleMessage, setLifecycleMessage] = useState("");
+  const lifecycleMessageRef = useRef<HTMLParagraphElement>(null);
   const query = useRepository(repositoryId);
   const queryClient = useQueryClient();
   const archive = useArchiveRepository();
@@ -74,6 +77,7 @@ export function RepositoryDetailPage() {
   const repositoryUnavailable = repository.lifecycle === "DELETED_EXTERNALLY";
   const repositoryArchived = repository.lifecycle === "ARCHIVED";
   const changeLifecycle = () => repositoryId && lifecycleMutation.mutate(repositoryId, { onSuccess: () => {
+    setLifecycleMessage(repository.lifecycle === "ARCHIVED" ? "저장소를 복원했습니다." : "저장소를 보관했습니다.");
     setConfirmingArchive(false);
     setSearchParams(current => {
       const next = new URLSearchParams(current);
@@ -107,11 +111,10 @@ export function RepositoryDetailPage() {
               {synchronize.isPending ? "동기화 요청 중…" : "GitHub 동기화"}
             </button>
           ) : null}
-          {!repositoryUnavailable ? <button
+          {repositoryArchived && !repositoryUnavailable ? <button
               type="button"
-              className={repositoryArchived ? undefined : "button-danger"}
               disabled={actionDisabled}
-              onClick={() => repositoryArchived ? changeLifecycle() : setConfirmingArchive(true)}
+              onClick={changeLifecycle}
             >
               {lifecycleMutation.isPending ? "처리 중…" : actionLabel}
             </button> : null}
@@ -119,18 +122,14 @@ export function RepositoryDetailPage() {
         </div>
       </header>
 
-      {confirmingArchive ? (
-        <section className="lifecycle-confirmation lifecycle-confirmation--detail" aria-labelledby="archive-confirmation-title">
-          <h2 id="archive-confirmation-title">이 저장소를 DevPath에서 보관할까요?</h2>
-          <p>활성 목록에서 숨겨지고 새 동기화와 분석을 시작할 수 없습니다. 기존 메타데이터, 불변 스냅샷, 공식 분석 결과는 삭제되지 않습니다.</p>
-          <div>
-            <button type="button" className="button-danger" disabled={archive.isPending} onClick={changeLifecycle}>
-              {archive.isPending ? "보관 중…" : "저장소 보관 확인"}
-            </button>
-            <button type="button" disabled={archive.isPending} onClick={() => setConfirmingArchive(false)}>취소</button>
-          </div>
-        </section>
-      ) : null}
+      {!repositoryArchived && !repositoryUnavailable ? <section className="danger-zone" aria-labelledby="repository-danger-title">
+        <div><h2 id="repository-danger-title">위험 영역</h2><p>저장소를 보관하면 새 동기화와 분석을 시작할 수 없습니다.</p></div>
+        <button type="button" className="button-danger" disabled={actionDisabled} onClick={() => { archive.reset(); setLifecycleMessage(""); setConfirmingArchive(true); }}>
+          {lifecycleMutation.isPending ? "처리 중…" : actionLabel}
+        </button>
+      </section> : null}
+      <p ref={lifecycleMessageRef} role="status" tabIndex={-1}>{lifecycleMessage}</p>
+      <ConfirmDialog open={confirmingArchive} title="이 저장소를 DevPath에서 보관할까요?" description="활성 목록에서 숨겨지고 새 동기화와 분석을 시작할 수 없습니다. 기존 메타데이터, 불변 스냅샷과 공식 분석 결과는 유지됩니다." confirmLabel="저장소 보관" destructive pending={archive.isPending} error={archive.isError ? "저장소를 보관하지 못했습니다. 잠시 후 다시 시도해 주세요." : undefined} returnFocusFallback={lifecycleMessageRef} onCancel={() => setConfirmingArchive(false)} onConfirm={changeLifecycle} />
 
       {job.data ? (
         <section className="sync-panel" aria-live="polite">
@@ -201,7 +200,7 @@ export function RepositoryDetailPage() {
           {isProviderArchived && repository.lifecycle === "ARCHIVED" ? (
             <p className="muted">GitHub에서 보관된 저장소는 GitHub에서 먼저 활성화해야 복원할 수 있습니다.</p>
           ) : null}
-          {lifecycleMutation.isError ? (
+          {repository.lifecycle === "ARCHIVED" && lifecycleMutation.isError ? (
             <p role="alert" className="form-error">저장소 상태를 변경하지 못했습니다. 잠시 후 다시 시도해 주세요.</p>
           ) : null}
         </div>

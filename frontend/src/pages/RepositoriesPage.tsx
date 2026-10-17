@@ -1,13 +1,16 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode, type RefObject } from "react";
 import type { ImportedRepository } from "../features/repositories/api/repositoryApi";
 import { useArchiveRepository, useRepositories, useRestoreRepository } from "../features/repositories/model/useRepositories";
 import { repositoryLifecycleLabel, repositorySyncStatusLabel } from "../shared/ui/labels";
+import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 
 export function RepositoriesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const includeArchived = searchParams.get("includeArchived") === "true";
   const query = useRepositories(includeArchived);
+  const [archiveMessage, setArchiveMessage] = useState("");
+  const archiveMessageRef = useRef<HTMLParagraphElement>(null);
 
   if (query.isPending) {
     return <Workspace><p role="status">내 저장소를 불러오는 중입니다…</p></Workspace>;
@@ -64,6 +67,7 @@ export function RepositoriesPage() {
           보관 저장소 포함
         </label>
       </div>
+      <p ref={archiveMessageRef} role="status" tabIndex={-1}>{archiveMessage}</p>
 
       {repositories.length === 0 ? (
         <div className="state-panel">
@@ -80,7 +84,7 @@ export function RepositoriesPage() {
             </div>
           </div>
           <div className="repository-grid">
-            {repositories.map(repository => <RepositoryCard key={repository.repositoryId} repository={repository} />)}
+            {repositories.map(repository => <RepositoryCard key={repository.repositoryId} repository={repository} returnFocusFallback={archiveMessageRef} onArchiveMessage={setArchiveMessage} />)}
           </div>
           {query.hasNextPage ? (
             <button type="button" disabled={query.isFetchingNextPage} onClick={() => query.fetchNextPage()}>
@@ -93,7 +97,7 @@ export function RepositoriesPage() {
   );
 }
 
-function RepositoryCard({ repository }: { repository: ImportedRepository }) {
+function RepositoryCard({ repository, returnFocusFallback, onArchiveMessage }: { repository: ImportedRepository; returnFocusFallback: RefObject<HTMLElement | null>; onArchiveMessage: (message: string) => void }) {
   const [confirmingArchive, setConfirmingArchive] = useState(false);
   const archive = useArchiveRepository();
   const restore = useRestoreRepository();
@@ -118,28 +122,18 @@ function RepositoryCard({ repository }: { repository: ImportedRepository }) {
       ) : repository.lifecycle === "DELETED_EXTERNALLY" ? (
         <p className="muted">GitHub에서 삭제된 저장소는 로컬에서 복원할 수 없습니다.</p>
       ) : null}
-      {mutation.isError ? <p className="form-error" role="alert">저장소 상태를 변경하지 못했습니다. 다시 시도해 주세요.</p> : null}
-      {confirmingArchive ? (
-        <div className="lifecycle-confirmation" role="group" aria-label={`${repository.fullName} 보관 확인`}>
-          <p>목록에서 숨겨지고 새 동기화와 분석이 중단됩니다. 기존 스냅샷과 분석 결과는 유지됩니다.</p>
-          <div>
-            <button type="button" className="button-danger" disabled={archive.isPending}
-              onClick={() => archive.mutate(repository.repositoryId, { onSettled: () => setConfirmingArchive(false) })}>
-              {archive.isPending ? "보관 중…" : "보관 확인"}
-            </button>
-            <button type="button" disabled={archive.isPending} onClick={() => setConfirmingArchive(false)}>취소</button>
-          </div>
-        </div>
-      ) : null}
+      {repository.lifecycle === "ARCHIVED" && mutation.isError ? <p className="form-error" role="alert">저장소 상태를 변경하지 못했습니다. 다시 시도해 주세요.</p> : null}
+      <ConfirmDialog open={confirmingArchive} title={`${repository.fullName} 저장소를 보관할까요?`} description="활성 목록에서 숨겨지고 새 동기화와 분석을 시작할 수 없습니다. 기존 메타데이터, 불변 스냅샷과 공식 분석 결과는 유지됩니다." confirmLabel="저장소 보관" destructive pending={archive.isPending} error={archive.isError ? "저장소를 보관하지 못했습니다. 다시 시도해 주세요." : undefined} returnFocusFallback={returnFocusFallback} onCancel={() => setConfirmingArchive(false)} onConfirm={() => archive.mutate(repository.repositoryId, { onSuccess: () => { onArchiveMessage(`${repository.fullName} 저장소를 보관했습니다.`); setConfirmingArchive(false); } })} />
       <div className="repository-card__actions">
         <Link to={`/repositories/${repository.repositoryId}`}>상세 보기</Link>
         <button
           type="button"
           className={repository.lifecycle === "ARCHIVED" ? "button-quiet" : "button-quiet button-quiet--danger"}
           disabled={!canChangeLifecycle || mutation.isPending}
-          onClick={() => repository.lifecycle === "ARCHIVED"
-            ? mutation.mutate(repository.repositoryId)
-            : setConfirmingArchive(true)}
+          onClick={() => {
+            if (repository.lifecycle === "ARCHIVED") mutation.mutate(repository.repositoryId);
+            else { archive.reset(); onArchiveMessage(""); setConfirmingArchive(true); }
+          }}
         >
           {mutation.isPending ? "처리 중…" : repository.lifecycle === "ARCHIVED" ? "복원" : "보관"}
         </button>

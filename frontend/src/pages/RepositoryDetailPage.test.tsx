@@ -50,7 +50,8 @@ it("shows synchronization controls and immutable snapshot history separately fro
   expect(await screen.findByText("아직 완료된 동기화가 없습니다.")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "저장소 보관" }));
   expect(screen.getByRole("heading", { name: "이 저장소를 DevPath에서 보관할까요?" })).toBeInTheDocument();
-  expect(screen.getByText(/불변 스냅샷, 공식 분석 결과는 삭제되지 않습니다/)).toBeInTheDocument();
+  expect(screen.getByText(/불변 스냅샷과 공식 분석 결과는 유지됩니다/)).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "위험 영역" })).toBeInTheDocument();
 });
 
 it("shows normalized languages frameworks and databases with evidence paths", async () => {
