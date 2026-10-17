@@ -29,7 +29,8 @@ export function SkillMatrixComparisonPage() {
     <section aria-labelledby="skill-comparison-title">
       <div className="section-heading"><div><h2 id="skill-comparison-title">역량별 저장 결과</h2>
         <p>점수, 등급, 신뢰도, 증거 개수는 각 Matrix에 저장된 값을 그대로 보여줍니다.</p></div></div>
-      <div className="comparison-table-wrap"><table className="comparison-table"><thead><tr><th scope="col">역량</th><th scope="col">Matrix A</th><th scope="col">Matrix B</th></tr></thead>
+      <p className="comparison-scroll-hint" id="skill-comparison-hint">표를 좌우로 스크롤해 비교할 수 있습니다.</p>
+      <div className="comparison-table-wrap" role="region" aria-label="역량별 저장 결과 표" aria-describedby="skill-comparison-hint" tabIndex={0}><table className="comparison-table"><thead><tr><th scope="col">역량</th><th scope="col">Matrix A</th><th scope="col">Matrix B</th></tr></thead>
         <tbody>{skillKeys.map(key => <SkillRow key={key} skillKey={key} left={findSkill(left, key)} right={findSkill(right, key)} />)}</tbody>
       </table></div>
     </section>

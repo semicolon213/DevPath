@@ -22,7 +22,7 @@ export function RepositorySnapshotDetailPage() {
     </header>
 
     <section className="analysis-notice"><div><h2>불변성 보장</h2><p>이 화면은 서버에 저장된 스냅샷 메타데이터만 표시합니다. 과거 스냅샷을 현재 결과로 바꾸지 않습니다.</p></div>
-      <span className={`status-badge${value.immutable ? " status-badge--active" : ""}`}>{value.immutable ? "불변" : "검증 필요"}</span></section>
+      <span className={`status-badge${value.immutable ? " status-badge--info" : ""}`}>{value.immutable ? "불변" : "검증 필요"}</span></section>
 
     <section aria-labelledby="snapshot-provenance-title"><div className="section-heading"><div><h2 id="snapshot-provenance-title">출처와 무결성</h2>
       <p>분석 결과를 재현할 때 참조하는 전체 리비전과 콘텐츠 해시입니다.</p></div></div>
@@ -71,7 +71,7 @@ function AnalysisHeading() { return <div className="section-heading"><div><h2 id
   <p>이 불변 입력을 참조한 완료 분석의 저장된 점수와 버전입니다. 화면에서 다시 계산하지 않습니다.</p></div></div>; }
 
 function SnapshotAnalysisCard({ item }: { item: AnalysisHistoryItem }) { return <article>
-  <div><div><span className={`status-badge${item.currentForRepository ? " status-badge--active" : ""}`}>
+  <div><div><span className={`status-badge${item.currentForRepository ? " status-badge--info" : ""}`}>
     {item.currentForRepository ? "현재 분석" : "과거 분석"}</span><h3>{item.repositoryFullName}</h3>
     <time dateTime={item.completedAt}>{formatDate(item.completedAt)}</time></div>
     <div className="official-score" aria-label={`저장된 공식 점수 ${formatNumber(item.overallScore)}점`}><strong>{formatNumber(item.overallScore)}</strong><span>/ 100</span></div></div>

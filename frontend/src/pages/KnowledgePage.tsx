@@ -49,7 +49,7 @@ export function KnowledgePage() {
       </form>
       {knowledgeSearch.isError ? <p role="alert">지식 검색을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.</p> : null}
       {knowledgeSearch.data?.results.length === 0 ? <p role="status">현재 권한과 필터 범위에서 관련 지식을 찾지 못했습니다.</p> : null}
-      {knowledgeSearch.data?.results.length ? <div className="knowledge-search-results" aria-live="polite"><p>{knowledgeSearch.data.resultCount}개 결과 · 정책 {knowledgeSearch.data.policyVersion} · {knowledgeSearch.data.durationMs}ms</p><ol>{knowledgeSearch.data.results.map(result => <li key={result.chunkId}><article><div><span className="status-badge status-badge--active">관련도 {(result.relevance * 100).toFixed(0)}%</span><span>{knowledgeFreshnessLabel(result.freshness)}</span></div><h3>{result.heading ?? result.documentTitle}</h3><p>{result.excerpt}</p><div className="connection-actions"><Link to={`/knowledge/${result.documentId}`}>문서 메타데이터</Link>{safeNotionUrl(result.sourceUrl) ? <a href={result.sourceUrl!} target="_blank" rel="noreferrer">Notion 원문 열기</a> : <span>Notion 출처 {result.sourceObjectId}</span>}</div></article></li>)}</ol></div> : null}
+      {knowledgeSearch.data?.results.length ? <div className="knowledge-search-results" aria-live="polite"><p>{knowledgeSearch.data.resultCount}개 결과 · 정책 {knowledgeSearch.data.policyVersion} · {knowledgeSearch.data.durationMs}ms</p><ol>{knowledgeSearch.data.results.map(result => <li key={result.chunkId}><article><div><span className="status-badge status-badge--info">관련도 {(result.relevance * 100).toFixed(0)}%</span><span>{knowledgeFreshnessLabel(result.freshness)}</span></div><h3>{result.heading ?? result.documentTitle}</h3><p>{result.excerpt}</p><div className="connection-actions"><Link to={`/knowledge/${result.documentId}`}>문서 메타데이터</Link>{safeNotionUrl(result.sourceUrl) ? <a href={result.sourceUrl!} target="_blank" rel="noreferrer">Notion 원문 열기</a> : <span>Notion 출처 {result.sourceObjectId}</span>}</div></article></li>)}</ol></div> : null}
     </section>
     <section className="knowledge-section" aria-labelledby="notion-import-title"><h2 id="notion-import-title">Notion 페이지 가져오기</h2>
       {connections.isPending ? <p role="status">Notion 연결 상태를 확인하는 중입니다.</p> : null}
@@ -66,7 +66,7 @@ export function KnowledgePage() {
       {documents.isPending ? <p role="status">지식 문서를 불러오는 중입니다.</p> : null}
       {documents.isError ? <Retry message="지식 문서를 불러오지 못했습니다." retry={() => documents.refetch()} /> : null}
       {documents.data?.documents.length === 0 ? <p>아직 수집된 지식 문서가 없습니다.</p> : null}
-      {documents.data ? <div className="knowledge-document-grid">{documents.data.documents.map(document => <article key={document.documentId}><span className={document.status === "ACTIVE" ? "status-badge status-badge--active" : "status-badge"}>{document.status === "ACTIVE" ? "활성" : "보관됨"}</span><h3>{document.title}</h3><p>청크 {document.chunkCount}개 · {new Date(document.updatedAt).toLocaleString("ko-KR")}</p><Link to={`/knowledge/${document.documentId}`}>문서 메타데이터 보기</Link></article>)}</div> : null}
+      {documents.data ? <div className="knowledge-document-grid">{documents.data.documents.map(document => <article key={document.documentId}><span className={document.status === "ACTIVE" ? "status-badge status-badge--info" : "status-badge"}>{document.status === "ACTIVE" ? "활성" : "보관됨"}</span><h3>{document.title}</h3><p>청크 {document.chunkCount}개 · {new Date(document.updatedAt).toLocaleString("ko-KR")}</p><Link to={`/knowledge/${document.documentId}`}>문서 메타데이터 보기</Link></article>)}</div> : null}
     </section>
   </Shell>;
 }

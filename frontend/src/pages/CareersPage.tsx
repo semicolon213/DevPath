@@ -19,7 +19,7 @@ export function CareersPage() {
     </section>
     <div className="career-grid">
       {careers.data.careers.map(career => <article className={preferences.data?.careerId === career.careerId ? "career-card career-card--selected" : "career-card"} key={career.careerId}>
-        <div><span className="status-badge status-badge--active">{preferences.data?.careerId === career.careerId ? "현재 목표" : "지원됨"}</span><small>{career.profileVersion}</small></div>
+        <div><span className="status-badge status-badge--info">{preferences.data?.careerId === career.careerId ? "현재 목표" : "지원됨"}</span><small>{career.profileVersion}</small></div>
         <h2>{career.localizedName}</h2><p>{career.purpose}</p>
         <Link to={`/careers/${career.careerId}`}>프로필 자세히 보기 →</Link>
       </article>)}

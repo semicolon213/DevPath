@@ -21,7 +21,7 @@ export function AnalysisDetailPage() {
           <p className="eyebrow">결정론적 분석 결과</p>
           <h1>{repository.fullName}</h1>
           <p>스냅샷과 규칙 버전이 고정되어 언제든 같은 입력과 정책으로 추적할 수 있는 공식 결과입니다.</p>
-          <span className={`status-badge${result.currentForRepository ? " status-badge--active" : ""}`}>
+          <span className={`status-badge${result.currentForRepository ? " status-badge--info" : ""}`}>
             {result.currentForRepository ? "이 저장소의 현재 적용 결과" : "이 저장소의 과거 결과"}
           </span>
         </div>

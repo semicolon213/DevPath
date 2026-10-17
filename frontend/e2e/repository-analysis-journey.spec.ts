@@ -160,6 +160,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expect(page.getByText("README 파일을 확인했습니다.")).toBeVisible();
   await expectNoAccessibilityViolations(page);
 
+  await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/analyses/compare?analysisId=analysis-previous-id&analysisId=analysis-id");
   await expect(page.getByRole("heading", { name: "분석 결과 비교" })).toBeVisible();
   await expect(page.getByRole("row", { name: /테스트 55/ })).toContainText("없음");
@@ -170,11 +171,12 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await page.getByRole("link", { name: "기술 역량 비교" }).click();
   await expect(page).toHaveURL(/\/skills\/compare/);
   await expect(page.getByRole("heading", { name: "기술 역량 비교" })).toBeFocused();
-  const testingSkillRow = page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: /Testing Discipline/ }) });
+  const testingSkillRow = page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: /테스트 역량/ }) });
   await expect(testingSkillRow).toContainText("55");
   await expect(testingSkillRow).toContainText("50");
   await expect(page.getByText(/차이 점수나 성장 추세를 새로 계산하지 않습니다/)).toBeVisible();
   await expectNoAccessibilityViolations(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   await page.goto("/skills");
   await expect(page.getByRole("heading", { name: "기술 역량 분석" })).toBeVisible();
@@ -184,7 +186,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
 
   await page.getByRole("link", { name: "테스트 역량" }).click();
   await expect(page).toHaveURL(/\/skills\/skill-id$/);
-  await expect(page.getByRole("heading", { name: "Testing Discipline" })).toBeFocused();
+  await expect(page.getByRole("heading", { name: "테스트 역량" })).toBeFocused();
   await expect(page.getByLabel("현재 기술 평가 요약").getByText("50", { exact: true })).toBeVisible();
   await expect(page.getByText("테스트 파일 근거가 확인되었습니다.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "기술 평가 이력" })).toBeVisible();

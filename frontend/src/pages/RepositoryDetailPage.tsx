@@ -239,7 +239,7 @@ export function RepositoryDetailPage() {
             <p>GitHub 언어 통계를 현재 불변 스냅샷에 연결해 결정론적으로 정규화한 결과입니다.</p>
           </div>
           {technologies.data?.primaryLanguage ? (
-            <span className="status-badge status-badge--active">주 언어 {technologies.data.primaryLanguage}</span>
+            <span className="status-badge status-badge--info">주 언어 {technologies.data.primaryLanguage}</span>
           ) : null}
         </div>
         {repository.syncStatus !== "SYNCHRONIZED" ? (

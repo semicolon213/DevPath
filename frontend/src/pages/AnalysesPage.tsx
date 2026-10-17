@@ -50,7 +50,7 @@ export function AnalysesPage() {
                 <label className="analysis-compare-choice"><input type="checkbox" checked={selected.includes(analysis.analysisId)} disabled={!selected.includes(analysis.analysisId)&&selected.length===2} onChange={()=>setSelected(current=>current.includes(analysis.analysisId)?current.filter(id=>id!==analysis.analysisId):[...current,analysis.analysisId])}/><span>비교 대상으로 선택</span></label>
                 <div className="analysis-history-card__main">
                   <div>
-                    <span className={`status-badge${analysis.currentForRepository ? " status-badge--active" : ""}`}>
+                    <span className={`status-badge${analysis.currentForRepository ? " status-badge--info" : ""}`}>
                       {analysis.currentForRepository ? "현재 적용" : "과거 결과"}
                     </span>
                     <h3>{analysis.repositoryFullName}</h3>

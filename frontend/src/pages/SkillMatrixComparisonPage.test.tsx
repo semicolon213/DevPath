@@ -32,4 +32,7 @@ it("compares stored skill values without deriving a delta", async () => {
   expect(row).toHaveTextContent("55");
   expect(row).toHaveTextContent("85");
   expect(screen.getByText(/차이 점수나 성장 추세를 새로 계산하지 않습니다/)).toBeInTheDocument();
+  const region = screen.getByRole("region", { name: "역량별 저장 결과 표" });
+  expect(region).toHaveAttribute("tabindex", "0");
+  expect(screen.getByText("표를 좌우로 스크롤해 비교할 수 있습니다.")).toBeInTheDocument();
 });

@@ -71,7 +71,7 @@ function HistoryHeading() {
 
 function SkillHistoryItem({ point }: { point: SkillHistoryPoint }) {
   return <li><article>
-    <div className="skill-history-item__summary"><div><span className={`status-badge${point.matrixStatus === "CURRENT" ? " status-badge--active" : ""}`}>
+    <div className="skill-history-item__summary"><div><span className={`status-badge${point.matrixStatus === "CURRENT" ? " status-badge--info" : ""}`}>
       {point.matrixStatus === "CURRENT" ? "현재 Matrix" : "과거 Matrix"}</span><h3>{point.repositoryFullName}</h3>
       <time dateTime={point.generatedAt}>{formatDate(point.generatedAt)}</time></div>
       <div className="official-score" aria-label={`저장된 공식 점수 ${format(point.skill.score)}점`}><strong>{format(point.skill.score)}</strong><span>/ 100</span></div></div>
