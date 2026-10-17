@@ -80,9 +80,8 @@ public class JpaKnowledgePersistenceAdapter implements KnowledgePersistencePort 
             versions.findByIdAndDocumentId(previousVersionId, document.id()).ifPresent(version -> {
                 version.supersede(); versions.save(version);
             });
-            chunks.findAllByDocumentVersionIdOrderByPositionAsc(previousVersionId).forEach(chunk -> {
-                chunk.stale(); chunks.save(chunk);
-            });
+            jdbc.update("UPDATE knowledge_chunks SET index_status='STALE' WHERE knowledge_document_version_id=?",
+                previousVersionId);
             jdbc.update("UPDATE embedding_records SET embedding_status='STALE' WHERE user_id=? AND knowledge_chunk_id IN " +
                 "(SELECT knowledge_chunk_id FROM knowledge_chunks WHERE knowledge_document_version_id=?)",
                 job.userId(), previousVersionId);
@@ -90,17 +89,18 @@ public class JpaKnowledgePersistenceAdapter implements KnowledgePersistencePort 
         versions.saveAndFlush(new KnowledgeDocumentVersionJpaEntity(prepared.versionId(),document.id(),job.userId(),
             versions.maxVersionNumber(document.id())+1,prepared.contentHash(),prepared.objectReference(),
             prepared.sourceUpdatedAt(),now));
-        for (var chunk : prepared.chunks()) {
-            chunks.saveAndFlush(new KnowledgeChunkJpaEntity(chunk.chunkId(),prepared.versionId(),job.userId(),chunk.position(),
-                chunk.heading(),chunk.objectReference(),chunk.contentHash(),chunk.tokenEstimate(),now));
-            var vector = chunk.embedding().values().stream().map(String::valueOf).collect(Collectors.joining(",","[","]"));
-            jdbc.update("INSERT INTO embedding_records (embedding_record_id,knowledge_chunk_id,user_id,provider,model," +
-                "model_version,dimension,content_hash,embedding,embedding_status,created_at) " +
-                "VALUES (?,?,?,?,?,?,?,?,CAST(? AS vector),'ACTIVE',?)",
+        chunks.saveAllAndFlush(prepared.chunks().stream().map(chunk -> new KnowledgeChunkJpaEntity(
+            chunk.chunkId(),prepared.versionId(),job.userId(),chunk.position(),chunk.heading(),
+            chunk.objectReference(),chunk.contentHash(),chunk.tokenEstimate(),now
+        )).toList());
+        jdbc.batchUpdate("INSERT INTO embedding_records (embedding_record_id,knowledge_chunk_id,user_id,provider,model," +
+            "model_version,dimension,content_hash,embedding,embedding_status,created_at) " +
+            "VALUES (?,?,?,?,?,?,?,?,CAST(? AS vector),'ACTIVE',?)", prepared.chunks().stream().map(chunk -> new Object[]{
                 UUID.randomUUID(),chunk.chunkId(),job.userId(),chunk.embedding().provider(),chunk.embedding().model(),
-                chunk.embedding().modelVersion(),chunk.embedding().dimension(),chunk.contentHash(),vector,
-                java.sql.Timestamp.from(now));
-        }
+                chunk.embedding().modelVersion(),chunk.embedding().dimension(),chunk.contentHash(),
+                chunk.embedding().values().stream().map(String::valueOf).collect(Collectors.joining(",","[","]")),
+                java.sql.Timestamp.from(now)
+            }).toList());
         document.activate(prepared.title(),prepared.versionId(),now);
         documents.saveAndFlush(document);
     }
@@ -110,9 +110,8 @@ public class JpaKnowledgePersistenceAdapter implements KnowledgePersistencePort 
             .orElseThrow();
         document.archive(now);
         if (document.currentVersionId()!=null) {
-            chunks.findAllByDocumentVersionIdOrderByPositionAsc(document.currentVersionId()).forEach(chunk -> {
-                chunk.stale(); chunks.save(chunk);
-            });
+            jdbc.update("UPDATE knowledge_chunks SET index_status='STALE' WHERE knowledge_document_version_id=?",
+                document.currentVersionId());
             jdbc.update("UPDATE embedding_records SET embedding_status='STALE' WHERE user_id=? AND knowledge_chunk_id IN " +
                 "(SELECT knowledge_chunk_id FROM knowledge_chunks WHERE knowledge_document_version_id=?)",
                 value.userId(),document.currentVersionId());

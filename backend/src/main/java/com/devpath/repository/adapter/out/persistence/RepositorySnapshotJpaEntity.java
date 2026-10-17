@@ -16,6 +16,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.springframework.data.domain.Persistable;
 
 @Entity
 @Table(name = "repository_snapshots")
@@ -57,7 +58,7 @@ class RepositorySnapshotJpaEntity {
 
 @Entity
 @Table(name = "repository_branches")
-class RepositoryBranchJpaEntity {
+class RepositoryBranchJpaEntity implements Persistable<UUID> {
     @Id @Column(name = "branch_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "branch_name", nullable = false, updatable = false, length = 255) private String name;
@@ -69,12 +70,14 @@ class RepositoryBranchJpaEntity {
         id = UUID.randomUUID(); this.snapshotId = snapshotId; name = branch.name();
         defaultBranch = branch.defaultBranch(); headCommitSha = branch.headCommitSha();
     }
+    @Override public UUID getId() { return id; }
+    @Override public boolean isNew() { return true; }
     RepositoryBranch toDomain() { return new RepositoryBranch(name, headCommitSha, defaultBranch); }
 }
 
 @Entity
 @Table(name = "repository_commits")
-class RepositoryCommitJpaEntity {
+class RepositoryCommitJpaEntity implements Persistable<UUID> {
     @Id @Column(name = "commit_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "commit_sha", nullable = false, updatable = false, length = 64) private String sha;
@@ -87,12 +90,14 @@ class RepositoryCommitJpaEntity {
         id = UUID.randomUUID(); this.snapshotId = snapshotId; sha = commit.sha(); authorLogin = commit.authorLogin();
         committedAt = commit.committedAt(); messageSummary = commit.messageSummary();
     }
+    @Override public UUID getId() { return id; }
+    @Override public boolean isNew() { return true; }
     RepositoryCommit toDomain() { return new RepositoryCommit(sha, authorLogin, committedAt, messageSummary); }
 }
 
 @Entity
 @Table(name = "repository_language_statistics")
-class RepositoryLanguageJpaEntity {
+class RepositoryLanguageJpaEntity implements Persistable<UUID> {
     @Id @Column(name = "language_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "provider_label", nullable = false, updatable = false, length = 128) private String providerLabel;
@@ -110,6 +115,8 @@ class RepositoryLanguageJpaEntity {
         taxonomyStatus = language.taxonomyStatus(); taxonomyVersion = language.taxonomyVersion();
         extractorVersion = language.extractorVersion();
     }
+    @Override public UUID getId() { return id; }
+    @Override public boolean isNew() { return true; }
     RepositoryLanguage toDomain() {
         return new RepositoryLanguage(providerLabel, canonicalName, byteCount, percentage, taxonomyStatus,
             taxonomyVersion, extractorVersion);
@@ -118,7 +125,7 @@ class RepositoryLanguageJpaEntity {
 
 @Entity
 @Table(name = "repository_dependencies")
-class RepositoryDependencyJpaEntity {
+class RepositoryDependencyJpaEntity implements Persistable<UUID> {
     @Id @Column(name = "dependency_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "ecosystem", nullable = false, updatable = false, length = 32) private String ecosystem;
@@ -134,6 +141,8 @@ class RepositoryDependencyJpaEntity {
         packageName = dependency.packageName(); versionConstraint = dependency.versionConstraint();
         scope = dependency.scope(); manifestPath = dependency.manifestPath(); extractorVersion = dependency.extractorVersion();
     }
+    @Override public UUID getId() { return id; }
+    @Override public boolean isNew() { return true; }
     RepositoryDependency toDomain() {
         return new RepositoryDependency(ecosystem, packageName, versionConstraint, scope, manifestPath, extractorVersion);
     }
@@ -141,7 +150,7 @@ class RepositoryDependencyJpaEntity {
 
 @Entity
 @Table(name = "repository_file_entries")
-class RepositoryFileJpaEntity {
+class RepositoryFileJpaEntity implements Persistable<UUID> {
     @Id @Column(name = "file_entry_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "normalized_path", nullable = false, updatable = false, length = 1000) private String path;
@@ -154,12 +163,14 @@ class RepositoryFileJpaEntity {
         id = UUID.randomUUID(); this.snapshotId = snapshotId; path = file.path(); blobSha = file.blobSha();
         byteSize = file.byteSize(); extractorVersion = file.extractorVersion();
     }
+    @Override public UUID getId() { return id; }
+    @Override public boolean isNew() { return true; }
     RepositoryFile toDomain() { return new RepositoryFile(path, blobSha, byteSize, extractorVersion); }
 }
 
 @Entity
 @Table(name = "repository_pull_requests")
-class RepositoryPullRequestJpaEntity {
+class RepositoryPullRequestJpaEntity implements Persistable<UUID> {
     @Id @Column(name = "pull_request_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "provider_pull_request_id", nullable = false, updatable = false, length = 128) private String providerId;
@@ -175,6 +186,8 @@ class RepositoryPullRequestJpaEntity {
         status = value.status(); openedAt = value.openedAt(); closedAt = value.closedAt();
         mergedAt = value.mergedAt(); reviewCount = value.reviewCount();
     }
+    @Override public UUID getId() { return id; }
+    @Override public boolean isNew() { return true; }
     RepositoryPullRequest toDomain() {
         return new RepositoryPullRequest(providerId, status, openedAt, closedAt, mergedAt, reviewCount);
     }
@@ -182,7 +195,7 @@ class RepositoryPullRequestJpaEntity {
 
 @Entity
 @Table(name = "repository_issues")
-class RepositoryIssueJpaEntity {
+class RepositoryIssueJpaEntity implements Persistable<UUID> {
     @Id @Column(name = "issue_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "provider_issue_id", nullable = false, updatable = false, length = 128) private String providerId;
@@ -197,6 +210,8 @@ class RepositoryIssueJpaEntity {
         status = value.status(); labelsText = String.join("\n", value.labels());
         openedAt = value.openedAt(); closedAt = value.closedAt();
     }
+    @Override public UUID getId() { return id; }
+    @Override public boolean isNew() { return true; }
     RepositoryIssue toDomain() {
         return new RepositoryIssue(providerId, status,
             labelsText.isBlank() ? List.of() : List.of(labelsText.split("\\n", -1)), openedAt, closedAt);
@@ -205,7 +220,7 @@ class RepositoryIssueJpaEntity {
 
 @Entity
 @Table(name = "repository_documents")
-class RepositoryDocumentJpaEntity {
+class RepositoryDocumentJpaEntity implements Persistable<UUID> {
     @Id @Column(name = "repository_document_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "document_type", nullable = false, updatable = false, length = 32) private String documentType;
@@ -219,6 +234,8 @@ class RepositoryDocumentJpaEntity {
         id = UUID.randomUUID(); this.snapshotId = snapshotId; documentType = value.documentType(); path = value.path();
         contentHash = value.contentHash(); byteSize = value.byteSize(); qualitySignals = String.join(",", value.qualitySignals());
     }
+    @Override public UUID getId() { return id; }
+    @Override public boolean isNew() { return true; }
     RepositoryDocument toDomain() {
         return new RepositoryDocument(documentType, path, contentHash, byteSize,
             qualitySignals.isBlank() ? List.of() : List.of(qualitySignals.split(",", -1)));

@@ -7,10 +7,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.data.domain.Persistable;
 
 @Entity
 @Table(name = "knowledge_chunks")
-class KnowledgeChunkJpaEntity {
+class KnowledgeChunkJpaEntity implements Persistable<UUID> {
     @Id @Column(name = "knowledge_chunk_id") private UUID id;
     @Column(name = "knowledge_document_version_id", nullable = false, updatable = false) private UUID documentVersionId;
     @Column(name = "user_id", nullable = false, updatable = false) private UUID userId;
@@ -29,7 +30,8 @@ class KnowledgeChunkJpaEntity {
         this.objectReference=objectReference; this.contentHash=contentHash; this.tokenEstimate=tokenEstimate;
         this.status="INDEXED"; this.createdAt=createdAt;
     }
-    void stale() { status="STALE"; }
+    @Override public UUID getId() { return id; }
+    @Override public boolean isNew() { return true; }
     KnowledgeChunk toDomain() { return new KnowledgeChunk(id,documentVersionId,userId,position,heading,objectReference,
         contentHash,tokenEstimate,status,createdAt); }
 }

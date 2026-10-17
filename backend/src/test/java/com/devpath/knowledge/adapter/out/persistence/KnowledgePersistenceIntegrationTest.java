@@ -12,6 +12,10 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.IntStream;
+import jakarta.persistence.EntityManagerFactory;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -24,7 +28,11 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@DataJpaTest(properties={"spring.jpa.hibernate.ddl-auto=validate","spring.flyway.enabled=true"})
+@DataJpaTest(properties={
+    "spring.jpa.hibernate.ddl-auto=validate",
+    "spring.jpa.properties.hibernate.generate_statistics=true",
+    "spring.flyway.enabled=true"
+})
 @AutoConfigureTestDatabase(replace=AutoConfigureTestDatabase.Replace.NONE)
 @Import({JpaKnowledgePersistenceAdapter.class,JdbcKnowledgeSearchPersistenceAdapter.class})
 @Testcontainers(disabledWithoutDocker=true)
@@ -38,6 +46,7 @@ class KnowledgePersistenceIntegrationTest {
     @Autowired JpaKnowledgePersistenceAdapter persistence;
     @Autowired JdbcKnowledgeSearchPersistenceAdapter search;
     @Autowired JdbcTemplate jdbc;
+    @Autowired EntityManagerFactory entityManagerFactory;
 
     @Test
     void versionsVectorsAndArchiveRemainOwnerScopedAndRebuildable() {
@@ -107,10 +116,41 @@ class KnowledgePersistenceIntegrationTest {
         assertThat(search.search(owner,queryEmbedding,filters,5,0.25)).isEmpty();
     }
 
+    @Test
+    void batchInsertsKnowledgeChunksWithoutPerRowSelects() {
+        Instant now=Instant.parse("2026-08-31T00:00:00Z");
+        UUID owner=UUID.randomUUID(), connection=UUID.randomUUID(), document=UUID.randomUUID();
+        insertUser(owner,now); insertConnection(connection,owner,now);
+        KnowledgeIngestionJob job=KnowledgeIngestionJob.queue(
+            owner,connection,"page-bulk",document,"key-bulk",now
+        ).claim(now);
+        persistence.saveJob(job);
+        Statistics statistics=entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+
+        statistics.clear();
+        persistence.complete(job,prepared(document,UUID.randomUUID(),200,now),now);
+
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(8);
+        assertThat(jdbc.queryForObject(
+            "select count(*) from knowledge_chunks where user_id=?",Integer.class,owner
+        )).isEqualTo(200);
+        assertThat(jdbc.queryForObject(
+            "select count(*) from embedding_records where user_id=?",Integer.class,owner
+        )).isEqualTo(200);
+    }
+
     private PreparedKnowledgeDocument prepared(UUID document,UUID version,UUID chunk,String contentHash,String chunkHash,Instant now) {
         var embedding=new EmbeddingVector("OLLAMA","nomic-embed-text","nomic-v1",768,Collections.nCopies(768,0.01d));
         return new PreparedKnowledgeDocument(document,version,"Page title","page-1",now,contentHash,
             "object://source",List.of(new PreparedKnowledgeChunk(chunk,0,"Heading","object://chunk",chunkHash,10,embedding)));
+    }
+    private PreparedKnowledgeDocument prepared(UUID document,UUID version,int chunkCount,Instant now) {
+        var embedding=new EmbeddingVector("OLLAMA","nomic-embed-text","nomic-v1",768,Collections.nCopies(768,0.01d));
+        return new PreparedKnowledgeDocument(document,version,"Page title","page-bulk",now,"a".repeat(64),
+            "object://source",IntStream.range(0,chunkCount).mapToObj(index -> new PreparedKnowledgeChunk(
+                UUID.randomUUID(),index,"Heading "+index,"object://chunk/"+index,
+                "%064x".formatted(index),10,embedding
+            )).toList());
     }
     private void insertUser(UUID id,Instant now) { var timestamp=java.sql.Timestamp.from(now); jdbc.update("insert into users(user_id,account_status,display_name,created_at,updated_at,version) values (?,?,?,?,?,0)",id,"ACTIVE","User",timestamp,timestamp); }
     private void insertConnection(UUID id,UUID user,Instant now) { var timestamp=java.sql.Timestamp.from(now); jdbc.update("insert into notion_workspace_connections(notion_connection_id,user_id,provider_workspace_id,provider_bot_id,workspace_name,encrypted_access_token,access_token_iv,encrypted_refresh_token,refresh_token_iv,key_version,connection_status,connected_at,updated_at,version) values (?,?,?,?,?,?,?,?,?,?,?,?,?,0)",id,user,"workspace","bot","Workspace",new byte[]{1},new byte[12],new byte[]{1},new byte[12],"test","ACTIVE",timestamp,timestamp); }

@@ -17,7 +17,9 @@ spring:
     properties:
       hibernate:
         jdbc:
+          batch_size: 100
           time_zone: UTC
+        order_inserts: true
   security:
     oauth2:
       client:
