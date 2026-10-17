@@ -4,7 +4,10 @@ import com.devpath.knowledge.domain.KnowledgeChunk;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.data.domain.Persistable;
@@ -12,6 +15,7 @@ import org.springframework.data.domain.Persistable;
 @Entity
 @Table(name = "knowledge_chunks")
 class KnowledgeChunkJpaEntity implements Persistable<UUID> {
+    @Transient private boolean isNew = true;
     @Id @Column(name = "knowledge_chunk_id") private UUID id;
     @Column(name = "knowledge_document_version_id", nullable = false, updatable = false) private UUID documentVersionId;
     @Column(name = "user_id", nullable = false, updatable = false) private UUID userId;
@@ -31,7 +35,8 @@ class KnowledgeChunkJpaEntity implements Persistable<UUID> {
         this.status="INDEXED"; this.createdAt=createdAt;
     }
     @Override public UUID getId() { return id; }
-    @Override public boolean isNew() { return true; }
+    @Override public boolean isNew() { return isNew; }
+    @PostLoad @PostPersist void markNotNew() { isNew = false; }
     KnowledgeChunk toDomain() { return new KnowledgeChunk(id,documentVersionId,userId,position,heading,objectReference,
         contentHash,tokenEstimate,status,createdAt); }
 }

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.EntityManager;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,8 @@ class KnowledgePersistenceIntegrationTest {
     @Autowired JdbcKnowledgeSearchPersistenceAdapter search;
     @Autowired JdbcTemplate jdbc;
     @Autowired EntityManagerFactory entityManagerFactory;
+    @Autowired EntityManager entityManager;
+    @Autowired KnowledgeChunkJpaRepository chunks;
 
     @Test
     void versionsVectorsAndArchiveRemainOwnerScopedAndRebuildable() {
@@ -56,8 +59,12 @@ class KnowledgePersistenceIntegrationTest {
         KnowledgeIngestionJob job=KnowledgeIngestionJob.queue(owner,connection,"page-1",document,"key-1",now).claim(now);
         persistence.saveJob(job);
         UUID version1=UUID.randomUUID(), chunk1=UUID.randomUUID();
+        assertThat(new KnowledgeChunkJpaEntity(chunk1,version1,owner,0,"Heading","object://chunk",
+            "chunk-hash-1",10,now).isNew()).isTrue();
         persistence.complete(job,prepared(document,version1,chunk1,"hash-1","chunk-hash-1",now),now);
         insertPage(connection,owner,"page-1",now);
+        entityManager.clear();
+        assertThat(chunks.findById(chunk1).orElseThrow().isNew()).isFalse();
 
         assertThat(persistence.findDocumentByIdAndOwner(document,owner)).isPresent();
         assertThat(persistence.findDocumentByIdAndOwner(document,other)).isEmpty();
@@ -88,6 +95,7 @@ class KnowledgePersistenceIntegrationTest {
         UUID version2=UUID.randomUUID(), chunk2=UUID.randomUUID();
         persistence.complete(job,prepared(document,version2,chunk2,"hash-2","chunk-hash-2",now.plusSeconds(60)),now.plusSeconds(60));
         assertThat(persistence.findCurrentChunks(document,owner)).extracting(chunk -> chunk.id()).containsExactly(chunk2);
+        assertThat(jdbc.queryForObject("select count(*) from knowledge_chunks where user_id=? and index_status='STALE'",Integer.class,owner)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from embedding_records where user_id=? and embedding_status='STALE'",Integer.class,owner)).isEqualTo(1);
         assertThat(jdbc.queryForObject("select count(*) from embedding_records where user_id=? and embedding_status='ACTIVE'",Integer.class,owner)).isEqualTo(1);
 
@@ -112,6 +120,7 @@ class KnowledgePersistenceIntegrationTest {
 
         var archived=persistence.archive(persistence.findDocumentByIdAndOwner(document,owner).orElseThrow(),now.plusSeconds(120));
         assertThat(archived.status()).isEqualTo("ARCHIVED");
+        assertThat(jdbc.queryForObject("select count(*) from knowledge_chunks where user_id=? and index_status='STALE'",Integer.class,owner)).isEqualTo(3);
         assertThat(jdbc.queryForObject("select count(*) from embedding_records where user_id=? and embedding_status='ACTIVE'",Integer.class,owner)).isZero();
         assertThat(search.search(owner,queryEmbedding,filters,5,0.25)).isEmpty();
     }

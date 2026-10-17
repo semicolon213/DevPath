@@ -5,6 +5,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.devpath.repository.domain.RepositoryDocument;
 import com.devpath.repository.domain.RepositoryIssue;
 import com.devpath.repository.domain.RepositoryPullRequest;
+import com.devpath.repository.domain.RepositoryBranch;
+import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -35,6 +37,8 @@ class RepositoryCollaborationPersistenceIntegrationTest {
     }
 
     @Autowired JdbcTemplate jdbc;
+    @Autowired EntityManager entityManager;
+    @Autowired RepositoryBranchJpaRepository branches;
     @Autowired RepositoryPullRequestJpaRepository pullRequests;
     @Autowired RepositoryIssueJpaRepository issues;
     @Autowired RepositoryDocumentJpaRepository documents;
@@ -59,6 +63,19 @@ class RepositoryCollaborationPersistenceIntegrationTest {
         assertThat(documents.findAllBySnapshotIdOrderByDocumentTypeAscPathAsc(snapshotId))
             .singleElement().satisfies(value -> assertThat(value.toDomain().qualitySignals())
                 .containsExactly("OVERVIEW", "SETUP", "USAGE"));
+    }
+
+    @Test
+    void marksNewAndLoadedSnapshotChildrenCorrectly() {
+        UUID snapshotId = seedSnapshot();
+        var branch = new RepositoryBranchJpaEntity(snapshotId,
+            new RepositoryBranch("main", "d".repeat(40), true));
+        assertThat(branch.isNew()).isTrue();
+
+        branches.saveAndFlush(branch);
+        entityManager.clear();
+
+        assertThat(branches.findById(branch.getId()).orElseThrow().isNew()).isFalse();
     }
 
     private UUID seedSnapshot() {

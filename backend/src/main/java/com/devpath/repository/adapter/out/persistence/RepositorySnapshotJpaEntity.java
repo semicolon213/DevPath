@@ -12,7 +12,10 @@ import com.devpath.repository.domain.RepositoryDocument;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.PostLoad;
+import jakarta.persistence.PostPersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -59,6 +62,7 @@ class RepositorySnapshotJpaEntity {
 @Entity
 @Table(name = "repository_branches")
 class RepositoryBranchJpaEntity implements Persistable<UUID> {
+    @Transient private boolean isNew = true;
     @Id @Column(name = "branch_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "branch_name", nullable = false, updatable = false, length = 255) private String name;
@@ -71,13 +75,15 @@ class RepositoryBranchJpaEntity implements Persistable<UUID> {
         defaultBranch = branch.defaultBranch(); headCommitSha = branch.headCommitSha();
     }
     @Override public UUID getId() { return id; }
-    @Override public boolean isNew() { return true; }
+    @Override public boolean isNew() { return isNew; }
+    @PostLoad @PostPersist void markNotNew() { isNew = false; }
     RepositoryBranch toDomain() { return new RepositoryBranch(name, headCommitSha, defaultBranch); }
 }
 
 @Entity
 @Table(name = "repository_commits")
 class RepositoryCommitJpaEntity implements Persistable<UUID> {
+    @Transient private boolean isNew = true;
     @Id @Column(name = "commit_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "commit_sha", nullable = false, updatable = false, length = 64) private String sha;
@@ -91,13 +97,15 @@ class RepositoryCommitJpaEntity implements Persistable<UUID> {
         committedAt = commit.committedAt(); messageSummary = commit.messageSummary();
     }
     @Override public UUID getId() { return id; }
-    @Override public boolean isNew() { return true; }
+    @Override public boolean isNew() { return isNew; }
+    @PostLoad @PostPersist void markNotNew() { isNew = false; }
     RepositoryCommit toDomain() { return new RepositoryCommit(sha, authorLogin, committedAt, messageSummary); }
 }
 
 @Entity
 @Table(name = "repository_language_statistics")
 class RepositoryLanguageJpaEntity implements Persistable<UUID> {
+    @Transient private boolean isNew = true;
     @Id @Column(name = "language_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "provider_label", nullable = false, updatable = false, length = 128) private String providerLabel;
@@ -116,7 +124,8 @@ class RepositoryLanguageJpaEntity implements Persistable<UUID> {
         extractorVersion = language.extractorVersion();
     }
     @Override public UUID getId() { return id; }
-    @Override public boolean isNew() { return true; }
+    @Override public boolean isNew() { return isNew; }
+    @PostLoad @PostPersist void markNotNew() { isNew = false; }
     RepositoryLanguage toDomain() {
         return new RepositoryLanguage(providerLabel, canonicalName, byteCount, percentage, taxonomyStatus,
             taxonomyVersion, extractorVersion);
@@ -126,6 +135,7 @@ class RepositoryLanguageJpaEntity implements Persistable<UUID> {
 @Entity
 @Table(name = "repository_dependencies")
 class RepositoryDependencyJpaEntity implements Persistable<UUID> {
+    @Transient private boolean isNew = true;
     @Id @Column(name = "dependency_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "ecosystem", nullable = false, updatable = false, length = 32) private String ecosystem;
@@ -142,7 +152,8 @@ class RepositoryDependencyJpaEntity implements Persistable<UUID> {
         scope = dependency.scope(); manifestPath = dependency.manifestPath(); extractorVersion = dependency.extractorVersion();
     }
     @Override public UUID getId() { return id; }
-    @Override public boolean isNew() { return true; }
+    @Override public boolean isNew() { return isNew; }
+    @PostLoad @PostPersist void markNotNew() { isNew = false; }
     RepositoryDependency toDomain() {
         return new RepositoryDependency(ecosystem, packageName, versionConstraint, scope, manifestPath, extractorVersion);
     }
@@ -151,6 +162,7 @@ class RepositoryDependencyJpaEntity implements Persistable<UUID> {
 @Entity
 @Table(name = "repository_file_entries")
 class RepositoryFileJpaEntity implements Persistable<UUID> {
+    @Transient private boolean isNew = true;
     @Id @Column(name = "file_entry_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "normalized_path", nullable = false, updatable = false, length = 1000) private String path;
@@ -164,13 +176,15 @@ class RepositoryFileJpaEntity implements Persistable<UUID> {
         byteSize = file.byteSize(); extractorVersion = file.extractorVersion();
     }
     @Override public UUID getId() { return id; }
-    @Override public boolean isNew() { return true; }
+    @Override public boolean isNew() { return isNew; }
+    @PostLoad @PostPersist void markNotNew() { isNew = false; }
     RepositoryFile toDomain() { return new RepositoryFile(path, blobSha, byteSize, extractorVersion); }
 }
 
 @Entity
 @Table(name = "repository_pull_requests")
 class RepositoryPullRequestJpaEntity implements Persistable<UUID> {
+    @Transient private boolean isNew = true;
     @Id @Column(name = "pull_request_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "provider_pull_request_id", nullable = false, updatable = false, length = 128) private String providerId;
@@ -187,7 +201,8 @@ class RepositoryPullRequestJpaEntity implements Persistable<UUID> {
         mergedAt = value.mergedAt(); reviewCount = value.reviewCount();
     }
     @Override public UUID getId() { return id; }
-    @Override public boolean isNew() { return true; }
+    @Override public boolean isNew() { return isNew; }
+    @PostLoad @PostPersist void markNotNew() { isNew = false; }
     RepositoryPullRequest toDomain() {
         return new RepositoryPullRequest(providerId, status, openedAt, closedAt, mergedAt, reviewCount);
     }
@@ -196,6 +211,7 @@ class RepositoryPullRequestJpaEntity implements Persistable<UUID> {
 @Entity
 @Table(name = "repository_issues")
 class RepositoryIssueJpaEntity implements Persistable<UUID> {
+    @Transient private boolean isNew = true;
     @Id @Column(name = "issue_record_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "provider_issue_id", nullable = false, updatable = false, length = 128) private String providerId;
@@ -211,7 +227,8 @@ class RepositoryIssueJpaEntity implements Persistable<UUID> {
         openedAt = value.openedAt(); closedAt = value.closedAt();
     }
     @Override public UUID getId() { return id; }
-    @Override public boolean isNew() { return true; }
+    @Override public boolean isNew() { return isNew; }
+    @PostLoad @PostPersist void markNotNew() { isNew = false; }
     RepositoryIssue toDomain() {
         return new RepositoryIssue(providerId, status,
             labelsText.isBlank() ? List.of() : List.of(labelsText.split("\\n", -1)), openedAt, closedAt);
@@ -221,6 +238,7 @@ class RepositoryIssueJpaEntity implements Persistable<UUID> {
 @Entity
 @Table(name = "repository_documents")
 class RepositoryDocumentJpaEntity implements Persistable<UUID> {
+    @Transient private boolean isNew = true;
     @Id @Column(name = "repository_document_id") private UUID id;
     @Column(name = "snapshot_id", nullable = false, updatable = false) private UUID snapshotId;
     @Column(name = "document_type", nullable = false, updatable = false, length = 32) private String documentType;
@@ -235,7 +253,8 @@ class RepositoryDocumentJpaEntity implements Persistable<UUID> {
         contentHash = value.contentHash(); byteSize = value.byteSize(); qualitySignals = String.join(",", value.qualitySignals());
     }
     @Override public UUID getId() { return id; }
-    @Override public boolean isNew() { return true; }
+    @Override public boolean isNew() { return isNew; }
+    @PostLoad @PostPersist void markNotNew() { isNew = false; }
     RepositoryDocument toDomain() {
         return new RepositoryDocument(documentType, path, contentHash, byteSize,
             qualitySignals.isBlank() ? List.of() : List.of(qualitySignals.split(",", -1)));
