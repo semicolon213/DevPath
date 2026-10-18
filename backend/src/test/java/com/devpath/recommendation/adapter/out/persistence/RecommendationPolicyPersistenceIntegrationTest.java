@@ -78,10 +78,12 @@ class RecommendationPolicyPersistenceIntegrationTest {
         var roadmapPolicy=adapter.loadActiveRoadmapPolicy(policy.policyId(),policy.careerProfileVersionId());
         var milestone1=new RoadmapMilestone(UUID.randomUUID(),1,RuleCategory.ARCHITECTURE,"Milestone 1","PLANNED");
         var milestone0=new RoadmapMilestone(UUID.randomUUID(),0,RuleCategory.TESTING,"Milestone 0","PLANNED");
-        var step3=new RoadmapStep(UUID.randomUUID(),milestone1.milestoneId(),recommendation3.recommendationId(),3,RuleCategory.DEVOPS,"Step 3","INTERMEDIATE",16,List.of(),"Done",List.of("test files"),"NOT_STARTED");
-        var step1=new RoadmapStep(UUID.randomUUID(),milestone0.milestoneId(),recommendation1.recommendationId(),1,RuleCategory.TESTING,"Step 1","INTERMEDIATE",16,List.of(),"Done",List.of("test files"),"NOT_STARTED");
-        var step2=new RoadmapStep(UUID.randomUUID(),milestone1.milestoneId(),recommendation2.recommendationId(),2,RuleCategory.TESTING,"Step 2","INTERMEDIATE",16,List.of(),"Done",List.of("test files"),"NOT_STARTED");
-        var step0=new RoadmapStep(UUID.randomUUID(),milestone0.milestoneId(),recommendation0.recommendationId(),0,RuleCategory.TESTING,"Step 0","INTERMEDIATE",16,List.of(),"Done",List.of("test files"),"NOT_STARTED");
+        // Distinct per-step content so a dropped or swapped column in step hydration is detectable.
+        UUID step0Id=UUID.randomUUID();UUID step1Id=UUID.randomUUID();UUID step2Id=UUID.randomUUID();UUID step3Id=UUID.randomUUID();
+        var step3=new RoadmapStep(step3Id,milestone1.milestoneId(),recommendation3.recommendationId(),3,RuleCategory.DEVOPS,"Step 3","ADVANCED",24,List.of(step2Id,step1Id),"Done 3",List.of("pipeline","deploy log"),"SKIPPED");
+        var step1=new RoadmapStep(step1Id,milestone0.milestoneId(),recommendation1.recommendationId(),1,RuleCategory.DATABASE,"Step 1","INTERMEDIATE",12,List.of(step0Id),"Done 1",List.of("schema migration"),"IN_PROGRESS");
+        var step2=new RoadmapStep(step2Id,milestone1.milestoneId(),recommendation2.recommendationId(),2,RuleCategory.ARCHITECTURE,"Step 2","INTERMEDIATE",16,List.of(step0Id,step1Id),"Done 2",List.of("design doc","module diagram"),"COMPLETED");
+        var step0=new RoadmapStep(step0Id,milestone0.milestoneId(),recommendation0.recommendationId(),0,RuleCategory.TESTING,"Step 0","BEGINNER",8,List.of(),"Done 0",List.of("test files"),"NOT_STARTED");
         var roadmap=new LearningRoadmap(UUID.randomUUID(),user,setId,roadmapPolicy.policyId(),roadmapPolicy.versionLabel(),"CREATED",new BigDecimal("0.00"),List.of(milestone1,milestone0),List.of(step3,step1,step2,step0),now,now);adapter.saveRoadmap(roadmap);
         entityManager.flush();entityManager.clear();
         assertThat(adapter.findSetByIdAndOwner(setId,user)).get().satisfies(value->{
@@ -115,6 +117,23 @@ class RecommendationPolicyPersistenceIntegrationTest {
             assertThat(value.steps()).extracting(RoadmapStep::position).containsExactly(0,1,2,3);
             assertThat(value.steps()).filteredOn(step->step.milestoneId().equals(milestone0.milestoneId())).hasSize(2);
             assertThat(value.steps()).filteredOn(step->step.milestoneId().equals(milestone1.milestoneId())).hasSize(2);
+            assertThat(value.milestones()).extracting(RoadmapMilestone::milestoneId,RoadmapMilestone::category,RoadmapMilestone::title,RoadmapMilestone::status)
+                .containsExactly(tuple(milestone0.milestoneId(),milestone0.category(),milestone0.title(),milestone0.status()),
+                    tuple(milestone1.milestoneId(),milestone1.category(),milestone1.title(),milestone1.status()));
+            assertThat(value.steps()).extracting(RoadmapStep::stepId,RoadmapStep::milestoneId,RoadmapStep::recommendationId,RoadmapStep::category,RoadmapStep::title)
+                .containsExactly(tuple(step0.stepId(),step0.milestoneId(),step0.recommendationId(),step0.category(),step0.title()),
+                    tuple(step1.stepId(),step1.milestoneId(),step1.recommendationId(),step1.category(),step1.title()),
+                    tuple(step2.stepId(),step2.milestoneId(),step2.recommendationId(),step2.category(),step2.title()),
+                    tuple(step3.stepId(),step3.milestoneId(),step3.recommendationId(),step3.category(),step3.title()));
+            assertThat(value.steps()).extracting(RoadmapStep::difficulty,RoadmapStep::effortHours,RoadmapStep::completionCriteria,RoadmapStep::status)
+                .containsExactly(tuple(step0.difficulty(),step0.effortHours(),step0.completionCriteria(),step0.status()),
+                    tuple(step1.difficulty(),step1.effortHours(),step1.completionCriteria(),step1.status()),
+                    tuple(step2.difficulty(),step2.effortHours(),step2.completionCriteria(),step2.status()),
+                    tuple(step3.difficulty(),step3.effortHours(),step3.completionCriteria(),step3.status()));
+            assertThat(value.steps()).extracting(RoadmapStep::expectedEvidence)
+                .containsExactly(step0.expectedEvidence(),step1.expectedEvidence(),step2.expectedEvidence(),step3.expectedEvidence());
+            assertThat(value.steps()).extracting(RoadmapStep::prerequisiteStepIds)
+                .containsExactly(step0.prerequisiteStepIds(),step1.prerequisiteStepIds(),step2.prerequisiteStepIds(),step3.prerequisiteStepIds());
         });
         assertThat(adapter.findRoadmapsByOwner(user)).extracting(value->value.roadmapId()).containsExactly(roadmap.roadmapId());
         assertThat(adapter.findRoadmapsByOwner(user)).singleElement().satisfies(value->{
