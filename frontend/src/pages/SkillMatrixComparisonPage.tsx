@@ -10,14 +10,14 @@ export function SkillMatrixComparisonPage() {
   const valid = ids.length === 2 && ids[0] !== ids[1];
   const query = useSkillMatrixComparison(ids);
 
-  if (!valid) return <Shell><PageState state="empty" title="비교할 Skill Matrix 두 개를 선택해 주세요." actionTo="/analyses" actionLabel="분석 이력으로 이동" /></Shell>;
-  if (query.isPending) return <Shell><PageState state="loading" title="기술 역량 비교" message="저장된 기술 역량 결과를 불러오는 중입니다." /></Shell>;
-  if (query.isError) return <Shell><PageState state="error" title="비교할 Skill Matrix를 표시할 수 없습니다." errorTitle="기술 역량 비교를 불러오지 못했습니다." error={query.error} retry={() => query.refetch()} backTo="/analyses" backLabel="분석 이력으로 이동" /></Shell>;
+  if (!valid) return <PageState state="empty" title="비교할 Skill Matrix 두 개를 선택해 주세요." actionTo="/analyses" actionLabel="분석 이력으로 이동" />;
+  if (query.isPending) return <PageState state="loading" title="기술 역량 비교" message="저장된 기술 역량 결과를 불러오는 중입니다." />;
+  if (query.isError) return <PageState state="error" title="비교할 Skill Matrix를 표시할 수 없습니다." errorTitle="기술 역량 비교를 불러오지 못했습니다." error={query.error} retry={() => query.refetch()} backTo="/analyses" backLabel="분석 이력으로 이동" />;
 
   const [left, right] = query.data.matrices;
   const skillKeys = Array.from(new Set([...left.skills, ...right.skills].map(skill => skill.skillKey)));
 
-  return <Shell>
+  return <>
     <header className="workspace-header">
       <div><p className="eyebrow">공식 기술 역량 비교</p><h1>기술 역량 비교</h1>
         <p>불변 Skill Matrix 두 개의 공식 점수와 등급을 나란히 표시합니다. 이 화면은 차이 점수나 성장 추세를 새로 계산하지 않습니다.</p></div>
@@ -35,7 +35,7 @@ export function SkillMatrixComparisonPage() {
       </table></div>
     </section>
     <section className="comparison-rule-grid" aria-label="비교 재현 정보"><MatrixFacts label="Matrix A" matrix={left} /><MatrixFacts label="Matrix B" matrix={right} /></section>
-  </Shell>;
+  </>;
 }
 
 function MatrixSummary({ label, matrix }: { label: string; matrix: SkillMatrix }) {
@@ -51,7 +51,6 @@ function SkillCell({ skill }: { skill?: SkillAssessment }) {
 function MatrixFacts({ label, matrix }: { label: string; matrix: SkillMatrix }) {
   return <article><h2>{label} 재현 정보</h2><dl><div><dt>Matrix ID</dt><dd><code>{matrix.skillMatrixId}</code></dd></div><div><dt>정책 버전</dt><dd>{matrix.policyVersion}</dd></div><div><dt>규칙 버전</dt><dd>{matrix.ruleSetVersion}</dd></div><div><dt>강점</dt><dd>{matrix.strengths.length}개</dd></div><div><dt>개선 영역</dt><dd>{matrix.weaknesses.length}개</dd></div></dl></article>;
 }
-function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/dashboard">대시보드</Link></nav>{children}</main>; }
 function findSkill(matrix: SkillMatrix, key: string) { return matrix.skills.find(skill => skill.skillKey === key); }
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
 function formatDate(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }

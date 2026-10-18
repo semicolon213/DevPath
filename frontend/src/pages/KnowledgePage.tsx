@@ -36,7 +36,7 @@ export function KnowledgePage() {
     if (normalized) knowledgeSearch.mutate({ query: normalized, documentIds: documentFilter ? [documentFilter] : [] });
   }
 
-  return <Shell>
+  return <>
     <header className="workspace-header"><div><p className="eyebrow">지식 수집</p><h1>지식 작업 공간</h1>
       <p>공유된 Notion 페이지를 비공개로 수집하고 버전이 있는 청크와 임베딩으로 보관합니다.</p></div></header>
     <p className="state-panel state-panel--compact">검색 결과는 현재 권한이 있는 Notion 문서의 최신 인덱스만 사용합니다. AI 답변 생성에는 아직 연결하지 않습니다.</p>
@@ -68,7 +68,7 @@ export function KnowledgePage() {
       {documents.data?.documents.length === 0 ? <p>아직 수집된 지식 문서가 없습니다.</p> : null}
       {documents.data ? <div className="knowledge-document-grid">{documents.data.documents.map(document => <article key={document.documentId}><span className={document.status === "ACTIVE" ? "status-badge status-badge--info" : "status-badge"}>{document.status === "ACTIVE" ? "활성" : "보관됨"}</span><h3>{document.title}</h3><p>청크 {document.chunkCount}개 · {new Date(document.updatedAt).toLocaleString("ko-KR")}</p><Link to={`/knowledge/${document.documentId}`}>문서 메타데이터 보기</Link></article>)}</div> : null}
     </section>
-  </Shell>;
+  </>;
 }
 
 function JobPanel({ job, clear }: { job: ReturnType<typeof useKnowledgeJob>; clear: () => void }) {
@@ -89,5 +89,4 @@ function jobLabel(job: KnowledgeIngestionJob) {
 }
 
 function Retry({ message, retry }: { message: string; retry: () => void }) { return <div className="state-panel" role="alert"><p>{message}</p><button type="button" onClick={retry}>다시 시도</button></div>; }
-function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/">← DevPath 홈</Link></nav>{children}</main>; }
 function safeNotionUrl(value: string | null) { if (!value) return false; try { const url = new URL(value); return url.protocol === "https:" && (url.hostname === "notion.so" || url.hostname.endsWith(".notion.so")); } catch { return false; } }

@@ -1,9 +1,10 @@
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useArchiveKnowledgeDocument, useKnowledgeChunks, useKnowledgeDocument, useKnowledgeJob, useReindexKnowledgeDocument } from "../features/knowledge/model/useKnowledge";
 import { chunkStatusLabel, jobStatusLabel } from "../shared/ui/labels";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { useRef, useState } from "react";
 import { PageState } from "../shared/ui/PageState";
+import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 
 export function KnowledgeDetailPage() {
   const { documentId = "" } = useParams();
@@ -32,4 +33,4 @@ export function KnowledgeDetailPage() {
     <button className="button-secondary" type="button" onClick={() => navigate("/knowledge")}>지식 작업 공간으로 돌아가기</button>
   </Shell>;
 }
-function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/knowledge">← 지식 작업 공간</Link></nav>{children}</main>; }
+function Shell({ children }: { children: React.ReactNode }) { return <><Breadcrumbs items={[{ label: "지식", to: "/knowledge" }, { label: "문서 상세" }]} />{children}</>; }

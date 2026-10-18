@@ -26,14 +26,19 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render() {
     if (this.state.hasError) {
-      return (
-        <main className="shell">
-          <h1>DevPath</h1>
-          <p role="alert">화면을 표시하지 못했습니다. 페이지를 새로고침해 주세요.</p>
-        </main>
-      );
+      return <SafeErrorPage />;
     }
 
     return this.props.children;
   }
+}
+
+export function SafeErrorPage() {
+  return (
+    <main className="shell">
+      <h1>DevPath</h1>
+      <p role="alert">화면을 표시하지 못했습니다. 페이지를 새로고침해 주세요.</p>
+      <button type="button" onClick={() => window.location.reload()}>페이지 새로고침</button>
+    </main>
+  );
 }

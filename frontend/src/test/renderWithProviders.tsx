@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 import type { ReactElement } from "react";
-import { MemoryRouter } from "react-router-dom";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { appRoutes } from "../routes/AppRoutes";
 
-export function renderWithProviders(ui: ReactElement, initialEntries = ["/"]) {
+export function renderWithProviders(ui?: ReactElement, initialEntries = ["/"]) {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: {
@@ -12,11 +13,12 @@ export function renderWithProviders(ui: ReactElement, initialEntries = ["/"]) {
     }
   });
 
-  return render(
+  const router = createMemoryRouter(ui ? [{ path: "*", element: ui }] : appRoutes, { initialEntries });
+  return { ...render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>
+      <RouterProvider router={router} />
     </QueryClientProvider>
-  );
+  ), router };
 }
 
 export function QueryClientProbe() {

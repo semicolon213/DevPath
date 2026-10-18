@@ -1,30 +1,85 @@
-import { Route, Routes } from "react-router-dom";
-import { HomePage } from "../pages/HomePage";
-import { NotFoundPage } from "../pages/NotFoundPage";
-import { RepositoriesPage } from "../pages/RepositoriesPage";
-import { RepositoryDetailPage } from "../pages/RepositoryDetailPage";
-import { RepositorySnapshotDetailPage } from "../pages/RepositorySnapshotDetailPage";
-import { SkillsPage } from "../pages/SkillsPage";
-import { AnalysesPage } from "../pages/AnalysesPage";
-import { AnalysisDetailPage } from "../pages/AnalysisDetailPage";
+import { createBrowserRouter, Outlet, useRouteError, type RouteObject } from "react-router-dom";
+import { AppLayout } from "../app/AppLayout";
+import { SafeErrorPage } from "../app/ErrorBoundary";
+import { useEffect } from "react";
 import { AnalysisComparisonPage } from "../pages/AnalysisComparisonPage";
-import { SkillMatrixComparisonPage } from "../pages/SkillMatrixComparisonPage";
-import { SkillDetailPage } from "../pages/SkillDetailPage";
-import { CareersPage } from "../pages/CareersPage";
+import { AnalysisDetailPage } from "../pages/AnalysisDetailPage";
+import { AnalysesPage } from "../pages/AnalysesPage";
 import { CareerDetailPage } from "../pages/CareerDetailPage";
+import { CareerReadinessDetailPage } from "../pages/CareerReadinessDetailPage";
+import { CareerReadinessPage } from "../pages/CareerReadinessPage";
+import { CareersPage } from "../pages/CareersPage";
 import { CompaniesPage } from "../pages/CompaniesPage";
 import { CompanyDetailPage } from "../pages/CompanyDetailPage";
 import { DashboardPage } from "../pages/DashboardPage";
-import { CareerReadinessPage } from "../pages/CareerReadinessPage";
-import { CareerReadinessDetailPage } from "../pages/CareerReadinessDetailPage";
-import { LearningRoadmapPage } from "../pages/LearningRoadmapPage";
-import { RecommendationsPage } from "../pages/RecommendationsPage";
-import { RecommendationDetailPage } from "../pages/RecommendationDetailPage";
-import { OnboardingPage } from "../pages/OnboardingPage";
-import { SettingsPage } from "../pages/SettingsPage";
-import { ProfileSettingsPage } from "../pages/ProfileSettingsPage";
+import { HomePage } from "../pages/HomePage";
 import { IntegrationSettingsPage } from "../pages/IntegrationSettingsPage";
-import { KnowledgePage } from "../pages/KnowledgePage";
 import { KnowledgeDetailPage } from "../pages/KnowledgeDetailPage";
+import { KnowledgePage } from "../pages/KnowledgePage";
+import { LearningRoadmapPage } from "../pages/LearningRoadmapPage";
+import { NotFoundPage } from "../pages/NotFoundPage";
+import { OnboardingPage } from "../pages/OnboardingPage";
+import { ProfileSettingsPage } from "../pages/ProfileSettingsPage";
+import { RecommendationDetailPage } from "../pages/RecommendationDetailPage";
+import { RecommendationsPage } from "../pages/RecommendationsPage";
+import { RepositoriesPage } from "../pages/RepositoriesPage";
+import { RepositoryDetailPage } from "../pages/RepositoryDetailPage";
+import { RepositorySnapshotDetailPage } from "../pages/RepositorySnapshotDetailPage";
+import { SettingsPage } from "../pages/SettingsPage";
+import { SkillDetailPage } from "../pages/SkillDetailPage";
+import { SkillMatrixComparisonPage } from "../pages/SkillMatrixComparisonPage";
+import { SkillsPage } from "../pages/SkillsPage";
 import { RouteAccessibility } from "../shared/ui/RouteAccessibility";
-export function AppRoutes(){return <><RouteAccessibility/><Routes><Route path="/" element={<HomePage/>}/><Route path="/onboarding" element={<OnboardingPage/>}/><Route path="/settings" element={<SettingsPage/>}/><Route path="/settings/profile" element={<ProfileSettingsPage/>}/><Route path="/settings/integrations" element={<IntegrationSettingsPage/>}/><Route path="/dashboard" element={<DashboardPage/>}/><Route path="/repositories" element={<RepositoriesPage/>}/><Route path="/repositories/:repositoryId" element={<RepositoryDetailPage/>}/><Route path="/repositories/:repositoryId/snapshots/:snapshotId" element={<RepositorySnapshotDetailPage/>}/><Route path="/knowledge" element={<KnowledgePage/>}/><Route path="/knowledge/:documentId" element={<KnowledgeDetailPage/>}/><Route path="/skills" element={<SkillsPage/>}/><Route path="/skills/compare" element={<SkillMatrixComparisonPage/>}/><Route path="/skills/:skillId" element={<SkillDetailPage/>}/><Route path="/career-readiness" element={<CareerReadinessPage/>}/><Route path="/career-readiness/:careerReadinessId" element={<CareerReadinessDetailPage/>}/><Route path="/recommendations" element={<RecommendationsPage/>}/><Route path="/recommendations/:recommendationId" element={<RecommendationDetailPage/>}/><Route path="/roadmap" element={<LearningRoadmapPage/>}/><Route path="/analyses" element={<AnalysesPage/>}/><Route path="/analyses/compare" element={<AnalysisComparisonPage/>}/><Route path="/analyses/:analysisId" element={<AnalysisDetailPage/>}/><Route path="/careers" element={<CareersPage/>}/><Route path="/careers/:careerId" element={<CareerDetailPage/>}/><Route path="/companies" element={<CompaniesPage/>}/><Route path="/companies/:id" element={<CompanyDetailPage/>}/><Route path="*" element={<NotFoundPage/>}/></Routes></>}
+
+function RouteFrame() {
+  return <><RouteAccessibility /><Outlet /></>;
+}
+
+export function RouteErrorBoundary() {
+  const error = useRouteError();
+  useEffect(() => {
+    console.error("DevPath route error boundary captured an error.", error);
+  }, [error]);
+  return <SafeErrorPage />;
+}
+
+export const appRoutes: RouteObject[] = [{
+  element: <RouteFrame />,
+  errorElement: <RouteErrorBoundary />,
+  children: [
+    { index: true, element: <HomePage /> },
+    {
+      element: <AppLayout />,
+      children: [
+        { path: "onboarding", element: <OnboardingPage /> },
+        { path: "settings", element: <SettingsPage /> },
+        { path: "settings/profile", element: <ProfileSettingsPage /> },
+        { path: "settings/integrations", element: <IntegrationSettingsPage /> },
+        { path: "dashboard", element: <DashboardPage /> },
+        { path: "repositories", element: <RepositoriesPage /> },
+        { path: "repositories/:repositoryId", element: <RepositoryDetailPage /> },
+        { path: "repositories/:repositoryId/snapshots/:snapshotId", element: <RepositorySnapshotDetailPage /> },
+        { path: "knowledge", element: <KnowledgePage /> },
+        { path: "knowledge/:documentId", element: <KnowledgeDetailPage /> },
+        { path: "skills", element: <SkillsPage /> },
+        { path: "skills/compare", element: <SkillMatrixComparisonPage /> },
+        { path: "skills/:skillId", element: <SkillDetailPage /> },
+        { path: "career-readiness", element: <CareerReadinessPage /> },
+        { path: "career-readiness/:careerReadinessId", element: <CareerReadinessDetailPage /> },
+        { path: "recommendations", element: <RecommendationsPage /> },
+        { path: "recommendations/:recommendationId", element: <RecommendationDetailPage /> },
+        { path: "roadmap", element: <LearningRoadmapPage /> },
+        { path: "analyses", element: <AnalysesPage /> },
+        { path: "analyses/compare", element: <AnalysisComparisonPage /> },
+        { path: "analyses/:analysisId", element: <AnalysisDetailPage /> },
+        { path: "careers", element: <CareersPage /> },
+        { path: "careers/:careerId", element: <CareerDetailPage /> },
+        { path: "companies", element: <CompaniesPage /> },
+        { path: "companies/:id", element: <CompanyDetailPage /> }
+      ]
+    },
+    { path: "*", element: <NotFoundPage /> }
+  ]
+}];
+
+export const appRouter = createBrowserRouter(appRoutes);

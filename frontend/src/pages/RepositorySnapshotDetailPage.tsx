@@ -4,6 +4,7 @@ import { useRepository, useRepositorySnapshot } from "../features/repositories/m
 import type { AnalysisHistoryItem } from "../features/analysis/api/analysisApi";
 import { useRepositoryAnalysisHistory } from "../features/analysis/model/useAnalysis";
 import { PageState } from "../shared/ui/PageState";
+import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 
 export function RepositorySnapshotDetailPage() {
   const { repositoryId, snapshotId } = useParams();
@@ -81,7 +82,7 @@ function SnapshotAnalysisCard({ item }: { item: AnalysisHistoryItem }) { return 
 </article>; }
 
 function Shell({ repositoryId, children }: { repositoryId: string | undefined; children: React.ReactNode }) {
-  return <main className="shell workspace"><nav><Link to={repositoryId ? `/repositories/${repositoryId}` : "/repositories"}>← 저장소로 돌아가기</Link></nav>{children}</main>;
+  return <><Breadcrumbs items={[{ label: "저장소", to: "/repositories" }, { label: "저장소 상세", to: repositoryId ? `/repositories/${repositoryId}` : "/repositories" }, { label: "스냅샷 상세" }]} />{children}</>;
 }
 function Fact({ label, value, code = false }: { label: string; value: string; code?: boolean }) { return <div><dt>{label}</dt><dd>{code ? <code>{value}</code> : value}</dd></div>; }
 function Count({ label, value }: { label: string; value: number }) { return <div><strong>{value.toLocaleString("ko-KR")}</strong><span>{label}</span></div>; }

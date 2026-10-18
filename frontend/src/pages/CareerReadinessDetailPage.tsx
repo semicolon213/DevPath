@@ -3,6 +3,7 @@ import type { SkillGap } from "../features/readiness/api/careerReadinessApi";
 import { useCareerReadinessWorkspace } from "../features/readiness/model/useCareerReadiness";
 import { categoryLabel, levelLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
+import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 
 export function CareerReadinessDetailPage() {
   const { careerReadinessId } = useParams();
@@ -35,6 +36,6 @@ function GapCard({ gap }: { gap: SkillGap }) { return <article className={`readi
   <div><span>{categoryLabel(gap.category)}</span><strong>{gapStateLabel(gap.gapState)}</strong></div><p><b>{format(gap.actualScore)}</b> / 기대 최소 {format(gap.expectedMinimum)}</p>
   <progress max="100" value={gap.actualScore}>{gap.actualScore}점</progress><small>직무 가중치 {format(gap.careerWeight)}% · 근거 {gap.evidenceIds.length}개</small>
   <Link to={`/skills/${gap.skillId}`}>기술 평가와 증거 보기</Link></article>; }
-function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/career-readiness">현재 준비도</Link></nav>{children}</main>; }
+function Shell({ children }: { children: React.ReactNode }) { return <><Breadcrumbs items={[{ label: "커리어 준비도", to: "/career-readiness" }, { label: "준비도 상세" }]} />{children}</>; }
 function format(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
 function gapStateLabel(value: SkillGap["gapState"]) { return { MISSING: "관찰 없음", WEAK: "약함", PARTIAL: "일부 충족", SUFFICIENT: "충족", STRONG: "강점" }[value]; }

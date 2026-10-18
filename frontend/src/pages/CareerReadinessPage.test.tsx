@@ -1,6 +1,5 @@
 import { fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AppRoutes } from "../routes/AppRoutes";
 import { renderWithProviders } from "../test/renderWithProviders";
 
 describe("CareerReadinessPage", () => {
@@ -19,7 +18,7 @@ describe("CareerReadinessPage", () => {
       }, metadata: { requestId: "r1", apiVersion: "v1", timestamp: "2026-08-24T00:00:00Z" }
     })));
 
-    renderWithProviders(<AppRoutes />, ["/career-readiness"]);
+    renderWithProviders(undefined, ["/career-readiness"]);
 
     expect(await screen.findByText("67.5")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "커리어 준비도" })).toBeInTheDocument();
@@ -29,14 +28,14 @@ describe("CareerReadinessPage", () => {
 
   it("keeps a missing readiness result as the domain empty state", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ error: { code: "NOT_FOUND" } }, { status: 404 }))));
-    renderWithProviders(<AppRoutes />, ["/career-readiness"]);
+    renderWithProviders(undefined, ["/career-readiness"]);
     expect(await screen.findByRole("heading", { name: "아직 준비도 결과가 없습니다" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "분석 준비" })).toHaveAttribute("href", "/repositories");
   });
 
   it("shows the request reference for an internal readiness failure", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ error: { code: "FAILED" } }, { status: 500, headers: { "X-Request-Id": "readiness-request-500" } }))));
-    renderWithProviders(<AppRoutes />, ["/career-readiness"]);
+    renderWithProviders(undefined, ["/career-readiness"]);
     expect(await screen.findByRole("heading", { name: "준비도를 불러오지 못했습니다" })).toBeInTheDocument();
     expect(screen.getByText("readiness-request-500")).toBeInTheDocument();
   });
@@ -57,7 +56,7 @@ describe("CareerReadinessPage", () => {
           }, metadata: { requestId: "r1", apiVersion: "v1", timestamp: "2026-08-24T00:00:00Z" }
         }));
     }));
-    renderWithProviders(<AppRoutes />, ["/career-readiness"]);
+    renderWithProviders(undefined, ["/career-readiness"]);
     expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
     expect(readinessAttempts).toBe(1);
     fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));

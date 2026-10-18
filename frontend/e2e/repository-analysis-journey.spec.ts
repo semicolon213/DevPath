@@ -33,6 +33,29 @@ type CapturedAnalysisRequest = { csrf?: string; idempotencyKey?: string; body: u
 type CapturedKnowledgeRequest = { csrf?: string; idempotencyKey?: string; body: unknown };
 type CapturedKnowledgeSearch = { csrf?: string; body: unknown };
 
+test("mobile app navigation is keyboard operable and accessible", async ({ page }) => {
+  await installApiFixture(page, []);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto("/dashboard");
+
+  const menu = page.getByRole("button", { name: "메뉴" });
+  await menu.focus();
+  await page.keyboard.press("Enter");
+  await expect(menu).toHaveAttribute("aria-expanded", "true");
+  await page.keyboard.press("Tab");
+  const navigation = page.getByRole("navigation", { name: "주요 메뉴" });
+  await expect(navigation.getByRole("link", { name: "대시보드" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(navigation.getByRole("link", { name: "저장소" })).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(navigation.getByRole("link", { name: "분석" })).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/analyses$/);
+  await expect(menu).toHaveAttribute("aria-expanded", "false");
+  await expectNoAccessibilityViolations(page);
+  await expectNoShellLandmarkViolations(page);
+});
+
 test("profile and GitHub integration settings remain separate and accessible", async ({ page }) => {
   await installApiFixture(page, []);
   await page.goto("/settings");
@@ -133,7 +156,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expect(page.getByLabel("저장된 공식 점수 82.5점")).toBeVisible();
   await expect(page.getByRole("link", { name: "공식 분석과 근거 보기" })).toHaveAttribute("href", "/analyses/analysis-id");
   await expectNoAccessibilityViolations(page);
-  await page.getByRole("link", { name: "저장소 상세" }).click();
+  await page.locator(".workspace-actions").getByRole("link", { name: "저장소 상세" }).click();
 
   await page.getByRole("button", { name: "결정론적 분석 시작" }).click();
   await expect(page.getByText("분석이 완료되었습니다.")).toBeVisible();
@@ -580,4 +603,11 @@ async function expectNoAccessibilityViolations(page: Page) {
     targets: violation.nodes.flatMap(node => node.target)
   }));
   expect(result.violations, JSON.stringify(details, null, 2)).toEqual([]);
+}
+
+async function expectNoShellLandmarkViolations(page: Page) {
+  const result = await new AxeBuilder({ page })
+    .withRules(["landmark-no-duplicate-main", "landmark-main-is-top-level", "landmark-unique"])
+    .analyze();
+  expect(result.violations, JSON.stringify(result.violations.map(violation => violation.id), null, 2)).toEqual([]);
 }

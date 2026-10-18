@@ -1,7 +1,8 @@
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useRecommendationDetail } from "../features/recommendations/model/useRecommendations";
 import { categoryLabel, evidenceTypeLabel, priorityLabel, recommendationStatusLabel, recommendationTypeLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
+import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 
 export function RecommendationDetailPage(){const {recommendationId=""}=useParams();const query=useRecommendationDetail(recommendationId);if(query.isPending)return <Shell><PageState state="loading" title="추천 상세" message="추천 상세와 근거를 불러오는 중입니다."/></Shell>;if(query.isError)return <Shell><PageState state="error" title="추천을 표시할 수 없습니다" errorTitle="추천 상세를 불러오지 못했습니다" error={query.error} retry={()=>query.refetch()} backTo="/recommendations" backLabel="추천 이력으로 이동"/></Shell>;const {recommendation,evidence}=query.data;return <Shell>
   <header className="workspace-header"><div><p className="eyebrow">{categoryLabel(recommendation.category)} · {priorityLabel(recommendation.priority)}</p><h1>{recommendation.title}</h1><p>추천 정책이 기록한 완료 기준과 연결된 관찰 근거를 함께 확인합니다.</p></div><div className="analysis-version"><span>{recommendationTypeLabel(recommendation.type)}</span><span>{recommendationStatusLabel(recommendation.status)}</span></div></header>
@@ -9,6 +10,6 @@ export function RecommendationDetailPage(){const {recommendationId=""}=useParams
   <section aria-labelledby="expected-evidence-title"><div className="section-heading"><div><h2 id="expected-evidence-title">기대하는 측정 근거</h2><p>추천을 완료했다고 판단할 때 필요한 산출물입니다.</p></div></div><ul className="expected-evidence-list">{recommendation.expectedEvidence.map(item=><li key={item}>{item}</li>)}</ul></section>
   <section aria-labelledby="observed-evidence-title"><div className="section-heading"><div><h2 id="observed-evidence-title">현재 연결된 관찰 근거</h2><p>공식 분석에서 보존된 사용자 소유 근거만 표시합니다.</p></div><span className="status-badge">{evidence.length}개</span></div>{evidence.length===0?<div className="state-panel"><h3>연결된 관찰 근거가 없습니다</h3><p>이 추천은 현재 Skill Gap을 채울 새로운 근거를 만들도록 안내합니다.</p></div>:<div className="recommendation-evidence-list">{evidence.map(item=><article key={item.evidenceId}><header><strong>{evidenceTypeLabel(item.evidenceType)}</strong><span>신뢰도 {formatNumber(item.confidence)}%</span></header><p>{item.observedFactSummary}</p><code>{item.sourceReference}</code><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></article>)}</div>}</section>
 </Shell>}
-function Shell({children}:{children:React.ReactNode}){return <main className="shell workspace"><nav><Link to="/recommendations">추천 작업공간</Link></nav>{children}</main>}
+function Shell({children}:{children:React.ReactNode}){return <><Breadcrumbs items={[{label:"추천",to:"/recommendations"},{label:"추천 상세"}]}/>{children}</>}
 function formatNumber(value:number){return new Intl.NumberFormat("ko-KR",{maximumFractionDigits:2}).format(value)}
 function formatDate(value:string){return new Intl.DateTimeFormat("ko-KR",{dateStyle:"medium",timeStyle:"short"}).format(new Date(value))}

@@ -118,7 +118,19 @@ a {
 }
 
 .workspace { margin: 0 auto; max-width: 1180px; }
-.workspace > nav { margin-bottom: 28px; }
+.app-header { align-items: center; background: var(--background-surface); border-bottom: 1px solid var(--border-default); display: flex; gap: 20px; padding: 16px 48px; }
+.app-brand { align-items: center; color: var(--text-primary); display: inline-flex; font-size: 1.25rem; font-weight: 900; min-height: 44px; text-decoration: none; }
+.app-navigation { display: flex; flex: 1; flex-wrap: wrap; gap: 4px; }
+.app-navigation__link { align-items: center; border-radius: var(--radius-sm); color: var(--text-secondary); display: inline-flex; font-weight: 700; min-height: 44px; padding: 10px 12px; text-decoration: none; }
+.app-navigation__link--active { background: var(--brand-surface); color: var(--brand-strong); }
+.app-navigation__link--active::before { background: currentColor; border-radius: 50%; content: ""; height: .5em; margin-right: 6px; width: .5em; }
+.app-menu-button { display: none; }
+.app-logout { flex: 0 0 auto; }
+.app-logout-error { margin: 12px auto 0; max-width: 1180px; padding: 0 48px; }
+.breadcrumbs { margin-bottom: 28px; }
+.breadcrumbs ol { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; margin: 0; padding: 0; }
+.breadcrumbs li + li::before { color: var(--text-muted); content: "/"; margin-right: 8px; }
+.breadcrumbs [aria-current="page"] { color: var(--text-primary); font-weight: 700; }
 .workspace-header, .repository-detail-header { align-items: flex-start; display: flex; gap: 24px; justify-content: space-between; margin-bottom: 28px; }
 .workspace-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .workspace-header h1, .repository-detail-header h1 { font-size: clamp(2rem, 5vw, 3.5rem); letter-spacing: -0.04em; margin: 8px 0; }
@@ -523,6 +535,13 @@ button:disabled {
 
 @media (max-width: 720px) {
   .shell { padding: 24px 16px; }
+  .app-header { align-items: stretch; flex-wrap: wrap; gap: 10px; padding: 14px 16px; }
+  .app-brand { align-self: center; flex: 1; }
+  .app-menu-button { display: inline-flex; }
+  .app-navigation { display: none; flex-basis: 100%; flex-direction: column; order: 3; }
+  .app-navigation--open { display: flex; }
+  .app-logout { margin-left: auto; order: 2; }
+  .app-logout-error { padding: 0 16px; }
   .shell-card { padding: 22px; }
   .workspace-header, .repository-detail-header, .section-heading { align-items: stretch; flex-direction: column; }
   .danger-zone { align-items: stretch; flex-direction: column; }

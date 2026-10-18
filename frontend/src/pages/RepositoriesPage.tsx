@@ -1,5 +1,5 @@
 import { Link, useSearchParams } from "react-router-dom";
-import { useRef, useState, type ReactNode, type RefObject } from "react";
+import { useRef, useState, type RefObject } from "react";
 import type { ImportedRepository } from "../features/repositories/api/repositoryApi";
 import { useArchiveRepository, useRepositories, useRestoreRepository } from "../features/repositories/model/useRepositories";
 import { repositoryLifecycleLabel, repositorySyncStatusLabel } from "../shared/ui/labels";
@@ -14,11 +14,11 @@ export function RepositoriesPage() {
   const archiveMessageRef = useRef<HTMLParagraphElement>(null);
 
   if (query.isPending) {
-    return <Workspace><PageState state="loading" title="내 GitHub 저장소" message="내 저장소를 불러오는 중입니다…" /></Workspace>;
+    return <PageState state="loading" title="내 GitHub 저장소" message="내 저장소를 불러오는 중입니다…" />;
   }
   if (query.isError) {
     return (
-      <Workspace><PageState state="error" title="저장소를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} /></Workspace>
+      <PageState state="error" title="저장소를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} />
     );
   }
 
@@ -28,7 +28,7 @@ export function RepositoriesPage() {
   const archivedCount = repositories.filter(repository => repository.lifecycle === "ARCHIVED").length;
 
   return (
-    <Workspace>
+    <>
       <header className="workspace-header">
         <div>
           <p className="eyebrow">저장소 작업 공간</p>
@@ -88,7 +88,7 @@ export function RepositoriesPage() {
           ) : null}
         </section>
       )}
-    </Workspace>
+    </>
   );
 }
 
@@ -136,10 +136,6 @@ function RepositoryCard({ repository, returnFocusFallback, onArchiveMessage }: {
       </div>
     </article>
   );
-}
-
-function Workspace({ children }: { children: ReactNode }) {
-  return <main className="shell workspace"><nav><Link to="/">← DevPath 홈</Link></nav>{children}</main>;
 }
 
 function Summary({ label, value }: { label: string; value: number }) {

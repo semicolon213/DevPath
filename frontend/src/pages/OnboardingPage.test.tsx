@@ -1,6 +1,5 @@
 import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AppRoutes } from "../routes/AppRoutes";
 import { renderWithProviders } from "../test/renderWithProviders";
 
 vi.mock("../features/profile/ui/ProfilePanel", () => ({ ProfilePanel: () => <div>설정 도구</div> }));
@@ -18,7 +17,7 @@ describe("OnboardingPage", () => {
       generatedAt: metadata.timestamp
     }, metadata }))));
 
-    renderWithProviders(<AppRoutes />, ["/onboarding"]);
+    renderWithProviders(undefined, ["/onboarding"]);
 
     expect(await screen.findByRole("heading", { name: "첫 저장소 동기화", level: 2 })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "DevPath 시작하기" })).toBeInTheDocument();
@@ -34,7 +33,7 @@ describe("OnboardingPage", () => {
       generatedAt: metadata.timestamp
     }, metadata }))));
 
-    renderWithProviders(<AppRoutes />, ["/onboarding"]);
+    renderWithProviders(undefined, ["/onboarding"]);
 
     expect(await screen.findByRole("heading", { name: "첫 분석 준비를 마쳤습니다" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "대시보드" })).not.toHaveLength(0);
@@ -46,7 +45,7 @@ describe("OnboardingPage", () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json(
       { code: "AUTHENTICATION_REQUIRED", message: "Authentication required" }, { status: 401 }))));
 
-    renderWithProviders(<AppRoutes />, ["/onboarding"]);
+    renderWithProviders(undefined, ["/onboarding"]);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("로그인이 필요합니다");
     expect(screen.getByRole("link", { name: "홈으로 이동" })).toHaveAttribute("href", "/");
@@ -54,7 +53,7 @@ describe("OnboardingPage", () => {
 
   it("uses the shared network failure state", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
-    renderWithProviders(<AppRoutes />, ["/onboarding"]);
+    renderWithProviders(undefined, ["/onboarding"]);
     expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
   });

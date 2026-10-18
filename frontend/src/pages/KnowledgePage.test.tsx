@@ -1,6 +1,5 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { AppRoutes } from "../routes/AppRoutes";
 import { renderWithProviders } from "../test/renderWithProviders";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -18,7 +17,7 @@ it("connects an authorized Notion page to a recoverable ingestion job", async ()
     return Promise.reject(new Error(url));
   });
   vi.stubGlobal("fetch", fetchMock);
-  renderWithProviders(<AppRoutes />, ["/knowledge"]);
+  renderWithProviders(undefined, ["/knowledge"]);
 
   expect(await screen.findByRole("heading", { name: "지식 작업 공간" })).toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "회고 노트" })).toBeInTheDocument();
@@ -39,7 +38,7 @@ it("searches an owner-scoped document and presents bounded evidence with its sou
     return Promise.reject(new Error(url));
   });
   vi.stubGlobal("fetch", fetchMock);
-  renderWithProviders(<AppRoutes />, ["/knowledge"]);
+  renderWithProviders(undefined, ["/knowledge"]);
 
   fireEvent.change(await screen.findByRole("textbox", { name: "검색어" }), { target: { value: "회귀 방지" } });
   fireEvent.change(screen.getByRole("combobox", { name: "문서 범위" }), { target: { value: "document-1" } });
@@ -68,7 +67,7 @@ it("keeps search dependency errors actionable and distinguishes an authorized em
     return Promise.reject(new Error(url));
   });
   vi.stubGlobal("fetch", fetchMock);
-  renderWithProviders(<AppRoutes />, ["/knowledge"]);
+  renderWithProviders(undefined, ["/knowledge"]);
 
   fireEvent.change(await screen.findByRole("textbox", { name: "검색어" }), { target: { value: "없는 지식" } });
   fireEvent.click(screen.getByRole("button", { name: "지식 검색" }));
@@ -88,7 +87,7 @@ it("does not promise automatic retry or expose the server error for a failed ing
     return Promise.reject(new Error(url));
   }));
 
-  renderWithProviders(<AppRoutes />, ["/knowledge?job=job-1"]);
+  renderWithProviders(undefined, ["/knowledge?job=job-1"]);
 
   expect(await screen.findByRole("alert")).toHaveTextContent("외부 서비스 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.");
   expect(screen.queryByText(/자동으로 다시 시도/)).not.toBeInTheDocument();

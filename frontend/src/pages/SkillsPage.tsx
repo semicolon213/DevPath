@@ -10,12 +10,12 @@ export function SkillsPage() {
   const query = useCurrentSkillMatrix();
 
   if (query.isPending) {
-    return <PageShell><PageState state="loading" title="기술 역량 분석" message="최신 기술 분석 결과를 불러오는 중입니다…" /></PageShell>;
+    return <PageState state="loading" title="기술 역량 분석" message="최신 기술 분석 결과를 불러오는 중입니다…" />;
   }
   if (query.isError) {
-    return <PageShell>{query.error instanceof ApiError && query.error.status === 404
+    return query.error instanceof ApiError && query.error.status === 404
       ? <PageState state="empty" title="아직 기술 분석 결과가 없습니다" description="GitHub 저장소를 동기화하고 결정론적 분석이 완료되면 이곳에 결과가 표시됩니다." actionTo="/repositories" actionLabel="저장소로 이동" />
-      : <PageState state="error" title="기술 분석 결과를 표시할 수 없습니다" errorTitle="기술 분석을 불러오지 못했습니다" description="기존 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} />}</PageShell>;
+      : <PageState state="error" title="기술 분석 결과를 표시할 수 없습니다" errorTitle="기술 분석을 불러오지 못했습니다" description="기존 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} />;
   }
 
   const matrix = query.data;
@@ -23,7 +23,7 @@ export function SkillsPage() {
   const weaknesses = matrix.skills.filter(skill => skill.weakness);
 
   return (
-    <PageShell>
+    <>
       <header className="workspace-header skill-header">
         <div>
           <p className="eyebrow">공식 기술 역량 결과</p>
@@ -71,7 +71,7 @@ export function SkillsPage() {
         </div>
         <div className="workspace-actions"><Link to="/analyses">분석 이력</Link><Link className="button-link" to="/repositories">저장소 확인</Link></div>
       </section>
-    </PageShell>
+    </>
   );
 }
 
@@ -110,10 +110,6 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
       </details>
     </article>
   );
-}
-
-function PageShell({ children }: { children: React.ReactNode }) {
-  return <main className="shell workspace"><nav><Link to="/">← DevPath 홈</Link></nav>{children}</main>;
 }
 
 function Summary({ label, value }: { label: string; value: number }) {

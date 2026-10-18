@@ -1,8 +1,9 @@
-import { Link, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { useCareer } from "../features/careers/model/useCareers";
 import { usePreferences, useSetCareer } from "../features/profile/model/useProfile";
 import { categoryLabel, priorityLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
+import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 
 export function CareerDetailPage() {
   const { careerId } = useParams();
@@ -32,5 +33,5 @@ export function CareerDetailPage() {
 }
 
 function ProfileList({ title, values }: { title: string; values: string[] }) { return <article><h2>{title}</h2><ul>{values.map(value => <li key={value}>{value}</li>)}</ul></article>; }
-function PageShell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/careers">← 지원 커리어</Link></nav>{children}</main>; }
+function PageShell({ children }: { children: React.ReactNode }) { return <><Breadcrumbs items={[{ label: "지원 커리어", to: "/careers" }, { label: "커리어 상세" }]} />{children}</>; }
 function statusLabel(value: string) { return value === "SUPPORTED" ? "공식 지원" : value; }

@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useBlocker } from "react-router-dom";
 import { CareerStage } from "../api/profileApi";
 import { usePreferences, useProfile, useSetCareer, useSetCompany, useUpdateProfile } from "../model/useProfile";
 import { useCareers } from "../../careers/model/useCareers";
 import { useCompanies } from "../../companies/model/useCompanies";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
+import { useUnsavedChanges } from "../../../app/UnsavedChangesContext";
 
 type ProfileErrors = { displayName?: string; bio?: string };
 type TargetKind = "career" | "company";
@@ -29,10 +30,17 @@ export function ProfilePanel() {
   const displayNameRef = useRef<HTMLInputElement>(null);
   const bioRef = useRef<HTMLTextAreaElement>(null);
   const targetMessageRef = useRef<HTMLDivElement>(null);
+  const profilePanelRef = useRef<HTMLElement>(null);
+  const { ignoreUnsavedChanges, setHasUnsavedChanges } = useUnsavedChanges();
 
   useEffect(() => { if (profile.data) { setDisplayName(profile.data.displayName); setStage(profile.data.careerStage ?? ""); setBio(profile.data.bio ?? ""); } }, [profile.data]);
   useEffect(() => { if (preferences.data) { setCareerId(preferences.data.careerId ?? ""); setCompanyId(preferences.data.companyId ?? ""); } }, [preferences.data]);
   const dirty = Boolean(profile.data) && (displayName !== profile.data!.displayName || stage !== (profile.data!.careerStage ?? "") || bio !== (profile.data!.bio ?? ""));
+  const blocker = useBlocker(dirty && !ignoreUnsavedChanges);
+  useEffect(() => {
+    setHasUnsavedChanges(dirty);
+    return () => setHasUnsavedChanges(false);
+  }, [dirty, setHasUnsavedChanges]);
   useEffect(() => {
     if (!dirty) return;
     const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
@@ -81,7 +89,7 @@ export function ProfilePanel() {
     pending: company.isPending
   };
 
-  return <section id="profile" className="profile-panel" aria-labelledby="profile-title">
+  return <section ref={profilePanelRef} id="profile" className="profile-panel" aria-labelledby="profile-title">
     <h2 id="profile-title">커리어 프로필</h2>
     <form noValidate onSubmit={submit}>
       {Object.keys(errors).length > 0 ? <div ref={errorSummaryRef} className="error-summary" role="alert" tabIndex={-1}>
@@ -102,5 +110,6 @@ export function ProfilePanel() {
     </div>
     <div ref={targetMessageRef} role="status" tabIndex={-1}>{targetMessage}</div>
     <ConfirmDialog open={targetKind !== null} title={targetDialog.title} description={targetDialog.description} confirmLabel={targetDialog.label} pending={targetDialog.pending} error={targetKind === "career" && career.isError ? "목표 직무를 변경하지 못했습니다. 다시 시도해 주세요." : targetKind === "company" && company.isError ? "목표 회사를 변경하지 못했습니다. 다시 시도해 주세요." : undefined} returnFocusFallback={targetMessageRef} onCancel={() => setTargetKind(null)} onConfirm={confirmTarget} />
+    <ConfirmDialog open={blocker.state === "blocked"} title="저장하지 않은 변경사항이 있습니다" description="이 페이지를 떠나면 프로필 변경사항이 저장되지 않습니다." confirmLabel="페이지 나가기" returnFocusFallback={profilePanelRef} onCancel={() => blocker.reset?.()} onConfirm={() => blocker.proceed?.()} />
   </section>;
 }

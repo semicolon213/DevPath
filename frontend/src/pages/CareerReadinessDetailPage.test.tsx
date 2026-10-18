@@ -1,6 +1,5 @@
 import { screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
-import { AppRoutes } from "../routes/AppRoutes";
 import { renderWithProviders } from "../test/renderWithProviders";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -18,9 +17,11 @@ it("connects immutable readiness gaps to skill evidence and next actions", async
       confidence: 82, unavailableCategories: [], skillGaps: [gap], assessedAt: "2026-08-25T00:00:00Z"
     }, metadata
   }))));
-  renderWithProviders(<AppRoutes />, ["/career-readiness/readiness-1"]);
+  renderWithProviders(undefined, ["/career-readiness/readiness-1"]);
 
   expect(await screen.findByText("67.5")).toBeInTheDocument();
+  expect(screen.getByRole("navigation", { name: "현재 위치" })).toHaveTextContent("커리어 준비도준비도 상세");
+  expect(screen.getByText("준비도 상세")).toHaveAttribute("aria-current", "page");
   expect(screen.getByRole("heading", { name: "커리어 준비도 상세" })).toBeInTheDocument();
   expect(screen.getByText("일부 충족")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "기술 평가와 증거 보기" })).toHaveAttribute("href", "/skills/skill-1");

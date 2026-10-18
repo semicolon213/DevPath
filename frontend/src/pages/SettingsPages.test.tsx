@@ -1,6 +1,5 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AppRoutes } from "../routes/AppRoutes";
 import { renderWithProviders } from "../test/renderWithProviders";
 
 const metadata = { requestId: "settings-test", apiVersion: "v1", timestamp: "2026-08-25T06:00:00Z" };
@@ -10,7 +9,7 @@ describe("Settings workspace", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("separates profile and integration settings into clear destinations", () => {
-    renderWithProviders(<AppRoutes />, ["/settings"]);
+    renderWithProviders(undefined, ["/settings"]);
     expect(screen.getByRole("heading", { name: "내 DevPath 설정" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "프로필 설정 열기" })).toHaveAttribute("href", "/settings/profile");
     expect(screen.getByRole("link", { name: "연결 설정 열기" })).toHaveAttribute("href", "/settings/integrations");
@@ -27,23 +26,27 @@ describe("Settings workspace", () => {
       return Promise.reject(new Error(path));
     }));
 
-    renderWithProviders(<AppRoutes />, ["/settings/profile"]);
+    renderWithProviders(undefined, ["/settings/profile"]);
 
     expect(screen.getByRole("heading", { name: "프로필과 평가 목표", level: 1 })).toBeInTheDocument();
     expect(await screen.findByRole("textbox", { name: "표시 이름" })).toHaveValue("개발자");
     expect(screen.getByRole("combobox", { name: "목표 직무" })).toHaveValue("backend");
     expect(screen.getByRole("combobox", { name: "목표 회사" })).toHaveValue("");
+    expect(screen.getByRole("link", { name: "설정" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("link", { name: "프로필과 목표" })).toHaveAttribute("aria-current", "page");
+    expect(within(screen.getByRole("navigation", { name: "설정 메뉴" })).getAllByRole("link").filter(link => link.hasAttribute("aria-current"))).toHaveLength(1);
   });
 
   it("shows a disconnected GitHub state without treating login identity as repository access", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(envelope({ connections: [] }))));
 
-    const { container } = renderWithProviders(<AppRoutes />, ["/settings/integrations"]);
+    const { container } = renderWithProviders(undefined, ["/settings/integrations"]);
 
     expect(screen.getByRole("heading", { name: "외부 서비스 연결", level: 1 })).toBeInTheDocument();
     expect(await screen.findAllByText("미연결")).toHaveLength(2);
     expect(screen.getByRole("button", { name: "GitHub 저장소 연결" })).toBeInTheDocument();
     expect(container.querySelector("#github")).toContainElement(screen.getByText("GitHub 저장소 접근"));
     expect(screen.queryByText("접근 가능한 저장소")).not.toBeInTheDocument();
+    expect(within(screen.getByRole("navigation", { name: "설정 메뉴" })).getAllByRole("link").filter(link => link.hasAttribute("aria-current"))).toHaveLength(1);
   });
 });

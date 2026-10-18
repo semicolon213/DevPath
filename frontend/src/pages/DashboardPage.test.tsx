@@ -1,6 +1,5 @@
 import { screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AppRoutes } from "../routes/AppRoutes";
 import { renderWithProviders } from "../test/renderWithProviders";
 
 const metadata = { requestId: "request-1", apiVersion: "v1", timestamp: "2026-08-25T00:00:00Z" };
@@ -13,7 +12,7 @@ describe("DashboardPage", () => {
     const fetchMock = vi.fn((_input: string | URL | Request) => Promise.resolve(envelope(summary())));
     vi.stubGlobal("fetch", fetchMock);
 
-    renderWithProviders(<AppRoutes />, ["/dashboard"]);
+    renderWithProviders(undefined, ["/dashboard"]);
 
     expect(await screen.findByText("백엔드 개발자")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "내 DevPath 대시보드" })).toBeInTheDocument();
@@ -38,7 +37,7 @@ describe("DashboardPage", () => {
     data.skillOverview.status = "UNAVAILABLE";
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(envelope(data))));
 
-    renderWithProviders(<AppRoutes />, ["/dashboard"]);
+    renderWithProviders(undefined, ["/dashboard"]);
 
     expect(await screen.findByText("등록 저장소 · 확인 실패")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "내 DevPath 대시보드" })).toBeInTheDocument();

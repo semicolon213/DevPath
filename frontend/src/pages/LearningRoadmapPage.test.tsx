@@ -1,6 +1,5 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { AppRoutes } from "../routes/AppRoutes";
 import { renderWithProviders } from "../test/renderWithProviders";
 
 const metadata = { requestId: "r", apiVersion: "v1", timestamp: "2026-08-25T00:00:00Z" };
@@ -16,7 +15,7 @@ describe("LearningRoadmapPage", () => {
 
   it("renders deterministic recommendations and roadmap history", async () => {
     vi.stubGlobal("fetch", journeyFetch());
-    renderWithProviders(<AppRoutes />, ["/roadmap"]);
+    renderWithProviders(undefined, ["/roadmap"]);
     expect(await screen.findByText(/선택적 AI 학습 가이드는 아래 별도 영역/)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "추천 및 학습 로드맵" })).toBeInTheDocument();
     expect(screen.getAllByText("Add testing")).toHaveLength(2);
@@ -32,7 +31,7 @@ describe("LearningRoadmapPage", () => {
   it("archives only after the shared confirmation is accepted", async () => {
     const fetchMock = journeyFetch(true);
     vi.stubGlobal("fetch", fetchMock);
-    renderWithProviders(<AppRoutes />, ["/roadmap"]);
+    renderWithProviders(undefined, ["/roadmap"]);
     fireEvent.click(await screen.findByRole("button", { name: "현재 로드맵 보관" }));
     expect(screen.getByRole("dialog")).toHaveTextContent("로드맵 내용과 이력은 유지됩니다");
     expect(fetchMock.mock.calls.some(([input]) => String(input).endsWith("/archive"))).toBe(false);
@@ -53,7 +52,7 @@ describe("LearningRoadmapPage", () => {
 
   it("uses the shared network failure state", async () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
-    renderWithProviders(<AppRoutes />, ["/roadmap"]);
+    renderWithProviders(undefined, ["/roadmap"]);
     expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
   });

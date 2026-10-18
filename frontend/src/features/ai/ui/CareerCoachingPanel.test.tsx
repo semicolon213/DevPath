@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCareerCoaching } from "../model/useCareerCoaching";
 import { CareerCoachingPanel } from "./CareerCoachingPanel";
+import { renderWithProviders } from "../../../test/renderWithProviders";
 
 vi.mock("../model/useCareerCoaching", () => ({ useCareerCoaching: vi.fn() }));
 
@@ -15,7 +15,7 @@ describe("CareerCoachingPanel", () => {
   });
 
   it("starts coaching for the readiness result", () => {
-    render(<MemoryRouter><CareerCoachingPanel careerReadinessId="readiness-id" /></MemoryRouter>);
+    renderWithProviders(<CareerCoachingPanel careerReadinessId="readiness-id" />);
     fireEvent.click(screen.getByRole("button", { name: "코칭 생성" }));
     expect(mutate).toHaveBeenCalledOnce();
   });
@@ -37,7 +37,7 @@ describe("CareerCoachingPanel", () => {
       } }
     }) as ReturnType<typeof useCareerCoaching>);
 
-    render(<MemoryRouter><CareerCoachingPanel careerReadinessId="readiness-id" /></MemoryRouter>);
+    renderWithProviders(<CareerCoachingPanel careerReadinessId="readiness-id" />);
 
     expect(screen.getByText("작은 결과물부터 완성하세요.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "공식 추천 근거 보기" }))

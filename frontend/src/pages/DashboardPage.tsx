@@ -6,13 +6,13 @@ import { PageState } from "../shared/ui/PageState";
 
 export function DashboardPage() {
   const query = useDashboard();
-  if (query.isPending) return <Shell><PageState state="loading" title="내 DevPath 대시보드" message="개발 현황을 모으는 중입니다." /></Shell>;
-  if (query.isError) return <Shell><PageState state="error" title="대시보드를 불러오지 못했습니다." description="기존 공식 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} /></Shell>;
+  if (query.isPending) return <PageState state="loading" title="내 DevPath 대시보드" message="개발 현황을 모으는 중입니다." />;
+  if (query.isError) return <PageState state="error" title="대시보드를 불러오지 못했습니다." description="기존 공식 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} />;
 
   const view = query.data;
   const latest = view.analyses.latest;
   return (
-    <Shell>
+    <>
       <header className="workspace-header">
         <div><p className="eyebrow">개발 현황</p><h1>내 DevPath 대시보드</h1><p>선택한 목표와 GitHub 근거에서 계산된 최신 공식 결과를 한곳에서 확인합니다.</p><p className="dashboard-footnote">기준 시각 <time dateTime={view.generatedAt}>{formatDate(view.generatedAt)}</time></p></div>
         <div className="workspace-actions"><Link to="/repositories">저장소</Link><Link className="button-link" to="/analyses">분석 이력</Link></div>
@@ -68,7 +68,7 @@ export function DashboardPage() {
         <CardHeading eyebrow="최신 결과" title="저장소별 현재 분석" link="/repositories" linkLabel="저장소 관리" id="repository-analysis-title" />
         {view.analyses.status === "UNAVAILABLE" ? <Unavailable /> : view.analyses.currentByRepository.length ? <ul className="dashboard-analysis-list">{view.analyses.currentByRepository.map(item => <li key={item.analysisId}><div><strong>{item.repositoryFullName}</strong><time dateTime={item.completedAt}>{formatDate(item.completedAt)}</time></div><span>{formatScore(item.overallScore)}점</span><Link to={`/analyses/${item.analysisId}`}>상세</Link></li>)}</ul> : <Empty text="저장소별 최신 분석 결과가 아직 없습니다." action="분석 준비" to="/repositories" />}
       </section>
-    </Shell>
+    </>
   );
 }
 
@@ -81,7 +81,6 @@ function Metric({ value, label, status }: { value: number | string; label: strin
 function CardHeading({ eyebrow, title, link, linkLabel, id }: { eyebrow: string; title: string; link?: string; linkLabel?: string; id?: string }) { return <header className="dashboard-card__heading"><div><span>{eyebrow}</span><h2 id={id}>{title}</h2></div>{link ? <Link to={link}>{linkLabel}</Link> : null}</header>; }
 function Empty({ text, action, to }: { text: string; action: string; to: string }) { return <div className="dashboard-empty"><p>{text}</p><Link to={to}>{action}</Link></div>; }
 function Unavailable() { return <p role="status" className="dashboard-unavailable">일부 정보를 불러오지 못했습니다. 다른 카드의 공식 결과는 그대로 표시합니다.</p>; }
-function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/">← DevPath 홈</Link></nav>{children}</main>; }
 function valueOrDash(status: DashboardSourceStatus, value: number) { return status === "UNAVAILABLE" ? "—" : value; }
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
 function formatDate(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }

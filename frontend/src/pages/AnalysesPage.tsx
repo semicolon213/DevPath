@@ -7,13 +7,13 @@ export function AnalysesPage() {
   const query = useAnalysisHistory();
   const [selected,setSelected]=useState<string[]>([]);
 
-  if (query.isPending) return <PageShell><PageState state="loading" title="분석 이력" message="분석 이력을 불러오는 중입니다." /></PageShell>;
-  if (query.isError) return <PageShell><PageState state="error" title="분석 이력을 표시할 수 없습니다" errorTitle="분석 이력을 불러오지 못했습니다" description="기존 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} /></PageShell>;
+  if (query.isPending) return <PageState state="loading" title="분석 이력" message="분석 이력을 불러오는 중입니다." />;
+  if (query.isError) return <PageState state="error" title="분석 이력을 표시할 수 없습니다" errorTitle="분석 이력을 불러오지 못했습니다" description="기존 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} />;
 
   const analyses = query.data.pages.flatMap(page => page.analyses);
   const totalCount = query.data.pages[0]?.totalCount ?? 0;
   return (
-    <PageShell>
+    <>
       <header className="workspace-header">
         <div>
           <p className="eyebrow">재현 가능한 분석 기록</p>
@@ -80,12 +80,8 @@ export function AnalysesPage() {
           ) : null}
         </section>
       )}
-    </PageShell>
+    </>
   );
-}
-
-function PageShell({ children }: { children: React.ReactNode }) {
-  return <main className="shell workspace"><nav><Link to="/">← DevPath 홈</Link></nav>{children}</main>;
 }
 
 function formatScore(value: number) {

@@ -30,6 +30,8 @@ it("shows immutable provenance and measured collection scope for the current sna
     ["/repositories/repository-1/snapshots/snapshot-1"]);
 
   expect(await screen.findByRole("heading", { name: "owner/devpath 스냅샷" })).toBeInTheDocument();
+  expect(screen.getByRole("navigation", { name: "현재 위치" })).toHaveTextContent("저장소저장소 상세스냅샷 상세");
+  expect(screen.getByText("스냅샷 상세")).toHaveAttribute("aria-current", "page");
   expect(screen.getByLabelText("스냅샷 적용 상태")).toHaveTextContent("현재 분석 기준");
   expect(screen.getByText("abcdef1234567890")).toBeInTheDocument();
   expect(screen.getByText("sha256:content-hash")).toBeInTheDocument();

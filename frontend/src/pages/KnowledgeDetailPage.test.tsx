@@ -1,7 +1,5 @@
 import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
-import { useLocation } from "react-router-dom";
 import { afterEach, expect, it, vi } from "vitest";
-import { AppRoutes } from "../routes/AppRoutes";
 import { renderWithProviders } from "../test/renderWithProviders";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -88,7 +86,7 @@ it("reindexes through the CSRF boundary and renders the accepted job from the UR
     if (path === "/api/v1/knowledge-ingestion-jobs/55555555-5555-4555-8555-555555555555") return Promise.resolve(json(job("succeeded", 100)));
     return Promise.reject(new Error(path));
   });
-  renderPage(fetchMock, true);
+  const { router } = renderPage(fetchMock);
 
   fireEvent.click(await screen.findByRole("button", { name: "재색인" }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(
@@ -98,7 +96,7 @@ it("reindexes through the CSRF boundary and renders the accepted job from the UR
       headers: expect.objectContaining({ "X-CSRF-TOKEN": "csrf-token", "Idempotency-Key": "fixed-idempotency-key" })
     })
   ));
-  expect(await screen.findByTestId("location")).toHaveTextContent("/knowledge/11111111-1111-4111-8111-111111111111?job=55555555-5555-4555-8555-555555555555");
+  await waitFor(() => expect(`${router.state.location.pathname}${router.state.location.search}`).toBe("/knowledge/11111111-1111-4111-8111-111111111111?job=55555555-5555-4555-8555-555555555555"));
   expect(await screen.findByText("재색인 상태: 완료 100%")).toHaveAttribute("role", "status");
 });
 
@@ -170,20 +168,15 @@ it("announces reindex and archive failures", async () => {
   expect(within(screen.getByRole("dialog")).getByRole("button", { name: "문서 보관" })).toBeEnabled();
 });
 
-function renderPage(fetchMock: ReturnType<typeof vi.fn>, showLocation = false) {
+function renderPage(fetchMock: ReturnType<typeof vi.fn>) {
   vi.stubGlobal("fetch", fetchMock);
-  renderWithProviders(<><AppRoutes />{showLocation ? <LocationProbe /> : null}</>, ["/knowledge/11111111-1111-4111-8111-111111111111"]);
+  return renderWithProviders(undefined, ["/knowledge/11111111-1111-4111-8111-111111111111"]);
 }
 
 function metadataValue(label: string) {
   const value = screen.getByText(label, { selector: "dt" }).nextElementSibling;
   expect(value?.tagName).toBe("DD");
   return value as HTMLElement;
-}
-
-function LocationProbe() {
-  const location = useLocation();
-  return <span data-testid="location">{location.pathname}{location.search}</span>;
 }
 
 function json(data: unknown, init?: ResponseInit) {

@@ -3,6 +3,7 @@ import type { SkillAssessment, SkillHistoryPoint } from "../features/skills/api/
 import { useSkillHistory, useSkillWorkspace } from "../features/skills/model/useSkillMatrix";
 import { categoryLabel, evidenceTypeLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
+import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 
 export function SkillDetailPage() {
   const { skillId } = useParams();
@@ -81,7 +82,7 @@ function SkillHistoryItem({ point }: { point: SkillHistoryPoint }) {
   </article></li>;
 }
 
-function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/dashboard">대시보드</Link></nav>{children}</main>; }
+function Shell({ children }: { children: React.ReactNode }) { return <><Breadcrumbs items={[{ label: "기술 역량", to: "/skills" }, { label: "기술 상세" }]} />{children}</>; }
 function Summary({ label, value }: { label: string; value: string }) { return <div><strong>{value}</strong><span>{label}</span></div>; }
 function Fact({ label, value }: { label: string; value: string }) { return <div><dt>{label}</dt><dd>{value}</dd></div>; }
 function stateLabel(skill: SkillAssessment) { return skill.strength ? "강점" : skill.weakness ? "개선 필요" : "성장 중"; }

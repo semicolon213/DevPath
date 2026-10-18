@@ -1,5 +1,6 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
+import { Link } from "react-router-dom";
 import { renderWithProviders } from "../../../test/renderWithProviders";
 import { ProfilePanel } from "./ProfilePanel";
 
@@ -77,6 +78,22 @@ it("guards browser exit while profile edits are unsaved", async () => {
   const beforeUnload = new Event("beforeunload", { cancelable: true });
   window.dispatchEvent(beforeUnload);
   expect(beforeUnload.defaultPrevented).toBe(true);
+});
+
+it("confirms in-app navigation and supports cancel and proceed", async () => {
+  vi.stubGlobal("fetch", profileFetch());
+  const { router } = renderWithProviders(<><ProfilePanel /><Link to="/next">다른 화면</Link></>, ["/profile"]);
+  fireEvent.change(await screen.findByRole("textbox", { name: "자기소개" }), { target: { value: "Unsaved bio" } });
+
+  fireEvent.click(screen.getByRole("link", { name: "다른 화면" }));
+  const dialog = screen.getByRole("dialog", { name: "저장하지 않은 변경사항이 있습니다" });
+  expect(dialog).toHaveTextContent("프로필 변경사항이 저장되지 않습니다");
+  fireEvent.click(within(dialog).getByRole("button", { name: "취소" }));
+  expect(router.state.location.pathname).toBe("/profile");
+
+  fireEvent.click(screen.getByRole("link", { name: "다른 화면" }));
+  fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "페이지 나가기" }));
+  await waitFor(() => expect(router.state.location.pathname).toBe("/next"));
 });
 
 function profileFetch(failCompany = false) {

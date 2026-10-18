@@ -8,14 +8,14 @@ import { PageState } from "../shared/ui/PageState";
 
 export function CareerReadinessPage() {
   const query = useCurrentCareerReadiness();
-  if (query.isPending) return <Shell><PageState state="loading" title="커리어 준비도" message="커리어 준비도 결과를 불러오는 중입니다…" /></Shell>;
-  if (query.isError) return <Shell>{query.error instanceof ApiError && query.error.status === 404
+  if (query.isPending) return <PageState state="loading" title="커리어 준비도" message="커리어 준비도 결과를 불러오는 중입니다…" />;
+  if (query.isError) return query.error instanceof ApiError && query.error.status === 404
     ? <PageState state="empty" title="아직 준비도 결과가 없습니다" description="지원 직무를 선택하고 새 분석을 완료하면 결과가 생성됩니다." actionTo="/repositories" actionLabel="분석 준비" />
-    : <PageState state="error" title="준비도 결과를 표시할 수 없습니다" errorTitle="준비도를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} />}</Shell>;
+    : <PageState state="error" title="준비도 결과를 표시할 수 없습니다" errorTitle="준비도를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} />;
   const result = query.data;
   const incomplete = result.status === "INSUFFICIENT_EVIDENCE";
 
-  return <Shell>
+  return <>
     <header className="workspace-header">
       <div><p className="eyebrow">공식 커리어 평가</p><h1>커리어 준비도</h1><p>AI가 아닌 승인된 정책과 현재 기술 역량표(Skill Matrix)로 계산한 공식 결과입니다.</p></div>
       <div className="analysis-version"><span>정책 {result.readinessPolicyVersion}</span><span>프로필 {result.careerProfileVersion}</span><span>규칙 {result.ruleSetVersion}</span></div>
@@ -30,7 +30,7 @@ export function CareerReadinessPage() {
     </section>
     {!incomplete && <CareerCoachingPanel careerReadinessId={result.careerReadinessId} />}
     <section className="skill-next-action"><div><h2>결정론적 다음 단계</h2><p>충분 미만의 gap은 승인된 추천 정책과 선행 순서에 따라 로드맵으로 구성됩니다.</p></div><Link className="button-link" to="/roadmap">추천 로드맵 보기</Link></section>
-  </Shell>;
+  </>;
 }
 
 function GapCard({ gap }: { gap: SkillGap }) {
@@ -42,6 +42,5 @@ function GapCard({ gap }: { gap: SkillGap }) {
   </article>;
 }
 
-function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/dashboard">← 대시보드</Link></nav>{children}</main>; }
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
 function gapStateLabel(value: SkillGap["gapState"]) { return { MISSING: "관찰 없음", WEAK: "약함", PARTIAL: "일부 충족", SUFFICIENT: "충족", STRONG: "강점" }[value]; }

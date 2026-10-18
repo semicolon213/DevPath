@@ -5,6 +5,7 @@ import { RepositoryReviewPanel } from "../features/ai/ui/RepositoryReviewPanel";
 import { RepositorySummaryPanel } from "../features/ai/ui/RepositorySummaryPanel";
 import { categoryLabel, evidenceTypeLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
+import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 
 export function AnalysisDetailPage() {
   const { analysisId } = useParams();
@@ -138,7 +139,7 @@ function EvidenceItem({ evidence }: { evidence: RuleEvidence }) {
   return <article><div><strong>{ruleLabel(evidence.ruleId)}</strong><span className="status-badge">{roleLabel(evidence.contributionRole)}</span></div><p>{evidence.observedFactSummary}</p><span>{evidenceTypeLabel(evidence.evidenceType)}</span><code>{evidence.sourceReference}</code><small>신뢰도 {formatScore(evidence.confidence)}%</small></article>;
 }
 
-function PageShell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/analyses">← 분석 이력</Link></nav>{children}</main>; }
+function PageShell({ children }: { children: React.ReactNode }) { return <><Breadcrumbs items={[{ label: "분석", to: "/analyses" }, { label: "분석 상세" }]} />{children}</>; }
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
 function formatPercent(value: number) { return `${formatScore(value * 100)}%`; }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "long", timeStyle: "short" }).format(new Date(value)); }

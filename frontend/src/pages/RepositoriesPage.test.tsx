@@ -43,6 +43,18 @@ it("renders a visible repository workspace with summaries and registered reposit
   expect(screen.getByRole("link", { name: "저장소 추가" })).toHaveAttribute("href", "/settings/integrations#github");
 });
 
+it("uses one top-level main and only labeled navigation through the real route config", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({
+    data: { repositories: [], limit: 20, nextCursor: null, totalCount: 0 },
+    metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T00:00:00Z" }
+  })));
+  const { container } = renderWithProviders(undefined, ["/repositories"]);
+  await screen.findByRole("heading", { name: "표시할 활성 저장소가 없습니다" });
+  expect(screen.getAllByRole("main")).toHaveLength(1);
+  expect(container.querySelector("main main")).toBeNull();
+  expect(container.querySelector("nav:not([aria-label])")).toBeNull();
+});
+
 it("distinguishes an anonymous session from a network failure", async () => {
   vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 }))));
   renderWithProviders(<RepositoriesPage />, ["/repositories"]);

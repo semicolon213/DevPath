@@ -19,6 +19,7 @@ import { currentSkillMatrixKey } from "../features/skills/model/useSkillMatrix";
 import { dashboardKey } from "../features/dashboard/model/useDashboard";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageState } from "../shared/ui/PageState";
+import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 
 export function RepositoryDetailPage() {
   const { repositoryId } = useParams();
@@ -55,11 +56,11 @@ export function RepositoryDetailPage() {
   }, [analysisJob.data?.status, queryClient]);
 
   if (query.isPending) {
-    return <main className="shell workspace"><nav><Link to="/repositories">← 내 저장소</Link></nav><PageState state="loading" title="저장소 상세" message="저장소 상세 정보를 불러오는 중입니다…" /></main>;
+    return <><Breadcrumbs items={[{ label: "저장소", to: "/repositories" }, { label: "저장소 상세" }]} /><PageState state="loading" title="저장소 상세" message="저장소 상세 정보를 불러오는 중입니다…" /></>;
   }
   if (query.isError) {
     return (
-      <main className="shell workspace"><nav><Link to="/repositories">← 내 저장소</Link></nav><PageState state="error" title="저장소를 표시할 수 없습니다" error={query.error} retry={() => query.refetch()} backTo="/repositories" backLabel="내 저장소로 돌아가기" /></main>
+      <><Breadcrumbs items={[{ label: "저장소", to: "/repositories" }, { label: "저장소 상세" }]} /><PageState state="error" title="저장소를 표시할 수 없습니다" error={query.error} retry={() => query.refetch()} backTo="/repositories" backLabel="내 저장소로 돌아가기" /></>
     );
   }
 
@@ -82,8 +83,8 @@ export function RepositoryDetailPage() {
     }, { replace: true });
   } });
   return (
-    <main className="shell workspace">
-      <nav><Link to="/repositories">← 내 저장소</Link></nav>
+    <>
+      <Breadcrumbs items={[{ label: "저장소", to: "/repositories" }, { label: repository.fullName }]} />
       <header className="repository-detail-header">
         <div>
           <p className="eyebrow">GitHub 저장소</p>
@@ -372,7 +373,7 @@ export function RepositoryDetailPage() {
           </article>
         ))}
       </section>
-    </main>
+    </>
   );
 }
 
