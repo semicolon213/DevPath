@@ -137,6 +137,69 @@ class JobRequestConcurrencyIntegrationTest {
         }
     }
 
+    @Test
+    void claimsNextRowsWhenOldestRowsAreLockedByAnotherWorker() throws Exception {
+        jdbc.update("delete from ai_tasks");
+        jdbc.update("delete from analysis_jobs");
+        jdbc.update("delete from repository_sync_jobs");
+        Seed oldest = seed();
+        Seed next = seed();
+        Instant claimAt = Instant.now().plusSeconds(60);
+        UUID oldestSyncId = repositorySync.request(oldest.userId(), oldest.repositoryId(), "oldest-sync").jobId();
+        UUID nextSyncId = repositorySync.request(next.userId(), next.repositoryId(), "next-sync").jobId();
+        UUID oldestAnalysisId = analyses.request(oldest.userId(), oldest.repositoryId(), oldest.snapshotId(),
+            AnalysisApplicationService.REPOSITORY_BASELINE, "oldest-analysis").jobId();
+        UUID nextAnalysisId = analyses.request(next.userId(), next.repositoryId(), next.snapshotId(),
+            AnalysisApplicationService.REPOSITORY_BASELINE, "next-analysis").jobId();
+        UUID oldestAiId = UUID.randomUUID();
+        UUID nextAiId = UUID.randomUUID();
+        Instant oldestAt = claimAt.minusSeconds(20);
+        Instant nextAt = claimAt.minusSeconds(10);
+        jdbc.update("update repository_sync_jobs set submitted_at = ?, next_attempt_at = ? where job_id = ?",
+            Timestamp.from(oldestAt), Timestamp.from(oldestAt), oldestSyncId);
+        jdbc.update("update repository_sync_jobs set submitted_at = ?, next_attempt_at = ? where job_id = ?",
+            Timestamp.from(nextAt), Timestamp.from(nextAt), nextSyncId);
+        jdbc.update("update analysis_jobs set submitted_at = ?, next_attempt_at = ? where job_id = ?",
+            Timestamp.from(oldestAt), Timestamp.from(oldestAt), oldestAnalysisId);
+        jdbc.update("update analysis_jobs set submitted_at = ?, next_attempt_at = ? where job_id = ?",
+            Timestamp.from(nextAt), Timestamp.from(nextAt), nextAnalysisId);
+        seedAiJob(oldestAiId, oldest.userId(), oldestAt, "oldest-ai");
+        seedAiJob(nextAiId, next.userId(), nextAt, "next-ai");
+
+        var transaction = new TransactionTemplate(transactionManager);
+        transaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        var locked = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        try (var executor = Executors.newFixedThreadPool(4)) {
+            Future<?> holder = executor.submit(() -> transaction.executeWithoutResult(ignored -> {
+                jdbc.queryForObject("select job_id from repository_sync_jobs where job_id = ? for update",
+                    UUID.class, oldestSyncId);
+                jdbc.queryForObject("select job_id from analysis_jobs where job_id = ? for update",
+                    UUID.class, oldestAnalysisId);
+                jdbc.queryForObject("select ai_task_id from ai_tasks where ai_task_id = ? for update",
+                    UUID.class, oldestAiId);
+                locked.countDown();
+                await(release);
+            }));
+            assertThat(locked.await(5, TimeUnit.SECONDS)).isTrue();
+
+            Future<UUID> syncClaim = executor.submit(() -> transaction.execute(ignored ->
+                repositoryJobs.findNextClaimable(claimAt).orElseThrow().id()));
+            Future<UUID> analysisClaim = executor.submit(() -> transaction.execute(ignored ->
+                analysisJobs.findNextClaimable(claimAt).orElseThrow().id()));
+            Future<UUID> aiClaim = executor.submit(() -> transaction.execute(ignored ->
+                aiJobs.claim(claimAt, 2).orElseThrow().job().id()));
+
+            assertThat(syncClaim.get(2, TimeUnit.SECONDS)).isEqualTo(nextSyncId);
+            assertThat(analysisClaim.get(2, TimeUnit.SECONDS)).isEqualTo(nextAnalysisId);
+            assertThat(aiClaim.get(2, TimeUnit.SECONDS)).isEqualTo(nextAiId);
+            release.countDown();
+            holder.get(5, TimeUnit.SECONDS);
+        } finally {
+            release.countDown();
+        }
+    }
+
     private Callable<UUID> repositoryRequest(Seed seed, String key, CountDownLatch ready, CountDownLatch start) {
         return () -> {
             ready.countDown(); start.await();
@@ -183,6 +246,24 @@ class JobRequestConcurrencyIntegrationTest {
             } finally {
                 jdbc.execute("set session_replication_role = origin");
             }
+        });
+    }
+
+    private void seedAiJob(UUID jobId, UUID userId, Instant requestedAt, String idempotencyKey) {
+        UUID contextId = UUID.randomUUID();
+        withoutForeignKeys(() -> {
+            jdbc.update("""
+                insert into prompt_contexts(prompt_context_id,user_id,prompt_template_version_id,skill_matrix_id,
+                    task_type,token_budget,context_hash,context_payload,provider_prompt,status,locked_at)
+                values (?,?,?,?,'SKILL_ANALYSIS_EXPLANATION',100,?,cast(? as jsonb),?,'LOCKED',?)
+                """, contextId, userId, UUID.fromString("7bb42957-8dbc-4cc6-99f5-0fb23b11760d"), UUID.randomUUID(),
+                "c".repeat(64), "{}", "test prompt", Timestamp.from(requestedAt));
+            jdbc.update("""
+                insert into ai_tasks(ai_task_id,user_id,prompt_context_id,idempotency_key,task_type,status,
+                    validation_status,attempt_count,failure_code,version,requested_at,started_at,completed_at,next_attempt_at)
+                values (?,?,?,?,'SKILL_ANALYSIS_EXPLANATION','QUEUED','PENDING',0,null,0,?,null,null,?)
+                """, jobId, userId, contextId, idempotencyKey, Timestamp.from(requestedAt),
+                Timestamp.from(requestedAt));
         });
     }
 

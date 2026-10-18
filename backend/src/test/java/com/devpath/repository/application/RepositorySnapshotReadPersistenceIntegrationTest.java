@@ -73,6 +73,13 @@ class RepositorySnapshotReadPersistenceIntegrationTest {
 
         assertThatThrownBy(() -> synchronization.listSnapshots(otherRepository.userId(), repository.id()))
             .isInstanceOf(RepositoryNotFoundException.class);
+        assertThatThrownBy(() -> synchronization.getTechnologies(otherRepository.userId(), repository.id()))
+            .isInstanceOf(RepositoryNotFoundException.class);
+        assertThatThrownBy(() -> synchronization.getTechnologies(
+            otherRepository.userId(), repository.id(), older.id()
+        )).isInstanceOf(RepositoryNotFoundException.class);
+        assertThatThrownBy(() -> synchronization.getEvidence(otherRepository.userId(), repository.id()))
+            .isInstanceOf(RepositoryNotFoundException.class);
 
         Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
         statistics.clear();

@@ -8,15 +8,18 @@ import com.devpath.rule.domain.RuleCategoryScore;
 import com.devpath.rule.domain.RuleEvaluationResult;
 import com.devpath.rule.domain.RuleExecutionResult;
 import com.devpath.rule.domain.RuleOutcomeStatus;
+import jakarta.persistence.EntityManagerFactory;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.hibernate.SessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
+import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -26,6 +29,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @DataJpaTest(properties = {
     "spring.jpa.hibernate.ddl-auto=validate",
+    "spring.jpa.properties.hibernate.generate_statistics=true",
     "spring.flyway.enabled=true",
     "spring.flyway.locations=classpath:db/migration"
 })
@@ -62,6 +66,8 @@ class RuleCatalogPersistenceIntegrationTest {
     @Autowired SkillRepositoryLinkJpaRepository skillRepositoryLinks;
     @Autowired SkillAssessmentFactJpaRepository skillFacts;
     @Autowired JdbcTemplate jdbcTemplate;
+    @Autowired TestEntityManager entityManager;
+    @Autowired EntityManagerFactory entityManagerFactory;
 
     @Test
     void flywaySeedsValidatedImmutableBaselineV2Catalog() {
@@ -88,7 +94,7 @@ class RuleCatalogPersistenceIntegrationTest {
     }
 
     @Test
-    void persistsAndReloadsOwnerScopedCompletedEvaluationWithEvidenceLinks() {
+    void persistsAndReloadsOrderedMissingEvidenceAndOwnerScopedEvidenceLinks() {
         UUID userId = UUID.randomUUID();
         UUID identityId = UUID.randomUUID();
         UUID repositoryId = UUID.randomUUID();
@@ -102,22 +108,38 @@ class RuleCatalogPersistenceIntegrationTest {
             "PRESENCE@formula-v1", "formula=PRESENCE; raw=1; score=100.00",
             List.of("snapshot:" + snapshotId + ":path:README.md"));
         var category = new RuleCategoryScore(RuleCategory.DOCUMENTATION, new BigDecimal("100.00"),
-            new BigDecimal("0.200000"), new BigDecimal("100.00"), List.of(ruleResult), List.of());
+            new BigDecimal("0.200000"), new BigDecimal("100.00"), List.of(ruleResult),
+            List.of("README", "ARCHITECTURE_DECISION_RECORD"));
+        var architecture = new RuleCategoryScore(RuleCategory.ARCHITECTURE, new BigDecimal("50.00"),
+            new BigDecimal("0.150000"), new BigDecimal("80.00"), List.of(),
+            List.of("MODULE_BOUNDARIES", "DEPENDENCY_DIRECTION"));
         var result = new RuleEvaluationResult(snapshotId.toString(), versionId.toString(), "baseline-v1", "formula-v1",
             "engineering-evidence-extractor-v1", new BigDecimal("20.00"), new BigDecimal("100.00"),
-            List.of(category), List.of());
+            List.of(category, architecture), List.of());
         var completed = new CompletedRuleEvaluation(evaluationId, userId, snapshotId, versionId,
             "c".repeat(64), result, now, now);
         var adapter = new JpaRuleEvaluationAdapter(evaluations, warnings, categoryEvaluations, missingEvidence,
             executionResults, evidence, evidenceLinks);
 
         adapter.saveCompleted(completed);
+        entityManager.flush();
+        entityManager.clear();
 
+        var statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        statistics.clear();
         var reloaded = adapter.findByIdAndOwner(evaluationId, userId).orElseThrow();
         assertThat(reloaded.id()).isEqualTo(completed.id());
         assertThat(reloaded.inputHash()).isEqualTo(completed.inputHash());
         assertThat(reloaded.result().overallScore()).isEqualByComparingTo(completed.result().overallScore());
-        assertThat(reloaded.result().categoryScores()).hasSize(1);
+        assertThat(reloaded.result().categoryScores()).extracting(RuleCategoryScore::category)
+            .containsExactly(RuleCategory.ARCHITECTURE, RuleCategory.DOCUMENTATION);
+        assertThat(reloaded.result().categoryScores()).extracting(RuleCategoryScore::missingEvidence)
+            .containsExactly(
+                List.of("MODULE_BOUNDARIES", "DEPENDENCY_DIRECTION"),
+                List.of("README", "ARCHITECTURE_DECISION_RECORD")
+            );
+        // One query each: evaluation, rule results, evidence links, evidence records, categories, missing evidence, warnings.
+        assertThat(statistics.getPrepareStatementCount()).isEqualTo(7);
         assertThat(adapter.findByIdAndOwner(evaluationId, UUID.randomUUID())).isEmpty();
         var ownerEvidence = adapter.findEvidenceByEvaluationAndOwner(evaluationId, userId);
         assertThat(ownerEvidence).singleElement()

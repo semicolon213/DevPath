@@ -1,12 +1,13 @@
 package com.devpath.recommendation.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.tuple;
 
 import com.devpath.recommendation.domain.RecommendationPriority;
 import com.devpath.recommendation.domain.RecommendationType;
 import com.devpath.recommendation.domain.Recommendation;
 import com.devpath.recommendation.domain.RecommendationSet;
-import com.devpath.learning.domain.DeterministicRoadmapEngine;
+import com.devpath.recommendation.domain.RecommendationEvidence;
 import com.devpath.learning.domain.LearningRoadmap;
 import com.devpath.learning.domain.RoadmapMilestone;
 import com.devpath.learning.domain.RoadmapStep;
@@ -52,27 +53,79 @@ class RecommendationPolicyPersistenceIntegrationTest {
     }
     @Test void persistsAndReloadsRecommendationEvidenceAndRoadmapPrerequisites(){
         var adapter=new JpaRecommendationAdapter(policies,templates,sets,recommendations,evidence,roadmapPolicies,roadmaps,milestones,steps);
-        UUID user=UUID.randomUUID(),identity=UUID.randomUUID(),repository=UUID.randomUUID(),snapshot=UUID.randomUUID(),evaluation=UUID.randomUUID(),matrix=UUID.randomUUID(),assessment=UUID.randomUUID(),readiness=UUID.randomUUID(),gap=UUID.randomUUID(),evidenceId=UUID.randomUUID();
-        Instant now=Instant.parse("2026-08-25T00:00:00Z");seedBasis(user,identity,repository,snapshot,evaluation,matrix,assessment,readiness,gap,evidenceId,now);
+        UUID user=UUID.randomUUID(),identity=UUID.randomUUID(),repository=UUID.randomUUID(),snapshot=UUID.randomUUID(),evaluation=UUID.randomUUID(),matrix=UUID.randomUUID(),assessment=UUID.randomUUID(),readiness=UUID.randomUUID();
+        UUID gap0=UUID.fromString("60000000-0000-0000-0000-000000000100"),gap1=UUID.fromString("60000000-0000-0000-0000-000000000101"),gap2=UUID.fromString("60000000-0000-0000-0000-000000000102"),gap3=UUID.fromString("60000000-0000-0000-0000-000000000103");
+        List<UUID> evidenceIds=List.of(
+            UUID.fromString("61000000-0000-0000-0000-000000000101"),
+            UUID.fromString("61000000-0000-0000-0000-000000000102"),
+            UUID.fromString("61000000-0000-0000-0000-000000000103"),
+            UUID.fromString("61000000-0000-0000-0000-000000000104"),
+            UUID.fromString("61000000-0000-0000-0000-000000000105"),
+            UUID.fromString("61000000-0000-0000-0000-000000000106")
+        );
+        Instant now=Instant.parse("2026-08-25T00:00:00Z");seedBasis(user,identity,repository,snapshot,evaluation,matrix,assessment,readiness,gap0,evidenceIds.getFirst(),now);
+        seedGap(UUID.randomUUID(),gap1,matrix,readiness,"20000000-0000-0000-0000-000000000006","database-engineering","DATABASE");
+        seedGap(UUID.randomUUID(),gap2,matrix,readiness,"20000000-0000-0000-0000-000000000007","architecture-structure","ARCHITECTURE");
+        seedGap(UUID.randomUUID(),gap3,matrix,readiness,"20000000-0000-0000-0000-000000000008","delivery-operations","DEVOPS");
+        for(int index=1;index<evidenceIds.size();index++)seedEvidence(evidenceIds.get(index),user,snapshot,index,now);
         var policy=adapter.loadActivePolicy(UUID.fromString("32000000-0000-0000-0000-000000000101"));
-        UUID setId=UUID.randomUUID();var recommendation=new Recommendation(UUID.randomUUID(),gap,RuleCategory.TESTING,RecommendationType.PROJECT,RecommendationPriority.HIGH,"CAREER_REQUIRED_GAP","Add testing","Reach 60",List.of("test files"),List.of(evidenceId),16,0,"PROPOSED");
-        var set=new RecommendationSet(setId,user,readiness,policy.policyId(),policy.versionLabel(),"PUBLISHED",List.of(recommendation),now);adapter.saveSet(set);
-        var roadmapPolicy=adapter.loadActiveRoadmapPolicy(policy.policyId(),policy.careerProfileVersionId());var roadmap=new DeterministicRoadmapEngine().generate(UUID.randomUUID(),set,roadmapPolicy,now);adapter.saveRoadmap(roadmap);
+        var recommendation2=new Recommendation(UUID.randomUUID(),gap2,RuleCategory.ARCHITECTURE,RecommendationType.PROJECT,RecommendationPriority.HIGH,"CAREER_REQUIRED_GAP","Position 2","Reach 60",List.of("test files"),List.of(evidenceIds.get(5),evidenceIds.get(4)),16,2,"PROPOSED");
+        var recommendation0=new Recommendation(UUID.randomUUID(),gap0,RuleCategory.TESTING,RecommendationType.PROJECT,RecommendationPriority.HIGH,"CAREER_REQUIRED_GAP","Position 0","Reach 60",List.of("test files"),List.of(evidenceIds.get(1),evidenceIds.get(0)),16,0,"PROPOSED");
+        var recommendation1=new Recommendation(UUID.randomUUID(),gap1,RuleCategory.DATABASE,RecommendationType.PROJECT,RecommendationPriority.HIGH,"CAREER_REQUIRED_GAP","Position 1","Reach 60",List.of("test files"),List.of(evidenceIds.get(3),evidenceIds.get(2)),16,1,"PROPOSED");
+        var recommendation3=new Recommendation(UUID.randomUUID(),gap3,RuleCategory.DEVOPS,RecommendationType.PROJECT,RecommendationPriority.HIGH,"CAREER_REQUIRED_GAP","Position 3","Reach 60",List.of("test files"),List.of(evidenceIds.get(5),evidenceIds.get(0)),16,3,"PROPOSED");
+        UUID setId=UUID.randomUUID();
+        var set=new RecommendationSet(setId,user,readiness,policy.policyId(),policy.versionLabel(),"PUBLISHED",List.of(recommendation3,recommendation1,recommendation2,recommendation0),now);adapter.saveSet(set);
+        var roadmapPolicy=adapter.loadActiveRoadmapPolicy(policy.policyId(),policy.careerProfileVersionId());
+        var milestone1=new RoadmapMilestone(UUID.randomUUID(),1,RuleCategory.ARCHITECTURE,"Milestone 1","PLANNED");
+        var milestone0=new RoadmapMilestone(UUID.randomUUID(),0,RuleCategory.TESTING,"Milestone 0","PLANNED");
+        var step3=new RoadmapStep(UUID.randomUUID(),milestone1.milestoneId(),recommendation3.recommendationId(),3,RuleCategory.DEVOPS,"Step 3","INTERMEDIATE",16,List.of(),"Done",List.of("test files"),"NOT_STARTED");
+        var step1=new RoadmapStep(UUID.randomUUID(),milestone0.milestoneId(),recommendation1.recommendationId(),1,RuleCategory.TESTING,"Step 1","INTERMEDIATE",16,List.of(),"Done",List.of("test files"),"NOT_STARTED");
+        var step2=new RoadmapStep(UUID.randomUUID(),milestone1.milestoneId(),recommendation2.recommendationId(),2,RuleCategory.TESTING,"Step 2","INTERMEDIATE",16,List.of(),"Done",List.of("test files"),"NOT_STARTED");
+        var step0=new RoadmapStep(UUID.randomUUID(),milestone0.milestoneId(),recommendation0.recommendationId(),0,RuleCategory.TESTING,"Step 0","INTERMEDIATE",16,List.of(),"Done",List.of("test files"),"NOT_STARTED");
+        var roadmap=new LearningRoadmap(UUID.randomUUID(),user,setId,roadmapPolicy.policyId(),roadmapPolicy.versionLabel(),"CREATED",new BigDecimal("0.00"),List.of(milestone1,milestone0),List.of(step3,step1,step2,step0),now,now);adapter.saveRoadmap(roadmap);
         entityManager.flush();entityManager.clear();
-        assertThat(adapter.findSetByIdAndOwner(setId,user)).get().satisfies(value->assertThat(value.recommendations().getFirst().evidenceIds()).containsExactly(evidenceId));
+        assertThat(adapter.findSetByIdAndOwner(setId,user)).get().satisfies(value->{
+            assertThat(value.recommendations()).extracting(Recommendation::position).containsExactly(0,1,2,3);
+            assertThat(value.recommendations()).extracting(Recommendation::evidenceIds).containsExactly(
+                List.of(evidenceIds.get(0),evidenceIds.get(1)),
+                List.of(evidenceIds.get(2),evidenceIds.get(3)),
+                List.of(evidenceIds.get(4),evidenceIds.get(5)),
+                List.of(evidenceIds.get(0),evidenceIds.get(5))
+            );
+        });
         assertThat(adapter.findSetsByOwner(user)).extracting(value->value.recommendationSetId()).containsExactly(setId);
+        assertThat(adapter.findSetsByOwner(user)).singleElement().satisfies(value->{
+            assertThat(value.recommendations()).extracting(Recommendation::position).containsExactly(0,1,2,3);
+            assertThat(value.recommendations()).extracting(Recommendation::evidenceIds).containsExactly(
+                List.of(evidenceIds.get(0),evidenceIds.get(1)),
+                List.of(evidenceIds.get(2),evidenceIds.get(3)),
+                List.of(evidenceIds.get(4),evidenceIds.get(5)),
+                List.of(evidenceIds.get(0),evidenceIds.get(5))
+            );
+        });
         assertThat(adapter.findSetsByOwner(UUID.randomUUID())).isEmpty();
-        assertThat(adapter.findSetByRecommendationIdAndOwner(recommendation.recommendationId(),user)).isPresent();
-        assertThat(adapter.findSetByRecommendationIdAndOwner(recommendation.recommendationId(),UUID.randomUUID())).isEmpty();
-        assertThat(adapter.findEvidenceByRecommendationAndOwner(recommendation.recommendationId(),user)).singleElement().satisfies(value->{assertThat(value.evidenceId()).isEqualTo(evidenceId);assertThat(value.observedFactSummary()).isEqualTo("test files");});
-        assertThat(adapter.findEvidenceByRecommendationAndOwner(recommendation.recommendationId(),UUID.randomUUID())).isEmpty();
-        assertThat(adapter.findRoadmapByIdAndOwner(roadmap.roadmapId(),user)).get().satisfies(value->{assertThat(value.steps()).hasSize(1);assertThat(value.steps().getFirst().expectedEvidence()).containsExactly("test files");});
+        assertThat(adapter.findSetByRecommendationIdAndOwner(recommendation0.recommendationId(),user)).isPresent();
+        assertThat(adapter.findSetByRecommendationIdAndOwner(recommendation0.recommendationId(),UUID.randomUUID())).isEmpty();
+        // ORDER BY e.created_at DESC,e.evidence_id: created_at is equal, so evidence_id ascending decides.
+        assertThat(adapter.findEvidenceByRecommendationAndOwner(recommendation0.recommendationId(),user)).extracting(RecommendationEvidence::evidenceId,RecommendationEvidence::observedFactSummary)
+            .containsExactly(tuple(evidenceIds.get(0),"test files"),tuple(evidenceIds.get(1),"test files 1"));
+        assertThat(adapter.findEvidenceByRecommendationAndOwner(recommendation0.recommendationId(),UUID.randomUUID())).isEmpty();
+        assertThat(adapter.findRoadmapByIdAndOwner(roadmap.roadmapId(),user)).get().satisfies(value->{
+            assertThat(value.milestones()).extracting(RoadmapMilestone::position).containsExactly(0,1);
+            assertThat(value.steps()).extracting(RoadmapStep::position).containsExactly(0,1,2,3);
+            assertThat(value.steps()).filteredOn(step->step.milestoneId().equals(milestone0.milestoneId())).hasSize(2);
+            assertThat(value.steps()).filteredOn(step->step.milestoneId().equals(milestone1.milestoneId())).hasSize(2);
+        });
         assertThat(adapter.findRoadmapsByOwner(user)).extracting(value->value.roadmapId()).containsExactly(roadmap.roadmapId());
+        assertThat(adapter.findRoadmapsByOwner(user)).singleElement().satisfies(value->{
+            assertThat(value.milestones()).extracting(RoadmapMilestone::milestoneId).containsExactly(milestone0.milestoneId(),milestone1.milestoneId());
+            assertThat(value.steps()).extracting(RoadmapStep::stepId).containsExactly(step0.stepId(),step1.stepId(),step2.stepId(),step3.stepId());
+        });
         assertThat(adapter.findRoadmapsByOwner(UUID.randomUUID())).isEmpty();
         Instant archivedAt=now.plusSeconds(60);var archived=adapter.updateRoadmap(roadmap.archive(archivedAt));
         entityManager.flush();entityManager.clear();
         assertThat(archived.status()).isEqualTo("ARCHIVED");
-        assertThat(adapter.findRoadmapByIdAndOwner(roadmap.roadmapId(),user)).get().satisfies(value->{assertThat(value.status()).isEqualTo("ARCHIVED");assertThat(value.updatedAt()).isEqualTo(archivedAt);assertThat(value.steps()).hasSize(1);});
+        assertThat(adapter.findRoadmapByIdAndOwner(roadmap.roadmapId(),user)).get().satisfies(value->{assertThat(value.status()).isEqualTo("ARCHIVED");assertThat(value.updatedAt()).isEqualTo(archivedAt);assertThat(value.steps()).hasSize(4);});
         assertThat(adapter.findSetByIdAndOwner(setId,UUID.randomUUID())).isEmpty();
     }
 
@@ -140,6 +193,13 @@ class RecommendationPolicyPersistenceIntegrationTest {
     private void seedLegacyPolicies(UUID recommendationPolicy,UUID roadmapPolicy,Instant now){var at=now.atOffset(ZoneOffset.UTC);
         jdbc.update("INSERT INTO recommendation_policies(recommendation_policy_id,version_label,status,effective_at,created_at) VALUES (?,?,?,?,?)",recommendationPolicy,"recommendation-v0","SUPERSEDED",at,at);
         jdbc.update("INSERT INTO roadmap_policies(roadmap_policy_id,version_label,recommendation_policy_id,status,effective_at,created_at) VALUES (?,?,?,?,?,?)",roadmapPolicy,"roadmap-v0",recommendationPolicy,"SUPERSEDED",at,at);
+    }
+    private void seedEvidence(UUID evidence,UUID user,UUID snapshot,int index,Instant now){var at=now.atOffset(ZoneOffset.UTC);
+        jdbc.update("INSERT INTO evidence_records(evidence_id,user_id,snapshot_id,evidence_type,source_reference,source_reference_hash,observed_fact_summary,confidence,created_at) VALUES (?,?,?,?,?,?,?,?,?)",evidence,user,snapshot,"SNAPSHOT_SIGNAL","snapshot:"+snapshot+":TEST_FILES:"+index,Integer.toHexString(index+3).repeat(64),"test files "+index,100,at);
+    }
+    private void seedGap(UUID assessment,UUID gap,UUID matrix,UUID readiness,String skillId,String skillKey,String category){
+        jdbc.update("INSERT INTO skill_assessments(skill_assessment_id,skill_matrix_id,skill_id,score,skill_level,confidence,strength_flag,weakness_flag,growth_trend,aggregate_rule_result_reference,rule_set_version) VALUES (?,?,CAST(? AS uuid),30,'BEGINNER',90,false,true,'UNAVAILABLE',?,'baseline-v2')",assessment,matrix,skillId,"evaluation:"+readiness);
+        jdbc.update("INSERT INTO skill_gaps(skill_gap_id,career_readiness_id,skill_assessment_id,skill_id,skill_key,category,actual_score,actual_level,expected_minimum,gap_state,career_weight) VALUES (?,?,?,CAST(? AS uuid),?,?,30,'BEGINNER',60,'WEAK',20)",gap,readiness,assessment,skillId,skillKey,category);
     }
     private void seedBasis(UUID user,UUID identity,UUID repository,UUID snapshot,UUID evaluation,UUID matrix,UUID assessment,UUID readiness,UUID gap,UUID evidence,Instant now){var at=now.atOffset(ZoneOffset.UTC);
         jdbc.update("INSERT INTO users(user_id,account_status,display_name,created_at,updated_at,version) VALUES (?,?,?,?,?,0)",user,"ACTIVE","Test",at,at);
