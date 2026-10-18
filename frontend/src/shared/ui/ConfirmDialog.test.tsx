@@ -20,6 +20,12 @@ function FallbackHarness() {
   return <><button type="button" disabled={disabled} onClick={() => setOpen(true)}>보관 시작</button><p ref={fallback} tabIndex={-1}>완료 상태</p><ConfirmDialog open={open} title="보관할까요?" description="기존 이력은 유지됩니다." confirmLabel="로드맵 보관" returnFocusFallback={fallback} onCancel={() => { setDisabled(true); setOpen(false); }} onConfirm={() => undefined} /></>;
 }
 
+function BodyFallbackHarness() {
+  const [open, setOpen] = useState(false);
+  const fallback = useRef<HTMLParagraphElement>(null);
+  return <><button type="button" onClick={() => setOpen(true)}>보관 시작</button><p ref={fallback} tabIndex={-1}>완료 상태</p><ConfirmDialog open={open} title="보관할까요?" description="기존 이력은 유지됩니다." confirmLabel="로드맵 보관" returnFocusFallback={fallback} onCancel={() => setOpen(false)} onConfirm={() => undefined} /></>;
+}
+
 it("moves focus into the dialog and traps Tab navigation", () => {
   render(<Harness />);
   fireEvent.click(screen.getByRole("button", { name: "보관 시작" }));
@@ -64,6 +70,14 @@ it("uses the fallback when the return target is disabled", () => {
   const trigger = screen.getByRole("button", { name: "보관 시작" });
   trigger.focus();
   fireEvent.click(trigger);
+  fireEvent.click(screen.getByRole("button", { name: "취소" }));
+  expect(screen.getByText("완료 상태")).toHaveFocus();
+});
+
+it("uses the fallback when the trigger did not receive focus", () => {
+  render(<BodyFallbackHarness />);
+  expect(document.body).toHaveFocus();
+  fireEvent.click(screen.getByRole("button", { name: "보관 시작" }));
   fireEvent.click(screen.getByRole("button", { name: "취소" }));
   expect(screen.getByText("완료 상태")).toHaveFocus();
 });

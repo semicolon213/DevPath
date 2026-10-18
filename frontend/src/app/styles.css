@@ -3,6 +3,7 @@
   --background-surface: #ffffff;
   --background-subtle: #f8fafc;
   --background-muted: #f6f8fb;
+  --background-score-detail: rgba(255, 255, 255, .72);
   --background-inverse: #172033;
   --text-primary: #172033;
   --text-secondary: #536176;
@@ -46,6 +47,7 @@
   --info-border-soft: #bfdbfe;
   --info-surface: #eff5ff;
   --info-surface-soft: #eff6ff;
+  --shadow-selected: rgba(37, 99, 235, .12);
   --evidence-surface: #eef1f6;
   --evidence-border: #e2e8f0;
   --ai-surface: #f4f0ff;
@@ -72,7 +74,7 @@ a {
   color: var(--brand-default);
 }
 
-:focus-visible {
+:root :focus-visible {
   outline: 2px solid var(--border-focus);
   box-shadow: 0 0 0 2px var(--border-focus-inverse);
   outline-offset: 2px;
@@ -138,11 +140,6 @@ a {
 .repository-card__actions .button-quiet { background: transparent; border: 0; color: var(--brand-link); padding: 0; }
 .repository-card__actions .button-quiet--danger { color: var(--danger-text); }
 .repository-card__actions .button-quiet:disabled { color: var(--text-disabled); }
-.lifecycle-confirmation { background: var(--warning-surface); border: 1px solid var(--warning-border-soft); border-radius: var(--radius-md); margin-top: 16px; padding: 14px; }
-.lifecycle-confirmation p { margin: 0; }
-.lifecycle-confirmation > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-.lifecycle-confirmation--detail { margin-bottom: 22px; }
-.lifecycle-confirmation--detail h2 { font-size: 1.1rem; margin-top: 0; }
 .archive-filter { align-items: center; display: inline-flex; font-weight: 700; gap: 8px; white-space: nowrap; }
 .archive-filter input { height: 18px; width: 18px; }
 .repository-toolbar { display: flex; justify-content: flex-end; margin: -18px 0 24px; }
@@ -269,7 +266,7 @@ a {
 .score-explanation h2 { margin: 4px 0 8px; }
 .score-explanation p:last-child { margin-bottom: 0; }
 .score-explanation dl { display: grid; gap: 10px; margin: 0; }
-.score-explanation dl div { background: rgba(255, 255, 255, .72); border-radius: var(--radius-sm); display: grid; gap: 4px; padding: 12px; }
+.score-explanation dl div { background: var(--background-score-detail); border-radius: var(--radius-sm); display: grid; gap: 4px; padding: 12px; }
 .score-explanation dt { color: var(--text-secondary); font-size: .85rem; }
 .score-explanation dd { font-weight: 700; margin: 0; }
 .category-result-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
@@ -353,7 +350,7 @@ button:disabled {
 .career-catalog-notice span { color: var(--text-inverse-secondary); }
 .career-grid { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
 .career-card { background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); display: grid; gap: 12px; padding: 20px; }
-.career-card--selected { border-color: var(--info-default); box-shadow: 0 0 0 2px rgba(37, 99, 235, .12); }
+.career-card--selected { border-color: var(--info-default); box-shadow: 0 0 0 2px var(--shadow-selected); }
 .career-card > div { align-items: center; display: flex; justify-content: space-between; }
 .career-card h2, .career-card p { margin: 0; }
 .career-card p { color: var(--text-secondary); line-height: 1.55; }

@@ -15,6 +15,10 @@ type ConfirmDialogProps = {
 
 const focusableSelector = "button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])";
 
+function canReceiveReturnFocus(element: HTMLElement | null | undefined): element is HTMLElement {
+  return Boolean(element && element !== document.body && element.isConnected && !element.matches(":disabled, [aria-disabled='true']"));
+}
+
 export function ConfirmDialog({ open, title, description, confirmLabel, destructive = false, pending = false, error, returnFocusFallback, onConfirm, onCancel }: ConfirmDialogProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
@@ -66,10 +70,10 @@ export function ConfirmDialog({ open, title, description, confirmLabel, destruct
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       const returnTarget = returnFocusRef.current;
-      const target = returnTarget?.isConnected && !returnTarget.matches(":disabled, [aria-disabled='true']")
+      const target = canReceiveReturnFocus(returnTarget)
         ? returnTarget
         : returnFocusFallback?.current;
-      if (target?.isConnected && !target.matches(":disabled, [aria-disabled='true']")) target.focus();
+      if (canReceiveReturnFocus(target)) target.focus();
     };
   }, [open, returnFocusFallback]);
 

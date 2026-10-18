@@ -9,7 +9,7 @@ type NodeModules = [
 // Non-literal specifiers keep type-checking independent of @types/node.
 const nodeModuleSpecifiers = ["node:fs", "node:url"];
 
-it("keeps raw hex colours inside the root token block", async () => {
+it("keeps raw colour literals inside the root token block", async () => {
   const [{ readFileSync }, { fileURLToPath }] = await Promise.all(
     nodeModuleSpecifiers.map(specifier => import(/* @vite-ignore */ specifier))
   ) as NodeModules;
@@ -23,6 +23,7 @@ it("keeps raw hex colours inside the root token block", async () => {
   expect(rootEnd).toBeGreaterThan(rootStart);
   const outsideRoot = css.slice(0, rootStart) + css.slice(rootEnd + 1);
   expect(outsideRoot).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+  expect(outsideRoot).not.toMatch(/\b(?:rgba?|hsla?)\s*\(/i);
 });
 
 function closingBraceIndex(css: string, openIndex: number) {
