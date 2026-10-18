@@ -33,11 +33,17 @@ it("requires an explicit confirmed target change and announces success", async (
   const careerTarget = await screen.findByRole("combobox", { name: "목표 직무" });
   fireEvent.change(careerTarget, { target: { value: "frontend" } });
   expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
-  fireEvent.click(screen.getByRole("button", { name: "목표 직무 변경" }));
+  const changeTrigger = screen.getByRole("button", { name: "목표 직무 변경" });
+  changeTrigger.focus();
+  fireEvent.click(changeTrigger);
   expect(screen.getByRole("dialog")).toHaveTextContent("이 화면에서는 재평가를 시작하지 않습니다");
   expect(fetchMock.mock.calls.some(([, init]) => init?.method === "PUT")).toBe(false);
   fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "목표 직무 변경" }));
-  expect(await screen.findByText("목표 직무를 변경했습니다.")).toHaveAttribute("role", "status");
+  const outcome = await screen.findByText("목표 직무를 변경했습니다.");
+  expect(outcome).toHaveAttribute("role", "status");
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  await waitFor(() => expect(outcome).toHaveFocus());
+  expect(document.body).not.toHaveFocus();
   expect(fetchMock.mock.calls.some(([input, init]) => String(input).endsWith("/preferences/career") && init?.method === "PUT")).toBe(true);
 });
 

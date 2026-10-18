@@ -1,11 +1,35 @@
 import { expect, it } from "vitest";
-// @ts-expect-error Node types are not installed; Vitest still runs in Node.
-import { readFileSync } from "node:fs";
 
-it("keeps raw hex colours inside the root token block", () => {
-  const css = readFileSync("src/app/styles.css", "utf8");
-  const rootEnd = css.indexOf("}");
+type NodeModules = [
+  { readFileSync(path: string, encoding: "utf8"): string },
+  { fileURLToPath(url: string): string }
+];
 
-  expect(rootEnd).toBeGreaterThan(0);
-  expect(css.slice(rootEnd + 1)).not.toMatch(/#[0-9a-f]{3,8}\b/i);
+// Vitest stubs `?raw` CSS imports to an empty string, so read the file next to this test directly.
+// Non-literal specifiers keep type-checking independent of @types/node.
+const nodeModuleSpecifiers = ["node:fs", "node:url"];
+
+it("keeps raw hex colours inside the root token block", async () => {
+  const [{ readFileSync }, { fileURLToPath }] = await Promise.all(
+    nodeModuleSpecifiers.map(specifier => import(/* @vite-ignore */ specifier))
+  ) as NodeModules;
+  // Vite rewrites `new URL("./styles.css", import.meta.url)` to an asset URL, so derive the sibling path textually.
+  const stylesPath = fileURLToPath(import.meta.url.replace(/[^/]+$/, "styles.css"));
+  const css = readFileSync(stylesPath, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const rootStart = css.search(/(^|[\s,}]):root\s*\{/);
+  expect(rootStart).toBeGreaterThanOrEqual(0);
+  const rootEnd = closingBraceIndex(css, css.indexOf("{", rootStart));
+
+  expect(rootEnd).toBeGreaterThan(rootStart);
+  const outsideRoot = css.slice(0, rootStart) + css.slice(rootEnd + 1);
+  expect(outsideRoot).not.toMatch(/#[0-9a-f]{3,8}\b/i);
 });
+
+function closingBraceIndex(css: string, openIndex: number) {
+  let depth = 0;
+  for (let index = openIndex; index < css.length; index += 1) {
+    if (css[index] === "{") depth += 1;
+    if (css[index] === "}" && --depth === 0) return index;
+  }
+  return -1;
+}

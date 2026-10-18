@@ -11,6 +11,7 @@ it("renders document provenance and chunk metadata without raw content or embedd
     const path = new URL(String(input)).pathname;
     if (path === "/api/v1/knowledge-documents/11111111-1111-4111-8111-111111111111") return Promise.resolve(json({
       ...knowledgeDocument,
+      chunkCount: 7,
       content: "TOP SECRET DOCUMENT BODY",
       embedding: [0.123456789, 0.987654321]
     }));
@@ -23,14 +24,10 @@ it("renders document provenance and chunk metadata without raw content or embedd
   renderPage(fetchMock);
 
   expect(await screen.findByRole("heading", { name: "테스트 문서" })).toBeInTheDocument();
-  expect(screen.getByText("현재 버전")).toBeInTheDocument();
-  expect(screen.getByText("22222222-2222-4222-8222-222222222222")).toBeInTheDocument();
-  expect(screen.getByText("Notion 원본 ID")).toBeInTheDocument();
-  expect(screen.getByText("notion-page-42")).toBeInTheDocument();
-  expect(screen.getByText("청크 수")).toBeInTheDocument();
-  expect(screen.getByText("2")).toBeInTheDocument();
-  expect(screen.getByText("마지막 갱신")).toBeInTheDocument();
-  expect(screen.getByText(new Date(knowledgeDocument.updatedAt).toLocaleString("ko-KR"))).toBeInTheDocument();
+  expect(metadataValue("현재 버전")).toHaveTextContent(/^22222222-2222-4222-8222-222222222222$/);
+  expect(metadataValue("Notion 원본 ID")).toHaveTextContent(/^notion-page-42$/);
+  expect(metadataValue("청크 수")).toHaveTextContent(/^7$/);
+  expect(metadataValue("마지막 갱신").textContent).toBe(new Date(knowledgeDocument.updatedAt).toLocaleString("ko-KR"));
   expect(screen.getByText("API 설계")).toBeInTheDocument();
   expect(screen.getByText("색인됨 · 약 21 토큰")).toBeInTheDocument();
   expect(screen.getByText("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).toBeInTheDocument();
@@ -42,6 +39,10 @@ it("renders document provenance and chunk metadata without raw content or embedd
   expect(globalThis.document.body).not.toHaveTextContent("SECOND PRIVATE BODY");
   expect(globalThis.document.body).not.toHaveTextContent("0.123456789");
   expect(globalThis.document.body).not.toHaveTextContent("0.987654321");
+  const markup = globalThis.document.body.innerHTML;
+  for (const secret of ["TOP SECRET DOCUMENT BODY", "PRIVATE CHUNK TEXT", "SECOND PRIVATE BODY", "0.123456789", "0.987654321"]) {
+    expect(markup).not.toContain(secret);
+  }
 });
 
 it("requires archive confirmation and sends the confirmed request through the CSRF boundary", async () => {
@@ -94,7 +95,7 @@ it("reindexes through the CSRF boundary and renders the accepted job from the UR
     expect.stringMatching(/\/api\/v1\/knowledge-documents\/11111111-1111-4111-8111-111111111111\/reindex$/),
     expect.objectContaining({
       method: "POST",
-      headers: expect.objectContaining({ "X-CSRF-TOKEN": "csrf-token" })
+      headers: expect.objectContaining({ "X-CSRF-TOKEN": "csrf-token", "Idempotency-Key": "fixed-idempotency-key" })
     })
   ));
   expect(await screen.findByTestId("location")).toHaveTextContent("/knowledge/11111111-1111-4111-8111-111111111111?job=55555555-5555-4555-8555-555555555555");
@@ -156,6 +157,12 @@ it("announces reindex and archive failures", async () => {
 function renderPage(fetchMock: ReturnType<typeof vi.fn>, showLocation = false) {
   vi.stubGlobal("fetch", fetchMock);
   renderWithProviders(<><AppRoutes />{showLocation ? <LocationProbe /> : null}</>, ["/knowledge/11111111-1111-4111-8111-111111111111"]);
+}
+
+function metadataValue(label: string) {
+  const value = screen.getByText(label, { selector: "dt" }).nextElementSibling;
+  expect(value?.tagName).toBe("DD");
+  return value as HTMLElement;
 }
 
 function LocationProbe() {
