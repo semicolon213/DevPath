@@ -4,11 +4,14 @@ import type { SkillGap } from "../features/readiness/api/careerReadinessApi";
 import { useCurrentCareerReadiness } from "../features/readiness/model/useCareerReadiness";
 import { ApiError } from "../shared/api/apiClient";
 import { categoryLabel, levelLabel } from "../shared/ui/labels";
+import { PageState } from "../shared/ui/PageState";
 
 export function CareerReadinessPage() {
   const query = useCurrentCareerReadiness();
-  if (query.isPending) return <Shell><p role="status">커리어 준비도 결과를 불러오는 중입니다…</p></Shell>;
-  if (query.isError) return <Shell><ReadinessError error={query.error} retry={() => query.refetch()} /></Shell>;
+  if (query.isPending) return <Shell><PageState state="loading" title="커리어 준비도" message="커리어 준비도 결과를 불러오는 중입니다…" /></Shell>;
+  if (query.isError) return <Shell>{query.error instanceof ApiError && query.error.status === 404
+    ? <PageState state="empty" title="아직 준비도 결과가 없습니다" description="지원 직무를 선택하고 새 분석을 완료하면 결과가 생성됩니다." actionTo="/repositories" actionLabel="분석 준비" />
+    : <PageState state="error" title="준비도 결과를 표시할 수 없습니다" errorTitle="준비도를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} />}</Shell>;
   const result = query.data;
   const incomplete = result.status === "INSUFFICIENT_EVIDENCE";
 
@@ -39,11 +42,6 @@ function GapCard({ gap }: { gap: SkillGap }) {
   </article>;
 }
 
-function ReadinessError({ error, retry }: { error: Error; retry: () => void }) {
-  if (error instanceof ApiError && error.status === 404) return <div className="state-panel"><h1>아직 준비도 결과가 없습니다</h1><p>지원 직무를 선택하고 새 분석을 완료하면 결과가 생성됩니다.</p><Link className="button-link" to="/repositories">분석 준비</Link></div>;
-  if (error instanceof ApiError && error.status === 401) return <div className="state-panel" role="alert"><h1>로그인이 필요합니다</h1><Link className="button-link" to="/">로그인 화면으로 이동</Link></div>;
-  return <div className="state-panel" role="alert"><h1>준비도를 불러오지 못했습니다</h1><button type="button" onClick={retry}>다시 시도</button></div>;
-}
 function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/dashboard">← 대시보드</Link></nav>{children}</main>; }
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
 function gapStateLabel(value: SkillGap["gapState"]) { return { MISSING: "관찰 없음", WEAK: "약함", PARTIAL: "일부 충족", SUFFICIENT: "충족", STRONG: "강점" }[value]; }

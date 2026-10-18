@@ -1,14 +1,14 @@
 import { Link, useParams } from "react-router-dom";
 import type { SkillGap } from "../features/readiness/api/careerReadinessApi";
 import { useCareerReadinessWorkspace } from "../features/readiness/model/useCareerReadiness";
-import { ApiError } from "../shared/api/apiClient";
 import { categoryLabel, levelLabel } from "../shared/ui/labels";
+import { PageState } from "../shared/ui/PageState";
 
 export function CareerReadinessDetailPage() {
   const { careerReadinessId } = useParams();
   const query = useCareerReadinessWorkspace(careerReadinessId);
-  if (query.isPending) return <Shell><p role="status">과거 준비도와 전체 역량 격차를 불러오는 중입니다.</p></Shell>;
-  if (query.isError) return <Shell><ErrorState error={query.error} retry={() => query.refetch()} /></Shell>;
+  if (query.isPending) return <Shell><PageState state="loading" title="커리어 준비도 상세" message="과거 준비도와 전체 역량 격차를 불러오는 중입니다." /></Shell>;
+  if (query.isError) return <Shell><PageState state="error" title="준비도 결과를 표시할 수 없습니다" errorTitle="준비도 상세를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} backTo="/recommendations" /></Shell>;
   const result = query.data.readiness;
   const incomplete = result.status === "INSUFFICIENT_EVIDENCE";
   const needsAction = result.skillGaps.filter(gap => !["SUFFICIENT", "STRONG"].includes(gap.gapState));
@@ -35,8 +35,6 @@ function GapCard({ gap }: { gap: SkillGap }) { return <article className={`readi
   <div><span>{categoryLabel(gap.category)}</span><strong>{gapStateLabel(gap.gapState)}</strong></div><p><b>{format(gap.actualScore)}</b> / 기대 최소 {format(gap.expectedMinimum)}</p>
   <progress max="100" value={gap.actualScore}>{gap.actualScore}점</progress><small>직무 가중치 {format(gap.careerWeight)}% · 근거 {gap.evidenceIds.length}개</small>
   <Link to={`/skills/${gap.skillId}`}>기술 평가와 증거 보기</Link></article>; }
-function ErrorState({ error, retry }: { error: Error; retry: () => void }) { if (error instanceof ApiError && error.status === 401) return <State title="로그인이 필요합니다" to="/" />; if (error instanceof ApiError && error.status === 404) return <State title="준비도 결과를 찾을 수 없습니다" />; return <section className="state-panel" role="alert"><h1>준비도 상세를 불러오지 못했습니다</h1><button type="button" onClick={retry}>다시 시도</button></section>; }
-function State({ title, to = "/recommendations" }: { title: string; to?: string }) { return <section className="state-panel" role="alert"><h1>{title}</h1><Link className="button-link" to={to}>돌아가기</Link></section>; }
 function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/career-readiness">현재 준비도</Link></nav>{children}</main>; }
 function format(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
 function gapStateLabel(value: SkillGap["gapState"]) { return { MISSING: "관찰 없음", WEAK: "약함", PARTIAL: "일부 충족", SUFFICIENT: "충족", STRONG: "강점" }[value]; }

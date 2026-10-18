@@ -17,8 +17,8 @@ describe("LearningRoadmapPage", () => {
   it("renders deterministic recommendations and roadmap history", async () => {
     vi.stubGlobal("fetch", journeyFetch());
     renderWithProviders(<AppRoutes />, ["/roadmap"]);
-    expect(await screen.findByRole("heading", { name: "추천 및 학습 로드맵" })).toBeInTheDocument();
-    expect(screen.getByText(/선택적 AI 학습 가이드는 아래 별도 영역/)).toBeInTheDocument();
+    expect(await screen.findByText(/선택적 AI 학습 가이드는 아래 별도 영역/)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "추천 및 학습 로드맵" })).toBeInTheDocument();
     expect(screen.getAllByText("Add testing")).toHaveLength(2);
     expect(screen.getByText("높음")).toBeInTheDocument();
     const roadmapRegion = screen.getByRole("heading", { name: "실행 순서" }).closest("section")!;
@@ -49,6 +49,13 @@ describe("LearningRoadmapPage", () => {
     expect(message).toHaveAttribute("role", "status");
     await waitFor(() => expect(message).toHaveFocus());
     expect(document.activeElement).not.toBe(document.body);
+  });
+
+  it("uses the shared network failure state", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
+    renderWithProviders(<AppRoutes />, ["/roadmap"]);
+    expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
   });
 });
 

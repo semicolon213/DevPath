@@ -1,14 +1,14 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useAnalysisHistory } from "../features/analysis/model/useAnalysis";
-import { ApiError } from "../shared/api/apiClient";
+import { PageState } from "../shared/ui/PageState";
 
 export function AnalysesPage() {
   const query = useAnalysisHistory();
   const [selected,setSelected]=useState<string[]>([]);
 
-  if (query.isPending) return <PageShell><p role="status">분석 이력을 불러오는 중입니다.</p></PageShell>;
-  if (query.isError) return <PageShell><HistoryError error={query.error} retry={() => query.refetch()} /></PageShell>;
+  if (query.isPending) return <PageShell><PageState state="loading" title="분석 이력" message="분석 이력을 불러오는 중입니다." /></PageShell>;
+  if (query.isError) return <PageShell><PageState state="error" title="분석 이력을 표시할 수 없습니다" errorTitle="분석 이력을 불러오지 못했습니다" description="기존 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} /></PageShell>;
 
   const analyses = query.data.pages.flatMap(page => page.analyses);
   const totalCount = query.data.pages[0]?.totalCount ?? 0;
@@ -82,13 +82,6 @@ export function AnalysesPage() {
       )}
     </PageShell>
   );
-}
-
-function HistoryError({ error, retry }: { error: Error; retry: () => void }) {
-  if (error instanceof ApiError && error.status === 401) {
-    return <div className="state-panel" role="alert"><h1>로그인이 필요합니다</h1><p>다시 로그인한 뒤 분석 이력을 확인해 주세요.</p><Link className="button-link" to="/">홈으로 이동</Link></div>;
-  }
-  return <div className="state-panel" role="alert"><h1>분석 이력을 불러오지 못했습니다</h1><p>기존 결과는 변경되지 않았습니다.</p><button type="button" onClick={retry}>다시 시도</button></div>;
 }
 
 function PageShell({ children }: { children: React.ReactNode }) {

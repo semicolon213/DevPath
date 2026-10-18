@@ -235,7 +235,7 @@ test("anonymous readiness failure is actionable and accessible", async ({ page }
 
   await page.goto("/career-readiness");
   await expect(page.getByRole("alert")).toContainText("로그인이 필요합니다");
-  await expect(page.getByRole("link", { name: "로그인 화면으로 이동" })).toHaveAttribute("href", "/");
+  await expect(page.getByRole("link", { name: "홈으로 이동" })).toHaveAttribute("href", "/");
   await expectNoAccessibilityViolations(page);
 });
 

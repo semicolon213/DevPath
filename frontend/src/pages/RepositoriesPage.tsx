@@ -4,6 +4,7 @@ import type { ImportedRepository } from "../features/repositories/api/repository
 import { useArchiveRepository, useRepositories, useRestoreRepository } from "../features/repositories/model/useRepositories";
 import { repositoryLifecycleLabel, repositorySyncStatusLabel } from "../shared/ui/labels";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
+import { PageState } from "../shared/ui/PageState";
 
 export function RepositoriesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -13,17 +14,11 @@ export function RepositoriesPage() {
   const archiveMessageRef = useRef<HTMLParagraphElement>(null);
 
   if (query.isPending) {
-    return <Workspace><p role="status">내 저장소를 불러오는 중입니다…</p></Workspace>;
+    return <Workspace><PageState state="loading" title="내 GitHub 저장소" message="내 저장소를 불러오는 중입니다…" /></Workspace>;
   }
   if (query.isError) {
     return (
-      <Workspace>
-        <div className="state-panel" role="alert">
-          <h2>저장소를 불러오지 못했습니다</h2>
-          <p>로그인 상태와 서버 연결을 확인한 뒤 다시 시도해 주세요.</p>
-          <button type="button" onClick={() => query.refetch()}>다시 시도</button>
-        </div>
-      </Workspace>
+      <Workspace><PageState state="error" title="저장소를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} /></Workspace>
     );
   }
 

@@ -1,16 +1,16 @@
 import { Link, useParams } from "react-router-dom";
 import { useCareer } from "../features/careers/model/useCareers";
 import { usePreferences, useSetCareer } from "../features/profile/model/useProfile";
-import { ApiError } from "../shared/api/apiClient";
 import { categoryLabel, priorityLabel } from "../shared/ui/labels";
+import { PageState } from "../shared/ui/PageState";
 
 export function CareerDetailPage() {
   const { careerId } = useParams();
   const career = useCareer(careerId);
   const preferences = usePreferences();
   const selection = useSetCareer();
-  if (career.isPending || preferences.isPending) return <PageShell><p role="status">커리어 프로필을 불러오는 중입니다.</p></PageShell>;
-  if (career.isError || preferences.isError) return <PageShell><ErrorState error={career.error ?? preferences.error} retry={() => { void career.refetch(); void preferences.refetch(); }} /></PageShell>;
+  if (career.isPending || preferences.isPending) return <PageShell><PageState state="loading" title="커리어 프로필" message="커리어 프로필을 불러오는 중입니다." /></PageShell>;
+  if (career.isError || preferences.isError) return <PageShell><PageState state="error" title="지원하는 커리어를 표시할 수 없습니다" errorTitle="커리어 프로필을 불러오지 못했습니다" error={career.error ?? preferences.error} retry={() => { void career.refetch(); void preferences.refetch(); }} backTo="/careers" backLabel="지원 커리어 보기" /></PageShell>;
   const value = career.data;
   const selected = preferences.data.careerId === value.careerId;
 
@@ -32,6 +32,5 @@ export function CareerDetailPage() {
 }
 
 function ProfileList({ title, values }: { title: string; values: string[] }) { return <article><h2>{title}</h2><ul>{values.map(value => <li key={value}>{value}</li>)}</ul></article>; }
-function ErrorState({ error, retry }: { error: Error | null; retry: () => void }) { if (error instanceof ApiError && error.status === 404) return <div className="state-panel" role="alert"><h1>지원하는 커리어가 아닙니다</h1><Link to="/careers">지원 커리어 보기</Link></div>; if (error instanceof ApiError && error.status === 401) return <div className="state-panel" role="alert"><h1>로그인이 필요합니다</h1><Link to="/">홈으로 이동</Link></div>; return <div className="state-panel" role="alert"><h1>커리어 프로필을 불러오지 못했습니다</h1><button onClick={retry}>다시 시도</button></div>; }
 function PageShell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/careers">← 지원 커리어</Link></nav>{children}</main>; }
 function statusLabel(value: string) { return value === "SUPPORTED" ? "공식 지원" : value; }

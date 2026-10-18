@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../routes/AppRoutes";
 import { renderWithProviders } from "../test/renderWithProviders";
@@ -21,9 +21,31 @@ describe("CareerReadinessPage", () => {
 
     renderWithProviders(<AppRoutes />, ["/career-readiness"]);
 
-    expect(await screen.findByRole("heading", { name: "커리어 준비도" })).toBeInTheDocument();
-    expect(screen.getByText("67.5")).toBeInTheDocument();
+    expect(await screen.findByText("67.5")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "커리어 준비도" })).toBeInTheDocument();
     expect(screen.getByText("일부 충족")).toBeInTheDocument();
     expect(screen.getByText("정책 readiness-v1")).toBeInTheDocument();
+  });
+
+  it("keeps a missing readiness result as the domain empty state", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ error: { code: "NOT_FOUND" } }, { status: 404 }))));
+    renderWithProviders(<AppRoutes />, ["/career-readiness"]);
+    expect(await screen.findByRole("heading", { name: "아직 준비도 결과가 없습니다" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "분석 준비" })).toHaveAttribute("href", "/repositories");
+  });
+
+  it("shows the request reference for an internal readiness failure", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ error: { code: "FAILED" } }, { status: 500, headers: { "X-Request-Id": "readiness-request-500" } }))));
+    renderWithProviders(<AppRoutes />, ["/career-readiness"]);
+    expect(await screen.findByRole("heading", { name: "준비도를 불러오지 못했습니다" })).toBeInTheDocument();
+    expect(screen.getByText("readiness-request-500")).toBeInTheDocument();
+  });
+
+  it("uses the shared network failure state", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
+    renderWithProviders(<AppRoutes />, ["/career-readiness"]);
+    expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+    expect(fetch).toHaveBeenCalled();
   });
 });

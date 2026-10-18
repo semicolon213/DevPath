@@ -18,6 +18,7 @@ import { analysisHistoryKey, useAnalysisJob, useRequestAnalysis } from "../featu
 import { currentSkillMatrixKey } from "../features/skills/model/useSkillMatrix";
 import { dashboardKey } from "../features/dashboard/model/useDashboard";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
+import { PageState } from "../shared/ui/PageState";
 
 export function RepositoryDetailPage() {
   const { repositoryId } = useParams();
@@ -54,17 +55,11 @@ export function RepositoryDetailPage() {
   }, [analysisJob.data?.status, queryClient]);
 
   if (query.isPending) {
-    return <main className="shell workspace"><p role="status">저장소 상세 정보를 불러오는 중입니다…</p></main>;
+    return <main className="shell workspace"><nav><Link to="/repositories">← 내 저장소</Link></nav><PageState state="loading" title="저장소 상세" message="저장소 상세 정보를 불러오는 중입니다…" /></main>;
   }
   if (query.isError) {
     return (
-      <main className="shell workspace">
-        <div className="state-panel" role="alert">
-          <h1>저장소를 표시할 수 없습니다</h1>
-          <p>저장소가 없거나 현재 계정으로 접근할 수 없습니다.</p>
-          <Link to="/repositories">내 저장소로 돌아가기</Link>
-        </div>
-      </main>
+      <main className="shell workspace"><nav><Link to="/repositories">← 내 저장소</Link></nav><PageState state="error" title="저장소를 표시할 수 없습니다" error={query.error} retry={() => query.refetch()} backTo="/repositories" backLabel="내 저장소로 돌아가기" /></main>
     );
   }
 

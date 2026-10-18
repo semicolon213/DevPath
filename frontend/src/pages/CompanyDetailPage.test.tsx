@@ -1,7 +1,13 @@
-import {screen} from "@testing-library/react";
+import {fireEvent,screen} from "@testing-library/react";
 import {afterEach,expect,it,vi} from "vitest";
 import {Route,Routes} from "react-router-dom";
 import {renderWithProviders} from "../test/renderWithProviders";
 import {CompanyDetailPage} from "./CompanyDetailPage";
 afterEach(()=>vi.unstubAllGlobals());
 it("shows generic versioned emphasis and guardrail",async()=>{vi.stubGlobal("fetch",vi.fn((input:RequestInfo|URL)=>Promise.resolve(Response.json({data:input.toString().endsWith("/companies/toss")?{companyId:"toss",name:"Toss",localizedName:"토스",status:"SUPPORTED",companyProfileVersionId:"p",profileVersion:"company-v1",engineeringCulture:"빠른 반복과 정확성",technologyFocus:["테스트"],preferredCompetencies:["신뢰성"],recommendationPriorities:["테스트"],skillEmphasis:["정확성"],weightOverrides:{TESTING:"INCREASE"},effectiveAt:"2026-08-12T00:00:00Z"}:{careerId:"backend",companyId:"toss",updatedAt:null},metadata:{requestId:"r",apiVersion:"v1",timestamp:"2026-08-12T00:00:00Z"}}))));renderWithProviders(<Routes><Route path="/companies/:id" element={<CompanyDetailPage/>}/></Routes>,["/companies/toss"]);expect(await screen.findByRole("heading",{name:"토스"})).toBeInTheDocument();expect(screen.getByText(/비공개 채용 정보나 합격 예측이 아닙니다/)).toBeInTheDocument();expect(screen.getByRole("heading",{name:"기술 관심사"})).toBeInTheDocument();});
+
+it("uses existence-safe wording and preserves the companies back link",async()=>{vi.stubGlobal("fetch",vi.fn(()=>Promise.resolve(Response.json({error:{code:"NOT_FOUND"}},{status:404}))));renderWithProviders(<Routes><Route path="/companies/:id" element={<CompanyDetailPage/>}/></Routes>,["/companies/missing"]);expect(await screen.findByRole("alert")).toHaveTextContent("없거나 현재 계정으로 접근할 수 없습니다");expect(screen.getByRole("link",{name:"지원 회사로 돌아가기"})).toHaveAttribute("href","/companies");});
+
+it("keeps the detail heading visible while loading and retries a non-404 failure",async()=>{vi.stubGlobal("fetch",vi.fn(()=>Promise.resolve(Response.json({error:{code:"FAILED"}},{status:500}))));renderWithProviders(<Routes><Route path="/companies/:id" element={<CompanyDetailPage/>}/></Routes>,["/companies/toss"]);expect(screen.getByRole("heading",{name:"회사 프로필"})).toBeInTheDocument();expect(await screen.findByRole("heading",{name:"회사 프로필을 표시할 수 없습니다"})).toBeInTheDocument();fireEvent.click(screen.getByRole("button",{name:"다시 시도"}));expect(fetch).toHaveBeenCalled();});
+
+it("shows the login action for an anonymous detail request",async()=>{vi.stubGlobal("fetch",vi.fn(()=>Promise.resolve(Response.json({error:{code:"UNAUTHORIZED"}},{status:401}))));renderWithProviders(<Routes><Route path="/companies/:id" element={<CompanyDetailPage/>}/></Routes>,["/companies/toss"]);expect(await screen.findByRole("heading",{name:"로그인이 필요합니다."})).toBeInTheDocument();expect(screen.getByRole("link",{name:"홈으로 이동"})).toHaveAttribute("href","/");});

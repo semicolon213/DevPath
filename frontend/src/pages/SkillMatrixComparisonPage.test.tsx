@@ -27,8 +27,8 @@ it("compares stored skill values without deriving a delta", async () => {
   renderWithProviders(<Routes><Route path="/skills/compare" element={<SkillMatrixComparisonPage />} /></Routes>,
     ["/skills/compare?skillMatrixId=matrix-a&skillMatrixId=matrix-b"]);
 
-  expect(await screen.findByRole("heading", { name: "기술 역량 비교" })).toBeInTheDocument();
-  const row = screen.getByRole("row", { name: /테스트 역량/ });
+  const row = await screen.findByRole("row", { name: /테스트 역량/ });
+  expect(screen.getByRole("heading", { name: "기술 역량 비교" })).toBeInTheDocument();
   expect(row).toHaveTextContent("55");
   expect(row).toHaveTextContent("85");
   expect(screen.getByText(/차이 점수나 성장 추세를 새로 계산하지 않습니다/)).toBeInTheDocument();

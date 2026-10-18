@@ -20,8 +20,8 @@ describe("OnboardingPage", () => {
 
     renderWithProviders(<AppRoutes />, ["/onboarding"]);
 
-    expect(await screen.findByRole("heading", { name: "DevPath 시작하기" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "첫 저장소 동기화", level: 2 })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "첫 저장소 동기화", level: 2 })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "DevPath 시작하기" })).toBeInTheDocument();
     expect(screen.getByLabelText("전체 8단계 중 5단계 완료")).toBeInTheDocument();
     expect(screen.getByText("설정 도구")).toBeInTheDocument();
     expect(screen.getByText("선택")).toBeInTheDocument();
@@ -49,6 +49,13 @@ describe("OnboardingPage", () => {
     renderWithProviders(<AppRoutes />, ["/onboarding"]);
 
     expect(await screen.findByRole("alert")).toHaveTextContent("로그인이 필요합니다");
-    expect(screen.getByRole("link", { name: "로그인 화면으로 이동" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "홈으로 이동" })).toHaveAttribute("href", "/");
+  });
+
+  it("uses the shared network failure state", async () => {
+    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
+    renderWithProviders(<AppRoutes />, ["/onboarding"]);
+    expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
   });
 });

@@ -190,6 +190,14 @@ a {
 .large-status { color: var(--brand-strong); font-size: 1.5rem; font-weight: 800; }
 .muted { color: var(--text-muted); font-size: .9rem; }
 .state-panel { margin-top: 30px; text-align: center; }
+.page-state-skeleton { display: grid; gap: 12px; margin-top: 30px; max-width: 720px; }
+.page-state-skeleton > span { color: var(--text-muted); }
+.page-state-skeleton > i { animation: page-state-pulse 1.4s ease-in-out infinite; background: var(--background-muted); border-radius: var(--radius-sm); display: block; height: 22px; max-width: 100%; }
+.page-state-skeleton > i:nth-of-type(2) { max-width: 82%; }
+.page-state-skeleton > i:nth-of-type(3) { max-width: 64%; }
+.page-state-reference { user-select: all; }
+@keyframes page-state-pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .page-state-skeleton > i { animation: none; } }
 .analysis-version { align-items: flex-end; display: grid; gap: 6px; color: var(--text-secondary); font-size: .875rem; text-align: right; }
 .skill-summary { display: grid; gap: 14px; grid-template-columns: repeat(3, 1fr); margin: 28px 0; }
 .skill-summary > div { background: var(--background-inverse); border-radius: var(--radius-lg); color: var(--text-inverse); display: grid; gap: 4px; padding: 22px; }
@@ -382,6 +390,8 @@ button:disabled {
 .dashboard-split div { background: var(--background-muted); border-radius: var(--radius-md); display: grid; gap: 4px; padding: 18px; }
 .dashboard-split strong { font-size: 2rem; }
 .dashboard-split span { color: var(--text-muted); }
+.dashboard-progress { display: grid; gap: 10px; }
+.dashboard-progress progress { width: 100%; }
 .dashboard-empty, .dashboard-unavailable { background: var(--background-muted); border-radius: var(--radius-md); padding: 16px; }
 .dashboard-unavailable { color: var(--warning-text); }
 .dashboard-analysis-list { display: grid; gap: 0; list-style: none; margin: 0; padding: 0; }

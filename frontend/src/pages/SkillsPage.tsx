@@ -4,15 +4,18 @@ import { useCurrentSkillMatrix } from "../features/skills/model/useSkillMatrix";
 import { ApiError } from "../shared/api/apiClient";
 import { SkillExplanationPanel } from "../features/ai/ui/SkillExplanationPanel";
 import { categoryLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
+import { PageState } from "../shared/ui/PageState";
 
 export function SkillsPage() {
   const query = useCurrentSkillMatrix();
 
   if (query.isPending) {
-    return <PageShell><p role="status">최신 기술 분석 결과를 불러오는 중입니다…</p></PageShell>;
+    return <PageShell><PageState state="loading" title="기술 역량 분석" message="최신 기술 분석 결과를 불러오는 중입니다…" /></PageShell>;
   }
   if (query.isError) {
-    return <PageShell><SkillMatrixError error={query.error} retry={() => query.refetch()} /></PageShell>;
+    return <PageShell>{query.error instanceof ApiError && query.error.status === 404
+      ? <PageState state="empty" title="아직 기술 분석 결과가 없습니다" description="GitHub 저장소를 동기화하고 결정론적 분석이 완료되면 이곳에 결과가 표시됩니다." actionTo="/repositories" actionLabel="저장소로 이동" />
+      : <PageState state="error" title="기술 분석 결과를 표시할 수 없습니다" errorTitle="기술 분석을 불러오지 못했습니다" description="기존 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} />}</PageShell>;
   }
 
   const matrix = query.data;
@@ -106,34 +109,6 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
         </dl>
       </details>
     </article>
-  );
-}
-
-function SkillMatrixError({ error, retry }: { error: Error; retry: () => void }) {
-  if (error instanceof ApiError && error.status === 404) {
-    return (
-      <div className="state-panel">
-        <h1>아직 기술 분석 결과가 없습니다</h1>
-        <p>GitHub 저장소를 동기화하고 결정론적 분석이 완료되면 이곳에 결과가 표시됩니다.</p>
-        <Link className="button-link" to="/repositories">저장소로 이동</Link>
-      </div>
-    );
-  }
-  if (error instanceof ApiError && error.status === 401) {
-    return (
-      <div className="state-panel" role="alert">
-        <h1>로그인이 필요합니다</h1>
-        <p>DevPath 홈에서 GitHub로 다시 로그인한 뒤 기술 분석을 확인해 주세요.</p>
-        <Link className="button-link" to="/">로그인 화면으로 이동</Link>
-      </div>
-    );
-  }
-  return (
-    <div className="state-panel" role="alert">
-      <h1>기술 분석을 불러오지 못했습니다</h1>
-      <p>기존 결과는 변경되지 않았습니다. 서버 연결을 확인한 뒤 다시 시도해 주세요.</p>
-      <button type="button" onClick={retry}>다시 시도</button>
-    </div>
   );
 }
 

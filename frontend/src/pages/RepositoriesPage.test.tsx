@@ -33,14 +33,36 @@ it("renders a visible repository workspace with summaries and registered reposit
 
   renderWithProviders(<RepositoriesPage />, ["/repositories"]);
 
-  expect(await screen.findByRole("heading", { name: "내 GitHub 저장소" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "등록된 저장소" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "내 GitHub 저장소" })).toBeInTheDocument();
   expect(screen.getByText("현재 표시된 저장소")).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: "등록된 저장소" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "owner/devpath" })).toBeInTheDocument();
   expect(screen.getByText("동기화: 동기화 전")).toHaveClass("status-badge");
   expect(screen.queryByText("동기화 상태")).not.toBeInTheDocument();
   expect(screen.getByRole("checkbox", { name: "보관 저장소 포함" })).not.toBeChecked();
   expect(screen.getByRole("link", { name: "저장소 추가" })).toHaveAttribute("href", "/settings/integrations#github");
+});
+
+it("distinguishes an anonymous session from a network failure", async () => {
+  vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 }))));
+  renderWithProviders(<RepositoriesPage />, ["/repositories"]);
+  expect(await screen.findByRole("heading", { name: "로그인이 필요합니다." })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "홈으로 이동" })).toHaveAttribute("href", "/");
+});
+
+it("keeps the repository heading visible while loading and retries a network failure", async () => {
+  vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
+  renderWithProviders(<RepositoriesPage />, ["/repositories"]);
+  expect(screen.getByRole("heading", { name: "내 GitHub 저장소" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+  expect(fetch).toHaveBeenCalled();
+});
+
+it("uses existence-safe wording for a forbidden repository list", async () => {
+  vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ error: { code: "FORBIDDEN" } }, { status: 403 }))));
+  renderWithProviders(<RepositoriesPage />, ["/repositories"]);
+  expect(await screen.findByRole("alert")).toHaveTextContent("없거나 현재 계정으로 접근할 수 없습니다");
 });
 
 it("archives, filters, and restores an owned repository from the workspace", async () => {

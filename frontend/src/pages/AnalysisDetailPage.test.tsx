@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Route, Routes } from "react-router-dom";
 import { renderWithProviders } from "../test/renderWithProviders";
@@ -55,4 +55,12 @@ it("explains immutable official rules and marks the repository's current result"
   expect(screen.getAllByText("README").length).toBeGreaterThan(0);
   expect(screen.getByText("README 파일을 확인했습니다.")).toBeInTheDocument();
   expect(screen.getByText("기술 문서화")).toBeInTheDocument();
+});
+
+it("uses the shared network failure state", async () => {
+  vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
+  renderWithProviders(<Routes><Route path="/analyses/:analysisId" element={<AnalysisDetailPage />} /></Routes>, ["/analyses/analysis-id"]);
+  expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
+  expect(fetch).toHaveBeenCalled();
 });

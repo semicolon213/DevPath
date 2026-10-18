@@ -51,6 +51,23 @@ it("does not expose whether an unavailable snapshot belongs to another owner", a
   expect(await screen.findByRole("alert")).toHaveTextContent("없거나 현재 계정으로 접근할 수 없습니다");
 });
 
+it("offers retry when the snapshot route loses its network connection", async () => {
+  vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
+  renderWithProviders(<Routes><Route path="/repositories/:repositoryId/snapshots/:snapshotId" element={<RepositorySnapshotDetailPage />} /></Routes>,
+    ["/repositories/repository-1/snapshots/snapshot-1"]);
+  expect(screen.getByRole("heading", { name: "저장소 스냅샷" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+});
+
+it("shows the login action for an anonymous snapshot request", async () => {
+  vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ error: { code: "UNAUTHORIZED" } }, { status: 401 }))));
+  renderWithProviders(<Routes><Route path="/repositories/:repositoryId/snapshots/:snapshotId" element={<RepositorySnapshotDetailPage />} /></Routes>,
+    ["/repositories/repository-1/snapshots/snapshot-1"]);
+  expect(await screen.findByRole("heading", { name: "로그인이 필요합니다." })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "홈으로 이동" })).toHaveAttribute("href", "/");
+});
+
 it("keeps snapshot provenance visible when only linked analysis history fails", async () => {
   vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
     const url = String(input);

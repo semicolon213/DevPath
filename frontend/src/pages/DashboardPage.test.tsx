@@ -15,8 +15,8 @@ describe("DashboardPage", () => {
 
     renderWithProviders(<AppRoutes />, ["/dashboard"]);
 
-    expect(await screen.findByRole("heading", { name: "내 DevPath 대시보드" })).toBeInTheDocument();
-    expect(screen.getByText("백엔드 개발자")).toBeInTheDocument();
+    expect(await screen.findByText("백엔드 개발자")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "내 DevPath 대시보드" })).toBeInTheDocument();
     expect(screen.getAllByText("devpath/backend")).toHaveLength(2);
     expect(screen.getByText("테스트 보강")).toBeInTheDocument();
     expect(screen.getByText("저장소 동기화")).toBeInTheDocument();
@@ -24,6 +24,9 @@ describe("DashboardPage", () => {
     expect(screen.getByText("테스트 · 16시간")).toBeInTheDocument();
     expect(screen.getByText("높음")).toBeInTheDocument();
     expect(screen.getByText("완료")).toBeInTheDocument();
+    expect(screen.getByText(/기준 시각/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "테스트 보강 추천 상세" })).toHaveAttribute("href", "/recommendations/rec1");
+    expect(screen.getByRole("progressbar", { name: "학습 로드맵 진행률" })).toHaveAttribute("value", "25");
     ["COMPETENT", "TESTING", "HIGH", "SUCCEEDED"].forEach(value => expect(screen.queryByText(value)).not.toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:8080/api/v1/dashboard/summary");
@@ -37,8 +40,8 @@ describe("DashboardPage", () => {
 
     renderWithProviders(<AppRoutes />, ["/dashboard"]);
 
-    expect(await screen.findByRole("heading", { name: "내 DevPath 대시보드" })).toBeInTheDocument();
-    expect(screen.getByText("등록 저장소 · 확인 실패")).toBeInTheDocument();
+    expect(await screen.findByText("등록 저장소 · 확인 실패")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "내 DevPath 대시보드" })).toBeInTheDocument();
     expect(screen.getByText("82.5")).toBeInTheDocument();
     expect(screen.getAllByText(/일부 정보를 불러오지 못했습니다/)).toHaveLength(1);
   });

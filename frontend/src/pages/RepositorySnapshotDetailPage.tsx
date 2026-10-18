@@ -3,15 +3,15 @@ import type { RepositorySnapshot } from "../features/repositories/api/repository
 import { useRepository, useRepositorySnapshot } from "../features/repositories/model/useRepositories";
 import type { AnalysisHistoryItem } from "../features/analysis/api/analysisApi";
 import { useRepositoryAnalysisHistory } from "../features/analysis/model/useAnalysis";
-import { ApiError } from "../shared/api/apiClient";
+import { PageState } from "../shared/ui/PageState";
 
 export function RepositorySnapshotDetailPage() {
   const { repositoryId, snapshotId } = useParams();
   const repository = useRepository(repositoryId);
   const snapshot = useRepositorySnapshot(repositoryId, snapshotId);
   const analyses = useRepositoryAnalysisHistory(repositoryId);
-  if (repository.isPending || snapshot.isPending) return <Shell repositoryId={repositoryId}><p role="status">불변 스냅샷 상세를 불러오는 중입니다.</p></Shell>;
-  if (repository.isError || snapshot.isError) return <Shell repositoryId={repositoryId}><SnapshotError error={snapshot.error ?? repository.error} /></Shell>;
+  if (repository.isPending || snapshot.isPending) return <Shell repositoryId={repositoryId}><PageState state="loading" title="저장소 스냅샷" message="불변 스냅샷 상세를 불러오는 중입니다." /></Shell>;
+  if (repository.isError || snapshot.isError) return <Shell repositoryId={repositoryId}><PageState state="error" title="스냅샷을 표시할 수 없습니다." error={snapshot.error ?? repository.error} retry={() => { void repository.refetch(); void snapshot.refetch(); }} backTo={repositoryId ? `/repositories/${repositoryId}` : "/repositories"} backLabel="저장소로 돌아가기" /></Shell>;
 
   const value = snapshot.data;
   const current = repository.data.currentSnapshotId === value.snapshotId;
@@ -80,10 +80,6 @@ function SnapshotAnalysisCard({ item }: { item: AnalysisHistoryItem }) { return 
   <Link to={`/analyses/${item.analysisId}`}>공식 분석과 근거 보기</Link>
 </article>; }
 
-function SnapshotError({ error }: { error: Error | null }) {
-  if (error instanceof ApiError && error.status === 401) return <section className="state-panel" role="alert"><h1>로그인이 필요합니다.</h1><Link to="/">로그인 화면으로 이동</Link></section>;
-  return <section className="state-panel" role="alert"><h1>스냅샷을 표시할 수 없습니다.</h1><p>스냅샷이 없거나 현재 계정으로 접근할 수 없습니다.</p></section>;
-}
 function Shell({ repositoryId, children }: { repositoryId: string | undefined; children: React.ReactNode }) {
   return <main className="shell workspace"><nav><Link to={repositoryId ? `/repositories/${repositoryId}` : "/repositories"}>← 저장소로 돌아가기</Link></nav>{children}</main>;
 }

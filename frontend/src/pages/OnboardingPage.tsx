@@ -3,7 +3,7 @@ import { ProfilePanel } from "../features/profile/ui/ProfilePanel";
 import { ConnectionPanel } from "../features/connections/ui/ConnectionPanel";
 import { useOnboardingProgress } from "../features/onboarding/model/useOnboarding";
 import type { OnboardingStep, OnboardingStepName } from "../features/onboarding/api/onboardingApi";
-import { ApiError } from "../shared/api/apiClient";
+import { PageState } from "../shared/ui/PageState";
 
 const labels: Record<OnboardingStepName, { title: string; description: string }> = {
   ACCOUNT: { title: "DevPath 계정", description: "GitHub 로그인과 안전한 서버 세션을 확인합니다." },
@@ -18,8 +18,8 @@ const labels: Record<OnboardingStepName, { title: string; description: string }>
 
 export function OnboardingPage() {
   const progress = useOnboardingProgress();
-  if (progress.isPending) return <Shell><p role="status">온보딩 진행 상태를 확인하는 중입니다…</p></Shell>;
-  if (progress.isError) return <OnboardingError error={progress.error} retry={() => progress.refetch()} />;
+  if (progress.isPending) return <Shell><PageState state="loading" title="DevPath 시작하기" message="온보딩 진행 상태를 확인하는 중입니다…" /></Shell>;
+  if (progress.isError) return <Shell><PageState state="error" title="온보딩 상태를 확인할 수 없습니다" description="저장된 진행 상태는 변경되지 않았습니다." error={progress.error} retry={() => progress.refetch()} /></Shell>;
   const ready = progress.data.status === "DASHBOARD_READY";
   const next = progress.data.nextStep === "DASHBOARD_READY" ? null : progress.data.steps.find(step => step.step === progress.data.nextStep) ?? null;
   return <Shell>
@@ -33,7 +33,6 @@ export function OnboardingPage() {
 }
 
 function StepCard({ step, position }: { step: OnboardingStep; position: number }) { const label = labels[step.step]; return <li className={`onboarding-step ${step.status === "COMPLETE" ? "onboarding-step--complete" : ""}`}><span className="onboarding-step__number" aria-hidden="true">{position}</span><div><div className="onboarding-step__title"><h3>{label.title}</h3><span className={`status-badge ${step.status === "COMPLETE" ? "status-badge--active" : ""}`}>{step.status === "COMPLETE" ? "완료" : "미완료"}</span><small>{requirementLabel(step.requirement)}</small></div><p>{label.description}</p></div></li>; }
-function OnboardingError({ error, retry }: { error: Error; retry: () => void }) { const anonymous = error instanceof ApiError && error.status === 401; return <Shell><div className="state-panel" role="alert"><h1>{anonymous ? "로그인이 필요합니다" : "온보딩 상태를 확인할 수 없습니다"}</h1><p>{anonymous ? "GitHub로 로그인한 뒤 첫 분석 설정을 시작해 주세요." : "저장된 진행 상태는 변경되지 않았습니다. 서버 연결을 확인하고 다시 시도해 주세요."}</p>{anonymous ? <Link className="button-link" to="/">로그인 화면으로 이동</Link> : <button type="button" onClick={retry}>다시 시도</button>}</div></Shell>; }
 function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/">← DevPath 홈</Link></nav>{children}</main>; }
 function requirementLabel(value: OnboardingStep["requirement"]) { return value === "REQUIRED" ? "필수" : value === "RECOMMENDED" ? "권장" : "선택"; }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }

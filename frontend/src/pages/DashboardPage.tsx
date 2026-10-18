@@ -1,20 +1,20 @@
 import { Link } from "react-router-dom";
 import type { DashboardSourceStatus, DashboardTarget } from "../features/dashboard/api/dashboardApi";
 import { useDashboard } from "../features/dashboard/model/useDashboard";
-import { ApiError } from "../shared/api/apiClient";
 import { categoryLabel, jobStatusLabel, levelLabel, priorityLabel } from "../shared/ui/labels";
+import { PageState } from "../shared/ui/PageState";
 
 export function DashboardPage() {
   const query = useDashboard();
-  if (query.isPending) return <Shell><p role="status">개발 현황을 모으는 중입니다.</p></Shell>;
-  if (query.isError) return <Shell><DashboardError error={query.error} retry={() => query.refetch()} /></Shell>;
+  if (query.isPending) return <Shell><PageState state="loading" title="내 DevPath 대시보드" message="개발 현황을 모으는 중입니다." /></Shell>;
+  if (query.isError) return <Shell><PageState state="error" title="대시보드를 불러오지 못했습니다." description="기존 공식 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} /></Shell>;
 
   const view = query.data;
   const latest = view.analyses.latest;
   return (
     <Shell>
       <header className="workspace-header">
-        <div><p className="eyebrow">개발 현황</p><h1>내 DevPath 대시보드</h1><p>선택한 목표와 GitHub 근거에서 계산된 최신 공식 결과를 한곳에서 확인합니다.</p></div>
+        <div><p className="eyebrow">개발 현황</p><h1>내 DevPath 대시보드</h1><p>선택한 목표와 GitHub 근거에서 계산된 최신 공식 결과를 한곳에서 확인합니다.</p><p className="dashboard-footnote">기준 시각 <time dateTime={view.generatedAt}>{formatDate(view.generatedAt)}</time></p></div>
         <div className="workspace-actions"><Link to="/repositories">저장소</Link><Link className="button-link" to="/analyses">분석 이력</Link></div>
       </header>
 
@@ -50,12 +50,12 @@ export function DashboardPage() {
 
         <article className="dashboard-card">
           <CardHeading eyebrow="공식 추천" title="우선 추천" link="/recommendations" linkLabel="추천 전체 보기" />
-          {view.recommendations.status === "UNAVAILABLE" ? <Unavailable /> : view.recommendations.items.length ? <ul className="dashboard-analysis-list">{view.recommendations.items.map(item => <li key={item.recommendationId}><div><strong>{item.title}</strong><span>{categoryLabel(item.category)} · {item.effortHours}시간</span></div><span>{priorityLabel(item.priority)}</span></li>)}</ul> : <Empty text="아직 생성된 추천이 없습니다." action="준비도 확인" to="/career-readiness" />}
+          {view.recommendations.status === "UNAVAILABLE" ? <Unavailable /> : view.recommendations.items.length ? <ul className="dashboard-analysis-list">{view.recommendations.items.map(item => <li key={item.recommendationId}><div><strong>{item.title}</strong><span>{categoryLabel(item.category)} · {item.effortHours}시간</span></div><span>{priorityLabel(item.priority)}</span><Link to={`/recommendations/${item.recommendationId}`} aria-label={`${item.title} 추천 상세`}>추천 상세</Link></li>)}</ul> : <Empty text="아직 생성된 추천이 없습니다." action="준비도 확인" to="/career-readiness" />}
         </article>
 
         <article className="dashboard-card">
           <CardHeading eyebrow="학습 로드맵" title="학습 진행" link="/roadmap" linkLabel="로드맵 보기" />
-          {view.roadmap.status === "UNAVAILABLE" ? <Unavailable /> : view.roadmap.status === "EMPTY" ? <Empty text="활성 학습 로드맵이 없습니다." action="추천 확인" to="/roadmap" /> : <><div className="dashboard-score"><strong>{formatScore(view.roadmap.progressPercent ?? 0)}</strong><span>%</span></div><p>마일스톤 {view.roadmap.milestoneCount}개 · 단계 {view.roadmap.stepCount}개</p></>}
+          {view.roadmap.status === "UNAVAILABLE" ? <Unavailable /> : view.roadmap.status === "EMPTY" ? <Empty text="활성 학습 로드맵이 없습니다." action="추천 확인" to="/roadmap" /> : <div className="dashboard-progress"><strong>진행률 {formatScore(view.roadmap.progressPercent ?? 0)}%</strong><progress aria-label="학습 로드맵 진행률" max="100" value={view.roadmap.progressPercent ?? 0}>{view.roadmap.progressPercent ?? 0}%</progress><p>마일스톤 {view.roadmap.milestoneCount}개 · 단계 {view.roadmap.stepCount}개</p></div>}
         </article>
       </section>
 
@@ -81,7 +81,6 @@ function Metric({ value, label, status }: { value: number | string; label: strin
 function CardHeading({ eyebrow, title, link, linkLabel, id }: { eyebrow: string; title: string; link?: string; linkLabel?: string; id?: string }) { return <header className="dashboard-card__heading"><div><span>{eyebrow}</span><h2 id={id}>{title}</h2></div>{link ? <Link to={link}>{linkLabel}</Link> : null}</header>; }
 function Empty({ text, action, to }: { text: string; action: string; to: string }) { return <div className="dashboard-empty"><p>{text}</p><Link to={to}>{action}</Link></div>; }
 function Unavailable() { return <p role="status" className="dashboard-unavailable">일부 정보를 불러오지 못했습니다. 다른 카드의 공식 결과는 그대로 표시합니다.</p>; }
-function DashboardError({ error, retry }: { error: Error; retry: () => void }) { const anonymous = error instanceof ApiError && error.status === 401; return <div className="state-panel" role="alert"><h1>{anonymous ? "로그인이 필요합니다." : "대시보드를 불러오지 못했습니다."}</h1><p>{anonymous ? "DevPath 안에서 로그인한 뒤 다시 확인해 주세요." : "기존 공식 결과는 변경되지 않았습니다."}</p>{anonymous ? <Link className="button-link" to="/">홈으로 이동</Link> : <button type="button" onClick={retry}>다시 시도</button>}</div>; }
 function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/">← DevPath 홈</Link></nav>{children}</main>; }
 function valueOrDash(status: DashboardSourceStatus, value: number) { return status === "UNAVAILABLE" ? "—" : value; }
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }

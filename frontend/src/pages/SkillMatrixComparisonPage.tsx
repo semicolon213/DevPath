@@ -1,8 +1,8 @@
 import { Link, useSearchParams } from "react-router-dom";
 import type { SkillAssessment, SkillMatrix } from "../features/skills/api/skillMatrixApi";
 import { useSkillMatrixComparison } from "../features/skills/model/useSkillMatrix";
-import { ApiError } from "../shared/api/apiClient";
 import { categoryLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
+import { PageState } from "../shared/ui/PageState";
 
 export function SkillMatrixComparisonPage() {
   const [params] = useSearchParams();
@@ -10,9 +10,9 @@ export function SkillMatrixComparisonPage() {
   const valid = ids.length === 2 && ids[0] !== ids[1];
   const query = useSkillMatrixComparison(ids);
 
-  if (!valid) return <Shell><State title="비교할 Skill Matrix 두 개를 선택해 주세요." /></Shell>;
-  if (query.isPending) return <Shell><p role="status">저장된 기술 역량 결과를 불러오는 중입니다.</p></Shell>;
-  if (query.isError) return <Shell><ErrorState error={query.error} retry={() => query.refetch()} /></Shell>;
+  if (!valid) return <Shell><PageState state="empty" title="비교할 Skill Matrix 두 개를 선택해 주세요." actionTo="/analyses" actionLabel="분석 이력으로 이동" /></Shell>;
+  if (query.isPending) return <Shell><PageState state="loading" title="기술 역량 비교" message="저장된 기술 역량 결과를 불러오는 중입니다." /></Shell>;
+  if (query.isError) return <Shell><PageState state="error" title="비교할 Skill Matrix를 표시할 수 없습니다." errorTitle="기술 역량 비교를 불러오지 못했습니다." error={query.error} retry={() => query.refetch()} backTo="/analyses" backLabel="분석 이력으로 이동" /></Shell>;
 
   const [left, right] = query.data.matrices;
   const skillKeys = Array.from(new Set([...left.skills, ...right.skills].map(skill => skill.skillKey)));
@@ -51,12 +51,6 @@ function SkillCell({ skill }: { skill?: SkillAssessment }) {
 function MatrixFacts({ label, matrix }: { label: string; matrix: SkillMatrix }) {
   return <article><h2>{label} 재현 정보</h2><dl><div><dt>Matrix ID</dt><dd><code>{matrix.skillMatrixId}</code></dd></div><div><dt>정책 버전</dt><dd>{matrix.policyVersion}</dd></div><div><dt>규칙 버전</dt><dd>{matrix.ruleSetVersion}</dd></div><div><dt>강점</dt><dd>{matrix.strengths.length}개</dd></div><div><dt>개선 영역</dt><dd>{matrix.weaknesses.length}개</dd></div></dl></article>;
 }
-function ErrorState({ error, retry }: { error: Error; retry: () => void }) {
-  if (error instanceof ApiError && error.status === 401) return <State title="로그인이 필요합니다." to="/" />;
-  if (error instanceof ApiError && error.status === 404) return <State title="비교할 Skill Matrix를 찾을 수 없습니다." />;
-  return <section className="state-panel" role="alert"><h1>기술 역량 비교를 불러오지 못했습니다.</h1><button type="button" onClick={retry}>다시 시도</button></section>;
-}
-function State({ title, to = "/analyses" }: { title: string; to?: string }) { return <section className="state-panel" role="alert"><h1>{title}</h1><Link className="button-link" to={to}>분석 이력으로 이동</Link></section>; }
 function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/dashboard">대시보드</Link></nav>{children}</main>; }
 function findSkill(matrix: SkillMatrix, key: string) { return matrix.skills.find(skill => skill.skillKey === key); }
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }

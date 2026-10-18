@@ -3,6 +3,7 @@ import { useArchiveKnowledgeDocument, useKnowledgeChunks, useKnowledgeDocument, 
 import { chunkStatusLabel, jobStatusLabel } from "../shared/ui/labels";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { useRef, useState } from "react";
+import { PageState } from "../shared/ui/PageState";
 
 export function KnowledgeDetailPage() {
   const { documentId = "" } = useParams();
@@ -16,8 +17,8 @@ export function KnowledgeDetailPage() {
   const [confirmingArchive, setConfirmingArchive] = useState(false);
   const [archiveMessage, setArchiveMessage] = useState("");
   const archiveMessageRef = useRef<HTMLParagraphElement>(null);
-  if (document.isPending || chunks.isPending) return <Shell><p role="status">지식 문서를 불러오는 중입니다.</p></Shell>;
-  if (document.isError || chunks.isError) return <Shell><div className="state-panel" role="alert"><h1>지식 문서를 불러오지 못했습니다</h1><button type="button" onClick={() => { void document.refetch(); void chunks.refetch(); }}>다시 시도</button></div></Shell>;
+  if (document.isPending || chunks.isPending) return <Shell><PageState state="loading" title="지식 문서" message="지식 문서를 불러오는 중입니다." /></Shell>;
+  if (document.isError || chunks.isError) return <Shell><PageState state="error" title="지식 문서를 표시할 수 없습니다" errorTitle="지식 문서를 불러오지 못했습니다" error={document.error ?? chunks.error} retry={() => { void document.refetch(); void chunks.refetch(); }} backTo="/knowledge" backLabel="지식 작업공간으로 이동" /></Shell>;
   const value = document.data;
   return <Shell><header className="workspace-header"><div><p className="eyebrow">Notion 지식 문서</p><h1>{value.title}</h1><p>본문과 임베딩은 노출하지 않고 추적 가능한 버전·청크 메타데이터만 표시합니다.</p></div><span className={value.status === "ACTIVE" ? "status-badge status-badge--info" : "status-badge"}>{value.status === "ACTIVE" ? "활성" : "보관됨"}</span></header>
     <dl className="snapshot-provenance"><div><dt>현재 버전</dt><dd>{value.currentVersionId ?? "없음"}</dd></div><div><dt>Notion 원본 ID</dt><dd>{value.sourceObjectId}</dd></div><div><dt>청크 수</dt><dd>{value.chunkCount}</dd></div><div><dt>마지막 갱신</dt><dd>{new Date(value.updatedAt).toLocaleString("ko-KR")}</dd></div></dl>

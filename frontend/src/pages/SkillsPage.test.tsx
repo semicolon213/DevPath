@@ -40,8 +40,8 @@ it("renders official scores, confidence, evidence, and Korean labels", async () 
 
   renderWithProviders(<SkillsPage />, ["/skills"]);
 
-  expect(await screen.findByRole("heading", { name: "기술 역량 분석" })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: "기술 문서화" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "기술 문서화" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "기술 역량 분석" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "기술 문서화" })).toHaveAttribute("href", "/skills/skill-1");
   expect(screen.getByText("100")).toBeInTheDocument();
   expect(screen.getByText("87.5%")).toBeInTheDocument();
@@ -60,13 +60,13 @@ it("renders an actionable empty state for a missing matrix", async () => {
 
 it("keeps transport errors separate and offers retry", async () => {
   const fetchMock = vi.fn()
-    .mockResolvedValueOnce(new Response("", { status: 503 }))
-    .mockResolvedValueOnce(new Response("", { status: 503 }));
+    .mockRejectedValueOnce(new TypeError("offline"))
+    .mockRejectedValueOnce(new TypeError("offline"));
   vi.stubGlobal("fetch", fetchMock);
 
   renderWithProviders(<SkillsPage />, ["/skills"]);
 
-  expect(await screen.findByRole("heading", { name: "기술 분석을 불러오지 못했습니다" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
   expect(fetchMock).toHaveBeenCalledTimes(2);
 });

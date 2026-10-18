@@ -1,15 +1,15 @@
 import { Link, useParams } from "react-router-dom";
 import type { SkillAssessment, SkillHistoryPoint } from "../features/skills/api/skillMatrixApi";
 import { useSkillHistory, useSkillWorkspace } from "../features/skills/model/useSkillMatrix";
-import { ApiError } from "../shared/api/apiClient";
 import { categoryLabel, evidenceTypeLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
+import { PageState } from "../shared/ui/PageState";
 
 export function SkillDetailPage() {
   const { skillId } = useParams();
   const query = useSkillWorkspace(skillId);
   const history = useSkillHistory(skillId);
-  if (query.isPending) return <Shell><p role="status">기술 상세와 연결된 증거를 불러오는 중입니다.</p></Shell>;
-  if (query.isError) return <Shell><ErrorState error={query.error} retry={() => query.refetch()} /></Shell>;
+  if (query.isPending) return <Shell><PageState state="loading" title="기술 상세" message="기술 상세와 연결된 증거를 불러오는 중입니다." /></Shell>;
+  if (query.isError) return <Shell><PageState state="error" title="현재 Matrix에서 기술 평가를 표시할 수 없습니다." errorTitle="기술 상세를 불러오지 못했습니다." error={query.error} retry={() => query.refetch()} backTo="/skills" /></Shell>;
 
   const { detail, evidence } = query.data;
   const skill = detail.skill;
@@ -81,12 +81,6 @@ function SkillHistoryItem({ point }: { point: SkillHistoryPoint }) {
   </article></li>;
 }
 
-function ErrorState({ error, retry }: { error: Error; retry: () => void }) {
-  if (error instanceof ApiError && error.status === 401) return <State title="로그인이 필요합니다." to="/" />;
-  if (error instanceof ApiError && error.status === 404) return <State title="현재 Matrix에서 기술 평가를 찾을 수 없습니다." />;
-  return <section className="state-panel" role="alert"><h1>기술 상세를 불러오지 못했습니다.</h1><button type="button" onClick={retry}>다시 시도</button></section>;
-}
-function State({ title, to = "/skills" }: { title: string; to?: string }) { return <section className="state-panel" role="alert"><h1>{title}</h1><Link className="button-link" to={to}>돌아가기</Link></section>; }
 function Shell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/dashboard">대시보드</Link></nav>{children}</main>; }
 function Summary({ label, value }: { label: string; value: string }) { return <div><strong>{value}</strong><span>{label}</span></div>; }
 function Fact({ label, value }: { label: string; value: string }) { return <div><dt>{label}</dt><dd>{value}</dd></div>; }

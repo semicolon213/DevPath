@@ -20,8 +20,8 @@ it("connects immutable readiness gaps to skill evidence and next actions", async
   }))));
   renderWithProviders(<AppRoutes />, ["/career-readiness/readiness-1"]);
 
-  expect(await screen.findByRole("heading", { name: "커리어 준비도 상세" })).toBeInTheDocument();
-  expect(screen.getByText("67.5")).toBeInTheDocument();
+  expect(await screen.findByText("67.5")).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "커리어 준비도 상세" })).toBeInTheDocument();
   expect(screen.getByText("일부 충족")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "기술 평가와 증거 보기" })).toHaveAttribute("href", "/skills/skill-1");
   expect(screen.getByRole("link", { name: "추천 이력" })).toHaveAttribute("href", "/recommendations");

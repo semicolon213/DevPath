@@ -1,17 +1,17 @@
 import { Link, useParams } from "react-router-dom";
 import type { RuleCategoryScore, RuleEvidence, RuleResult } from "../features/analysis/api/analysisApi";
 import { useAnalysisDetail } from "../features/analysis/model/useAnalysis";
-import { ApiError } from "../shared/api/apiClient";
 import { RepositoryReviewPanel } from "../features/ai/ui/RepositoryReviewPanel";
 import { RepositorySummaryPanel } from "../features/ai/ui/RepositorySummaryPanel";
 import { categoryLabel, evidenceTypeLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
+import { PageState } from "../shared/ui/PageState";
 
 export function AnalysisDetailPage() {
   const { analysisId } = useParams();
   const query = useAnalysisDetail(analysisId);
 
-  if (query.isPending) return <PageShell><p role="status">분석 결과와 근거를 불러오는 중입니다.</p></PageShell>;
-  if (query.isError) return <PageShell><DetailError error={query.error} retry={() => query.refetch()} /></PageShell>;
+  if (query.isPending) return <PageShell><PageState state="loading" title="분석 결과" message="분석 결과와 근거를 불러오는 중입니다." /></PageShell>;
+  if (query.isError) return <PageShell><PageState state="error" title="분석 결과를 찾을 수 없습니다" errorTitle="분석 상세를 불러오지 못했습니다" description="저장된 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} backTo="/analyses" backLabel="분석 이력으로 이동" /></PageShell>;
 
   const { result, repository, evaluation, evidence, matrix } = query.data;
   return (
@@ -136,12 +136,6 @@ function RuleResultItem({ rule }: { rule: RuleResult }) {
 
 function EvidenceItem({ evidence }: { evidence: RuleEvidence }) {
   return <article><div><strong>{ruleLabel(evidence.ruleId)}</strong><span className="status-badge">{roleLabel(evidence.contributionRole)}</span></div><p>{evidence.observedFactSummary}</p><span>{evidenceTypeLabel(evidence.evidenceType)}</span><code>{evidence.sourceReference}</code><small>신뢰도 {formatScore(evidence.confidence)}%</small></article>;
-}
-
-function DetailError({ error, retry }: { error: Error; retry: () => void }) {
-  if (error instanceof ApiError && error.status === 404) return <div className="state-panel" role="alert"><h1>분석 결과를 찾을 수 없습니다</h1><p>결과가 없거나 현재 계정으로 접근할 수 없습니다.</p><Link className="button-link" to="/analyses">분석 이력으로 이동</Link></div>;
-  if (error instanceof ApiError && error.status === 401) return <div className="state-panel" role="alert"><h1>로그인이 필요합니다</h1><Link className="button-link" to="/">홈으로 이동</Link></div>;
-  return <div className="state-panel" role="alert"><h1>분석 상세를 불러오지 못했습니다</h1><p>저장된 결과는 변경되지 않았습니다.</p><button type="button" onClick={retry}>다시 시도</button></div>;
 }
 
 function PageShell({ children }: { children: React.ReactNode }) { return <main className="shell workspace"><nav><Link to="/analyses">← 분석 이력</Link></nav>{children}</main>; }

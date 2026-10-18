@@ -115,16 +115,16 @@ it("announces a load failure and retries both resources", async () => {
     const path = new URL(String(input)).pathname;
     if (path === "/api/v1/knowledge-documents/11111111-1111-4111-8111-111111111111") {
       documentAttempts += 1;
-      return Promise.resolve(documentAttempts === 1
-        ? Response.json({ error: { code: "FAILED", message: "safe" } }, { status: 503 })
-        : json(knowledgeDocument));
+      return documentAttempts === 1
+        ? Promise.reject(new TypeError("offline"))
+        : Promise.resolve(json(knowledgeDocument));
     }
     if (path === "/api/v1/knowledge-documents/11111111-1111-4111-8111-111111111111/chunks") return Promise.resolve(json({ chunks: [] }));
     return Promise.reject(new Error(path));
   });
   renderPage(fetchMock);
 
-  expect(await screen.findByRole("alert")).toHaveTextContent("지식 문서를 불러오지 못했습니다");
+  expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
   expect(await screen.findByRole("heading", { name: "테스트 문서" })).toBeInTheDocument();
   expect(documentAttempts).toBe(2);
