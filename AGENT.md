@@ -196,6 +196,7 @@ This section governs the **Orca-managed Codex/Claude workflow**. It does not ass
 
 - **Coordinator:** owns task scope, worktree strategy, handoff, evidence, QA verdict handling, retry count, integration, and user-facing completion. A coordinator session must not simultaneously be treated as an independent reviewer.
 - **Codex implementation worker:** owns the assigned capability's implementation, relevant tests, and fixes. Follow `AGENTS.md` and the scoped task specification.
+- **Claude test-only implementation worker (owner decision, 2026-10-18):** may be assigned tasks that only add or harden tests (no production code, configuration, migration, or contract change). It must provide mutation evidence for each new test, report rather than fix any production defect it finds, and is reviewed by separate Claude reviewer sessions. See `CLAUDE.md` §14.
 - **Claude QA worker:** independently checks requirements, diff, tests, security, architecture, and regressions. Follow `CLAUDE.md` in **Independent QA Mode**. It must not modify application source or shared configuration during QA. Enforce read-only permissions at the worker/tool/worktree level where supported; instructions alone are not a permission boundary.
 - Use separate worker contexts. A QA worker must see the **same immutable commit/diff or explicitly identified integrated snapshot** that is being reviewed. Do not review a stale worktree or an unintegrated branch by accident.
 
