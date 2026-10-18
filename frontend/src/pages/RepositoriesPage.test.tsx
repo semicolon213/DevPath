@@ -51,12 +51,21 @@ it("distinguishes an anonymous session from a network failure", async () => {
 });
 
 it("keeps the repository heading visible while loading and retries a network failure", async () => {
-  vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
+  const fetchMock = vi.fn()
+    .mockRejectedValueOnce(new TypeError("offline"))
+    .mockResolvedValueOnce(Response.json({
+      data: { repositories: [], limit: 20, nextCursor: null, totalCount: 0 },
+      metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T00:00:00Z" }
+    }));
+  vi.stubGlobal("fetch", fetchMock);
   renderWithProviders(<RepositoriesPage />, ["/repositories"]);
   expect(screen.getByRole("heading", { name: "내 GitHub 저장소" })).toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
-  expect(fetch).toHaveBeenCalled();
+  expect(await screen.findByRole("heading", { name: "표시할 활성 저장소가 없습니다" })).toBeInTheDocument();
+  expect(fetchMock).toHaveBeenCalledTimes(2);
+  expect(fetchMock.mock.calls.every(([input]) => String(input).includes("/api/v1/repositories?"))).toBe(true);
 });
 
 it("uses existence-safe wording for a forbidden repository list", async () => {

@@ -41,11 +41,27 @@ describe("CareerReadinessPage", () => {
     expect(screen.getByText("readiness-request-500")).toBeInTheDocument();
   });
 
-  it("uses the shared network failure state", async () => {
-    vi.stubGlobal("fetch", vi.fn(() => Promise.reject(new TypeError("offline"))));
+  it("uses the shared network failure state and recovers on retry", async () => {
+    let readinessAttempts = 0;
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      if (!String(input).endsWith("/api/v1/career-readiness/current")) return Promise.reject(new Error(String(input)));
+      readinessAttempts += 1;
+      return readinessAttempts === 1
+        ? Promise.reject(new TypeError("offline"))
+        : Promise.resolve(Response.json({
+          data: {
+            careerReadinessId: "cr1", skillMatrixId: "m1", careerId: "backend", careerProfileVersionId: "cp1",
+            careerProfileVersion: "career-v2", readinessPolicyVersion: "readiness-v1", ruleSetVersion: "baseline-v2",
+            status: "COMPLETED", readinessScore: 67.5, readinessLevel: "COMPETENT", confidence: 82,
+            unavailableCategories: [], assessedAt: "2026-08-24T00:00:00Z", skillGaps: []
+          }, metadata: { requestId: "r1", apiVersion: "v1", timestamp: "2026-08-24T00:00:00Z" }
+        }));
+    }));
     renderWithProviders(<AppRoutes />, ["/career-readiness"]);
     expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
+    expect(readinessAttempts).toBe(1);
     fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
-    expect(fetch).toHaveBeenCalled();
+    expect(await screen.findByText("67.5")).toBeInTheDocument();
+    expect(readinessAttempts).toBe(2);
   });
 });

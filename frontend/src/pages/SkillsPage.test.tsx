@@ -70,3 +70,17 @@ it("keeps transport errors separate and offers retry", async () => {
   fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
   expect(fetchMock).toHaveBeenCalledTimes(2);
 });
+
+it("shows the internal error state with the request reference for a server failure", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json(
+    { error: { code: "INTERNAL_ERROR", message: "safe" } },
+    { status: 500, headers: { "X-Request-Id": "skills-request-500" } }
+  )));
+
+  renderWithProviders(<SkillsPage />, ["/skills"]);
+
+  expect(await screen.findByRole("heading", { name: "기술 분석을 불러오지 못했습니다" })).toBeInTheDocument();
+  expect(screen.getByRole("alert")).toHaveTextContent("기존 결과는 변경되지 않았습니다.");
+  expect(screen.getByText("skills-request-500")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+});

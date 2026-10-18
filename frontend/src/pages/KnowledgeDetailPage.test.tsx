@@ -131,6 +131,22 @@ it("announces a load failure and retries both resources", async () => {
   expect(fetchMock.mock.calls.filter(([input]) => String(input).endsWith("/chunks"))).toHaveLength(2);
 });
 
+it("shows the internal error state with the request reference for a server failure", async () => {
+  const fetchMock = vi.fn((input: RequestInfo | URL) => {
+    const path = new URL(String(input)).pathname;
+    if (path === "/api/v1/knowledge-documents/11111111-1111-4111-8111-111111111111") {
+      return Promise.resolve(Response.json({ error: { code: "INTERNAL_ERROR", message: "safe" } }, { status: 500, headers: { "X-Request-Id": "knowledge-request-500" } }));
+    }
+    if (path === "/api/v1/knowledge-documents/11111111-1111-4111-8111-111111111111/chunks") return Promise.resolve(json({ chunks: [] }));
+    return Promise.reject(new Error(path));
+  });
+  renderPage(fetchMock);
+
+  expect(await screen.findByRole("heading", { name: "지식 문서를 불러오지 못했습니다" })).toBeInTheDocument();
+  expect(screen.getByText("knowledge-request-500")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();
+});
+
 it("announces reindex and archive failures", async () => {
   const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
     const path = new URL(String(input)).pathname;
