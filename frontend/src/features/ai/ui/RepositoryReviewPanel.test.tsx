@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRepositoryReview } from "../model/useRepositoryReview";
 import { RepositoryReviewPanel } from "./RepositoryReviewPanel";
+import { renderWithProviders } from "../../../test/renderWithProviders";
 
 vi.mock("../model/useRepositoryReview", () => ({ useRepositoryReview: vi.fn() }));
 
@@ -14,7 +15,7 @@ describe("RepositoryReviewPanel", () => {
   });
 
   it("starts a repository review request", () => {
-    render(<RepositoryReviewPanel analysisId="analysis-id" />);
+    renderWithProviders(<RepositoryReviewPanel analysisId="analysis-id" />);
     expect(screen.getByText("AI가 공식 점수를 바꾸지 않고, 이 분석에 연결된 공식 분석 결과(Rule Engine)와 근거만 영역별로 설명합니다.")).toBeInTheDocument();
     expect(screen.queryByText(/Rule Engine 결과/)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "리뷰 생성" }));
@@ -37,10 +38,12 @@ describe("RepositoryReviewPanel", () => {
       } }
     }) as ReturnType<typeof useRepositoryReview>);
 
-    render(<RepositoryReviewPanel analysisId="analysis-id" />);
+    renderWithProviders(<RepositoryReviewPanel analysisId="analysis-id" />);
 
     expect(screen.getByText("근거 기반 리뷰")).toBeInTheDocument();
     expect(screen.getByText("문서 근거가 확인됩니다")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "분석 근거 1" })).toHaveAttribute("href", "/analyses/analysis-id#evidence-evidence-id");
+    expect(screen.queryByText("evidence-id")).not.toBeInTheDocument();
     expect(document.querySelector("[dangerouslySetInnerHTML]")).toBeNull();
   });
 

@@ -32,7 +32,7 @@ describe("SkillExplanationPanel", () => {
           validatedAt: "2026-08-31T00:00:00Z", violations: [] },
         contentRef: "/api/v1/generated-artifacts/artifact-id",
         content: { summary: "검증된 설명", strengths: [{ skillKey: "testing-discipline",
-          explanation: "테스트 근거가 강점입니다.", evidenceIds: [] }], improvementAreas: [] }
+          explanation: "테스트 근거가 강점입니다.", evidenceIds: ["evidence-id"] }], improvementAreas: [] }
       } }
     }) as ReturnType<typeof useSkillExplanation>);
 
@@ -40,6 +40,9 @@ describe("SkillExplanationPanel", () => {
 
     expect(screen.getByText("검증된 설명")).toBeInTheDocument();
     expect(screen.getByText("테스트 근거가 강점입니다.")).toBeInTheDocument();
+    expect(screen.getByText("분석 근거 1")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "분석 근거 1" })).not.toBeInTheDocument();
+    expect(screen.queryByText("evidence-id")).not.toBeInTheDocument();
     expect(document.querySelector("[dangerouslySetInnerHTML]")).toBeNull();
   });
 

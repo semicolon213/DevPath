@@ -65,11 +65,8 @@ export function AnalysisDetailPage() {
         <section className="analysis-warning" role="status"><h2>분석 경고</h2><ul>{evaluation.warnings.map(value => <li key={value}>{value}</li>)}</ul></section>
       ) : null}
 
-      <RepositorySummaryPanel analysisId={result.analysisId} />
-      <RepositoryReviewPanel analysisId={result.analysisId} />
-
       <section aria-labelledby="category-results-title">
-        <div className="section-heading"><div><h2 id="category-results-title">영역별 공식 결과</h2><p>규칙을 펼치면 어떤 관찰값이 어떤 공식과 가중치로 반영됐는지 확인할 수 있습니다.</p></div></div>
+        <div className="section-heading"><div><h2 id="category-results-title" tabIndex={-1}>영역별 공식 결과</h2><p>규칙을 펼치면 어떤 관찰값이 어떤 공식과 가중치로 반영됐는지 확인할 수 있습니다.</p></div></div>
         <div className="category-result-grid">
           {evaluation.categoryScores.map(category => <CategoryResult key={category.category} category={category} />)}
         </div>
@@ -105,6 +102,9 @@ export function AnalysisDetailPage() {
           <div><dt>역량 매트릭스 ID</dt><dd><code>{result.skillMatrixId}</code></dd></div>
         </dl>
       </details>
+
+      <RepositorySummaryPanel analysisId={result.analysisId} />
+      <RepositoryReviewPanel analysisId={result.analysisId} />
     </PageShell>
   );
 }
@@ -136,7 +136,7 @@ function RuleResultItem({ rule }: { rule: RuleResult }) {
 }
 
 function EvidenceItem({ evidence }: { evidence: RuleEvidence }) {
-  return <article><div><strong>{ruleLabel(evidence.ruleId)}</strong><span className="status-badge">{roleLabel(evidence.contributionRole)}</span></div><p>{evidence.observedFactSummary}</p><span>{evidenceTypeLabel(evidence.evidenceType)}</span><code>{evidence.sourceReference}</code><small>신뢰도 {formatScore(evidence.confidence)}%</small></article>;
+  return <article id={`evidence-${evidence.evidenceId}`} tabIndex={-1}><div><strong>{ruleLabel(evidence.ruleId)}</strong><span className="status-badge">{roleLabel(evidence.contributionRole)}</span></div><p>{evidence.observedFactSummary}</p><span>{evidenceTypeLabel(evidence.evidenceType)}</span><code>{evidence.sourceReference}</code><small>신뢰도 {formatScore(evidence.confidence)}%</small></article>;
 }
 
 function PageShell({ children }: { children: React.ReactNode }) { return <><Breadcrumbs items={[{ label: "분석", to: "/analyses" }, { label: "분석 상세" }]} />{children}</>; }

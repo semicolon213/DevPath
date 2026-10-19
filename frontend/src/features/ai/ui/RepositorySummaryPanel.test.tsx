@@ -1,7 +1,8 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useRepositorySummary } from "../model/useRepositorySummary";
 import { RepositorySummaryPanel } from "./RepositorySummaryPanel";
+import { renderWithProviders } from "../../../test/renderWithProviders";
 
 vi.mock("../model/useRepositorySummary", () => ({ useRepositorySummary: vi.fn() }));
 
@@ -14,22 +15,22 @@ describe("RepositorySummaryPanel", () => {
   });
 
   it("requests a summary and renders validated claims with both reference types", () => {
-    render(<RepositorySummaryPanel analysisId="analysis-id" />);
+    renderWithProviders(<RepositorySummaryPanel analysisId="analysis-id" />);
     fireEvent.click(screen.getByRole("button", { name: "요약 생성" }));
     expect(mutate).toHaveBeenCalledOnce();
 
     vi.mocked(useRepositorySummary).mockReturnValue(state({ artifact: { data: artifact(), isPending: false, isError: false, refetch: vi.fn() } }) as ReturnType<typeof useRepositorySummary>);
-    render(<RepositorySummaryPanel analysisId="analysis-id" />);
+    renderWithProviders(<RepositorySummaryPanel analysisId="analysis-id" />);
     expect(screen.getByText("Grounded summary")).toBeInTheDocument();
-    expect(screen.getByText("evidence-id", { exact: false })).toBeInTheDocument();
-    expect(screen.getByText("rule-output", { exact: false })).toBeInTheDocument();
-    expect(screen.getByText("repository-summary-validator-v2", { exact: false })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "분석 근거 1" })).toHaveAttribute("href", "/analyses/analysis-id#evidence-evidence-id");
+    expect(screen.getByRole("link", { name: "규칙 결과 1" })).toHaveAttribute("href", "/analyses/analysis-id#category-results-title");
+    expect(screen.queryByText(/repository-summary-validator-v2|evidence-id|rule-output/)).not.toBeInTheDocument();
     expect(document.querySelector("[dangerouslySetInnerHTML]")).toBeNull();
   });
 
   it("shows the rejection state", () => {
     vi.mocked(useRepositorySummary).mockReturnValue(state({ job: { data: { status: "FAILED", validationStatus: "REJECTED" }, isError: false, refetch: vi.fn() } }) as ReturnType<typeof useRepositorySummary>);
-    render(<RepositorySummaryPanel analysisId="analysis-id" />);
+    renderWithProviders(<RepositorySummaryPanel analysisId="analysis-id" />);
     expect(screen.getByRole("alert")).toBeInTheDocument();
   });
 

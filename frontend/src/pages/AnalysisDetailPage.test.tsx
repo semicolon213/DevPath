@@ -57,6 +57,11 @@ it("explains immutable official rules and marks the repository's current result"
   expect(screen.getAllByText("README").length).toBeGreaterThan(0);
   expect(screen.getByText("README 파일을 확인했습니다.")).toBeInTheDocument();
   expect(screen.getByText("기술 문서화")).toBeInTheDocument();
+  const officialRegion = screen.getByRole("heading", { name: "영역별 공식 결과" }).closest("section")!;
+  for (const aiName of ["저장소 요약", "저장소 리뷰"]) {
+    const aiRegion = screen.getByRole("region", { name: `AI 생성 ${aiName}` });
+    expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  }
 });
 
 it("uses the shared network failure state and recovers on retry", async () => {

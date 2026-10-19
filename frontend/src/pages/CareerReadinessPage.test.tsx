@@ -24,6 +24,9 @@ describe("CareerReadinessPage", () => {
     expect(screen.getByRole("heading", { name: "커리어 준비도" })).toBeInTheDocument();
     expect(screen.getByText("일부 충족")).toBeInTheDocument();
     expect(screen.getByText("정책 readiness-v1")).toBeInTheDocument();
+    const officialRegion = screen.getByRole("heading", { name: "역량 비교" }).closest("section")!;
+    const aiRegion = screen.getByRole("region", { name: "AI 생성 커리어 코칭" });
+    expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("keeps a missing readiness result as the domain empty state", async () => {

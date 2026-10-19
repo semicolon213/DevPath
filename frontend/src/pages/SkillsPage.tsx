@@ -50,8 +50,6 @@ export function SkillsPage() {
         <time dateTime={matrix.generatedAt}>{formatDateTime(matrix.generatedAt)} 생성</time>
       </section>
 
-      <SkillExplanationPanel skillMatrixId={matrix.skillMatrixId} />
-
       <section aria-labelledby="skill-list-title">
         <div className="section-heading">
           <div>
@@ -71,6 +69,8 @@ export function SkillsPage() {
         </div>
         <div className="workspace-actions"><Link to="/analyses">분석 이력</Link><Link className="button-link" to="/repositories">저장소 확인</Link></div>
       </section>
+
+      <SkillExplanationPanel skillMatrixId={matrix.skillMatrixId} />
     </>
   );
 }
