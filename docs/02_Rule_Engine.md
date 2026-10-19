@@ -713,6 +713,7 @@ The Skill Matrix is the Rule Engine output that translates measurable evidence i
 | Strength Flag | Deterministic flag based on configured thresholds. |
 | Recommendation Inputs | Structured facts downstream recommendation systems may consume. |
 | Rule Version | Rule version used to calculate the entry. |
+| Evidence Status | Planned (D-4, not implemented): deterministic evidence sufficiency state (`NONE`, `INSUFFICIENT`, `SUFFICIENT`); see §16.6. |
 
 ### 16.3 Skill Levels
 
@@ -748,6 +749,38 @@ an analysis job runtime or imply that repository synchronization itself is an an
 
 The active `skill-matrix-v2` policy is bound to `baseline-v2` and adds one-to-one Database, Architecture, and DevOps
 skills without changing the approved level thresholds. Historical `skill-matrix-v1` matrices remain reproducible.
+
+### 16.6 Evidence Status (Planned — D-4)
+
+Owner decision D-4 (2026-10-19) defines a per-skill evidence status. **This is a specification only; it is not
+implemented.** The Rule Engine calculates the status as part of each `SkillAssessment` during Skill Matrix
+generation. AI, prompt assembly, and the browser never calculate, infer, or override it.
+
+The inputs are the assessment's own stored values:
+
+- **Evidence count**: the number of distinct normalized Evidence IDs in the assessment's `evidenceIds`, which are the
+  evidence linked to the skill category's rule results for the evaluated snapshot.
+- **Confidence**: the assessment's `confidence` (`0..100`), copied unchanged from the category confidence, which is the
+  summed weight of the category's non-`SKIPPED` rule executions multiplied by 100.
+
+| Evidence Status | Condition | Display meaning |
+|---|---|---|
+| `NONE` | evidence count = 0 | No score bar; show "근거 없음" with guidance. |
+| `INSUFFICIENT` | evidence count = 1, or confidence < 60 | Show the score with an explicit low-confidence indication ("근거 부족"). |
+| `SUFFICIENT` | evidence count ≥ 2 and confidence ≥ 60 | Display as an ordinary assessment. |
+
+Conditions are evaluated in order: `NONE` whenever the evidence count is 0, regardless of confidence; otherwise
+`INSUFFICIENT` when the count is 1 or confidence is below the threshold; otherwise `SUFFICIENT`.
+
+The minimum evidence count (`2`) and the confidence threshold (`60`) are parameters of the versioned Skill Matrix
+policy, not client constants. Introducing the status therefore requires a new Skill Matrix policy version (planned
+`skill-matrix-v3`, following the `skill-matrix-vN` convention in §16.5), and any later threshold change requires
+another policy version. The same snapshot, RuleSetVersion, and policy version always produce the same status, and the
+status is traceable to the Evidence IDs it counted and the confidence value it compared.
+
+Matrices produced under earlier policy versions (`skill-matrix-v1`, `skill-matrix-v2`) are immutable and are not
+recomputed. Their assessments carry no evidence status; consumers treat an absent value as unknown and show no special
+indication. Only matrices generated under the new policy version carry the status.
 
 ## 17. Output Models
 

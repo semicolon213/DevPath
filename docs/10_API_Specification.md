@@ -1272,6 +1272,14 @@ Each assessment includes its stable skill identity, source category, authoritati
 confidence, strength/weakness flags, explicit growth state, aggregate rule-result reference, Evidence IDs,
 Repository IDs, structured downstream facts, and exact rule-set version. The browser displays these values without
 recalculation. A missing matrix and a matrix owned by another user both return `404`.
+
+**Planned — not implemented (D-4, owner decision 2026-10-19):** each skill assessment in SkillMatrixResponse
+(API-SKL-001/002, and the matrices returned by API-SKL-003) and in SkillDetailResponse (API-SKL-004) will carry a
+nullable `evidenceStatus` field with the enum `NONE | INSUFFICIENT | SUFFICIENT`. The Rule Engine calculates it under
+the versioned Skill Matrix policy defined in `02_Rule_Engine.md` §16.6; the server stores and returns it, and the
+browser displays it without recalculation. The field is `null` or absent for matrices generated under earlier policy
+versions, which are not recomputed; clients treat that as unknown and show no special indication. The current OpenAPI
+contract does not include this field.
 | CreateAnalysisRequest | repositoryId, snapshotId, analysisScope, targetCareerId | Request analysis from supported references. | User private | Analysis |
 | AnalysisJobResponse | jobId, status, progress, resultResourceUrl | Analysis job status. | User private | AnalysisJob |
 | AnalysisResultResponse | analysisId, snapshotId, evaluationId, skillMatrixId, completedAt | Completed analysis. | User private | Analysis |

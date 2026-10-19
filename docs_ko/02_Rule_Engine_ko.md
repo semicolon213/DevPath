@@ -243,6 +243,28 @@ Skill Matrix는 측정 가능한 증거를 구조화된 스킬 정보로 변환�
 | Related Repository IDs | 스킬에 기여한 저장소 |
 | Growth Trend | 결정적 성장 추세 |
 | Weakness/Strength | threshold 기반 약점/강점 flag |
+| Evidence Status | 계획됨(D-4, 미구현): 결정적 근거 충분성 상태(`NONE`, `INSUFFICIENT`, `SUFFICIENT`) |
+
+### 16.6 근거 상태 (계획됨 — D-4)
+
+소유자 결정 D-4(2026-10-19)는 기술별 근거 상태를 정의한다. **명세일 뿐이며 아직 구현되지 않았다.** Rule Engine이 Skill Matrix 생성 중 각 `SkillAssessment`의 일부로 상태를 계산한다. AI, 프롬프트 조립, 브라우저는 이 상태를 계산·추론·변경하지 않는다.
+
+입력은 평가에 저장된 값이다.
+
+- **근거 수**: 평가의 `evidenceIds`에 있는 서로 다른 정규화 Evidence ID 수. 평가 대상 스냅샷에서 해당 기술 범주의 규칙 결과에 연결된 근거이다.
+- **신뢰도**: 평가의 `confidence`(`0..100`). 범주 신뢰도를 그대로 복사한 값이며, 범주에서 `SKIPPED`가 아닌 규칙 실행의 가중치 합에 100을 곱한 값이다.
+
+| 근거 상태 | 조건 | 표시 의미 |
+|---|---|---|
+| `NONE` | 근거 수 = 0 | 점수 막대 대신 "근거 없음"과 안내를 표시 |
+| `INSUFFICIENT` | 근거 수 = 1 또는 신뢰도 < 60 | 점수와 함께 낮은 신뢰도 표시("근거 부족") |
+| `SUFFICIENT` | 근거 수 ≥ 2 그리고 신뢰도 ≥ 60 | 일반 평가로 표시 |
+
+조건은 순서대로 판정한다. 근거 수가 0이면 신뢰도와 관계없이 `NONE`, 그렇지 않고 근거 수가 1이거나 신뢰도가 기준 미만이면 `INSUFFICIENT`, 나머지는 `SUFFICIENT`이다.
+
+최소 근거 수(`2`)와 신뢰도 기준(`60`)은 클라이언트 상수가 아니라 버전 관리되는 Skill Matrix policy의 매개변수이다. 따라서 상태 도입에는 새 Skill Matrix policy 버전(`skill-matrix-vN` 규칙에 따른 계획 버전 `skill-matrix-v3`)이 필요하고, 이후 기준을 바꿀 때도 새 policy 버전이 필요하다. 같은 스냅샷, RuleSetVersion, policy 버전은 항상 같은 상태를 만들며, 상태는 계산에 사용한 Evidence ID와 비교한 신뢰도 값으로 추적할 수 있다.
+
+이전 policy 버전(`skill-matrix-v1`, `skill-matrix-v2`)으로 만든 Matrix는 불변이며 다시 계산하지 않는다. 그 평가에는 근거 상태가 없고, 소비자는 값이 없으면 알 수 없음으로 보고 별도 표시를 하지 않는다. 새 policy 버전으로 생성된 Matrix만 상태를 가진다.
 
 ## 17. 출력 모델
 
