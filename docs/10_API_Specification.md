@@ -262,78 +262,102 @@ the resolved `X-Request-Id` and `X-Correlation-Id`; API error metadata uses the 
 - Export generation requests.
 - Account deletion requests.
 
+Implementation status: the implemented API requires `Idempotency-Key` on exactly six commands —
+`POST /api/v1/repositories/{repositoryId}/sync` (API-REP-006), `POST /api/v1/analyses` (API-ANA-001),
+`POST /api/v1/knowledge-documents/imports/notion` (API-KNW-003), `POST /api/v1/knowledge-documents/{documentId}/reindex` (API-KNW-011), `POST /api/v1/generation-requests` (API-AI-001),
+and `POST /api/v1/learning-roadmaps/{roadmapId}/archive` (API-LRN-009). The
+`Required` idempotency entries for API-INT-001, API-INT-005, and API-INT-008 in §11 are **not implemented (future)**:
+those implemented endpoints neither require nor read the header. The remaining command classes above belong to
+endpoints that are not implemented.
+
 ## 7. Common Response Contract
 
 ### 7.1 Single Resource Response
 
-Single-resource responses use a consistent envelope unless a standard protocol endpoint requires otherwise.
+Single-resource responses use a consistent envelope unless a standard protocol endpoint requires otherwise. `data`
+carries the resource-specific payload directly; there is no `id`/`type`/`attributes` wrapper and no `links` object.
 
 ```json
 {
   "data": {
-    "id": "res_123",
-    "type": "repository",
-    "attributes": {}
+    "repositoryId": "3f6c1e8a-0b6f-4c1e-9a52-6d1f2b7e9c10",
+    "name": "devpath",
+    "syncStatus": "SYNCHRONIZED"
   },
   "metadata": {
     "requestId": "req_123",
-    "correlationId": "cor_123",
     "apiVersion": "v1",
     "timestamp": "2026-07-21T00:00:00Z"
-  },
-  "links": {
-    "self": "/api/v1/repositories/res_123"
   }
 }
 ```
+
+`metadata` contains exactly `requestId`, `apiVersion` (always `v1`), and `timestamp`. The request ID is also returned in
+the `X-Request-Id` response header. The correlation ID is returned only in the `X-Correlation-Id` response header and is
+not part of `metadata`. The payload above is abbreviated; each resource's fields are defined by its schema in
+`contracts/openapi/devpath-openapi.yaml`.
 
 ### 7.2 Collection Response
 
+Collections place their array under a resource-specific key (for example `repositories` or `analyses`) inside `data`;
+there is no generic `items`/`pagination` structure. Cursor-paged collections add `limit`, `nextCursor` (null on the last
+page), and `totalCount` beside the array.
+
 ```json
 {
   "data": {
-    "items": [],
-    "pagination": {
-      "limit": 20,
-      "nextCursor": "cur_next",
-      "previousCursor": null,
-      "hasMore": false,
-      "totalCount": null
-    }
+    "repositories": [],
+    "limit": 20,
+    "nextCursor": null,
+    "totalCount": 0
   },
   "metadata": {
     "requestId": "req_123",
+    "apiVersion": "v1",
     "timestamp": "2026-07-21T00:00:00Z"
-  },
-  "links": {
-    "self": "/api/v1/repositories",
-    "next": null
   }
 }
 ```
+
+In the implemented API, cursor pagination is used only by the repository list and the repository analysis history;
+other implemented collections return a complete, bounded array without pagination fields. `previousCursor`, `hasMore`,
+and collection `links` are not implemented.
 
 ### 7.3 Asynchronous Job Response
 
+Job resources are type-specific; see §26.4 for the implemented resources, polling URLs, and status values. A repository
+synchronization, analysis, or knowledge ingestion job is returned as:
+
 ```json
 {
   "data": {
-    "jobId": "job_123",
+    "jobId": "8d2b4a6e-1f3c-4b7a-9e0d-2c5f6a7b8c9d",
+    "jobType": "REPOSITORY_ANALYSIS",
     "status": "queued",
+    "phase": "QUEUED",
+    "progressPercent": 0,
+    "attemptCount": 0,
+    "maxAttempts": 3,
     "submittedAt": "2026-07-21T00:00:00Z",
-    "pollingUrl": "/api/v1/jobs/job_123",
+    "startedAt": null,
+    "completedAt": null,
+    "pollingUrl": "/api/v1/analysis-jobs/8d2b4a6e-1f3c-4b7a-9e0d-2c5f6a7b8c9d",
     "resultResourceUrl": null,
-    "estimatedCompletion": {
-      "policy": "not_guaranteed",
-      "estimatedReadyAt": null
-    }
+    "errorCode": null,
+    "errorMessage": null,
+    "retryable": false
   },
   "metadata": {
     "requestId": "req_123",
-    "correlationId": "cor_123",
+    "apiVersion": "v1",
     "timestamp": "2026-07-21T00:00:00Z"
   }
 }
 ```
+
+AI generation jobs use a different shape (`jobId`, `status`, `validationStatus`, `artifactUrl`, `failureCode`,
+`createdAt`, `completedAt`) without `pollingUrl`. A generic `/api/v1/jobs/{jobId}` resource and an
+`estimatedCompletion` field are not implemented.
 
 ## 8. Error Contract
 
@@ -343,26 +367,24 @@ Single-resource responses use a consistent envelope unless a standard protocol e
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "The request is invalid.",
-    "userSafeDetail": "One or more fields need correction.",
-    "fieldErrors": [
-      {
-        "field": "targetCareerId",
-        "code": "UNSUPPORTED_VALUE",
-        "message": "The selected career is not supported."
-      }
-    ],
-    "retryable": false,
-    "providerCategory": null,
-    "documentationRef": "/docs/errors/VALIDATION_ERROR"
+    "message": "The request is invalid."
   },
   "metadata": {
     "requestId": "req_123",
-    "correlationId": "cor_123",
+    "apiVersion": "v1",
     "timestamp": "2026-07-21T00:00:00Z"
   }
 }
 ```
+
+The implemented error object contains only `code` and a fixed, user-safe `message`. As with successful responses, the
+correlation ID is returned only in the `X-Correlation-Id` response header.
+
+**Not implemented (future):** the error fields `userSafeDetail`, `fieldErrors` (per-field `field`/`code`/`message`),
+`retryable`, `providerCategory`, and `documentationRef` remain intended extensions of this model but are not returned
+by the current API. Clients must not depend on them until they are added to the machine-readable contract. Durable job
+resources expose their own safe `errorCode`, `errorMessage`, and (for repository synchronization, analysis, and knowledge
+ingestion jobs) `retryable` fields; see §26.4.
 
 ### 8.2 Error Categories
 
@@ -460,7 +482,7 @@ not require the optional company target.
 | API-INT-003 | DELETE | `/api/v1/integrations/github` | Disconnect GitHub. | Required | Self | None | ConnectedAccountResponse | 200 | RESOURCE_NOT_FOUND | Required | IntegrationDisconnected | FR-014~FR-015 |
 | API-INT-004 | GET | `/api/v1/integrations/github/repositories` | List provider-accessible repositories before import. | Required | Self with GitHub permission | None | ProviderRepositoryListResponse | 200 | RATE_LIMIT_EXCEEDED, DEPENDENCY_UNAVAILABLE | Safe/idempotent | None | FR-024, FR-046 |
 | API-INT-005 | POST | `/api/v1/repositories/imports` | Import/register a GitHub repository. | Required | Self with GitHub permission | ImportRepositoryRequest | RepositoryResponse | 201 | VALIDATION_ERROR, RESOURCE_CONFLICT, RATE_LIMIT_EXCEEDED | Required | RepositoryDiscovered | FR-025, FR-046 |
-| API-INT-006 | POST | `/api/v1/repositories/{repositoryId}/sync` | Synchronize repository. | Required | Repository owner | SyncRepositoryRequest | JobStatusResponse | 202 | RATE_LIMIT_EXCEEDED, COLLECTION_LIMIT_EXCEEDED, SYNCHRONIZATION_FAILED | Required | SynchronizationRequested | FR-026~FR-050 |
+| API-INT-006 (retired alias of API-REP-006) | POST | `/api/v1/repositories/{repositoryId}/sync` | Synchronize repository. | Required | Repository owner | SyncRepositoryRequest | JobStatusResponse | 202 | RATE_LIMIT_EXCEEDED, COLLECTION_LIMIT_EXCEEDED, SYNCHRONIZATION_FAILED | Required | SynchronizationRequested | FR-026~FR-050 |
 | API-INT-007 | GET | `/api/v1/repository-sync-jobs/{jobId}` | Check sync status. | Required | Job owner | None | JobStatusResponse | 200 | RESOURCE_NOT_FOUND | Safe/idempotent | None | FR-049 |
 
 ### 11.2 Notion Integration Endpoints
@@ -471,7 +493,15 @@ not require the optional company target.
 | API-INT-009 | GET | `/api/v1/integrations/notion/callback` | Handle Notion callback. | Callback | OAuth state | Provider callback params | OAuthCallbackResponse | 200, 302 | AUTHENTICATION_REQUIRED, DEPENDENCY_UNAVAILABLE | Required by state | NotionWorkspaceConnected | FR-052 |
 | API-INT-010 | DELETE | `/api/v1/integrations/notion` | Disconnect Notion and remove retained page metadata. | Required | Self | None | ConnectedAccountResponse | 200, 404 | RESOURCE_NOT_FOUND | Required | IntegrationDisconnected | FR-051~FR-070 |
 | API-INT-011 | GET | `/api/v1/integrations/notion/workspaces` | Discover and replace accessible workspace/page metadata. | Required | Self with Notion permission | None | NotionWorkspaceListResponse | 200, 404, 429, 503 | RESOURCE_NOT_FOUND, RATE_LIMIT_EXCEEDED, DEPENDENCY_UNAVAILABLE | Safe/idempotent | Metadata replacement | FR-053~FR-070 |
-| API-INT-012 | POST | `/api/v1/knowledge-documents/imports/notion` | Import Notion knowledge content. | Required | Self with Notion permission | ImportNotionKnowledgeRequest | JobStatusResponse | 202 | VALIDATION_ERROR | Required | Knowledge ingestion job | FR-051~FR-070, KR-001 |
+| API-INT-012 (retired alias of API-KNW-003) | POST | `/api/v1/knowledge-documents/imports/notion` | Import Notion knowledge content. | Required | Self with Notion permission | ImportNotionKnowledgeRequest | JobStatusResponse | 202 | VALIDATION_ERROR | Required | Knowledge ingestion job | FR-051~FR-070, KR-001 |
+
+Each method and path has one canonical ID. The rows for API-INT-006 and API-INT-012 duplicate API-REP-006 (§12) and
+API-KNW-003 (§18); those IDs are retired aliases kept only for traceability, and the canonical IDs are the ones used by
+`contracts/openapi/devpath-openapi.yaml`.
+
+For API-KNW-003 (alias API-INT-012), a selected Notion page that is not owned by the caller, is not available through
+the caller's active Notion connection, or does not exist returns an existence-safe `404 RESOURCE_NOT_FOUND`, consistent
+with §9.3 and §32. A `403` from this endpoint occurs only for a missing or invalid CSRF token.
 
 ### 11.3 Provider Adapter Boundary
 
@@ -615,13 +645,13 @@ isolated from API-SKL-004/005 so the current authoritative detail and evidence r
 |---|---|---|---|---|---|---|---|---|---|---|
 | API-CAR-001 | GET | `/api/v1/careers` | List supported careers. | Required | Authenticated | None | CareerListResponse | 200 | Safe | CR-001 |
 | API-CAR-002 | GET | `/api/v1/careers/{careerId}` | Retrieve career definition. | Required | Authenticated | None | CareerProfileResponse | 200 | Safe | CR-002 |
-| API-CAR-003 | PUT | `/api/v1/users/me/preferences/career` | Set target career. | Required | Self | SetCareerTargetRequest | UserPreferenceResponse | 200 | Idempotent | CR-001 |
+| API-CAR-003 (retired alias of API-ID-006) | PUT | `/api/v1/users/me/preferences/career` | Set target career. | Required | Self | SetCareerTargetRequest | UserPreferenceResponse | 200 | Idempotent | CR-001 |
 | API-CAR-004 | GET | `/api/v1/career-readiness/current` | Retrieve current career readiness. | Required | Owner | None | CareerReadinessResponse | 200 | Safe | CR-005~CR-007 |
 | API-CAR-005 | GET | `/api/v1/career-readiness/{careerReadinessId}` | Retrieve historical career readiness. | Required | Owner | None | CareerReadinessResponse | 200 | Safe | CR-007 |
 | API-CAR-006 | GET | `/api/v1/career-readiness/{careerReadinessId}/skill-gaps` | Retrieve skill gaps. | Required | Owner | None | SkillGapListResponse | 200 | Safe | CR-005 |
 | API-CMP-001 | GET | `/api/v1/companies` | List supported companies. | Required | Authenticated | None | CompanyListResponse | 200 | Safe | CR-003 |
 | API-CMP-002 | GET | `/api/v1/companies/{companyId}` | Retrieve company profile. | Required | Authenticated | None | CompanyProfileResponse | 200 | Safe | CR-004 |
-| API-CMP-003 | PUT | `/api/v1/users/me/preferences/company` | Set target company. | Required | Self | SetCompanyTargetRequest | UserPreferenceResponse | 200 | Idempotent | CR-003 |
+| API-CMP-003 (retired alias of API-ID-007) | PUT | `/api/v1/users/me/preferences/company` | Set target company. | Required | Self | SetCompanyTargetRequest | UserPreferenceResponse | 200 | Idempotent | CR-003 |
 | API-CMP-004 | GET | `/api/v1/company-readiness/current` | Retrieve current company readiness. | Required | Owner | None | CompanyReadinessResponse | 200 | Safe | CR-004 |
 | API-CMP-005 | GET | `/api/v1/company-readiness/compare` | Compare company readiness results. | Required | Owner | None | CompanyReadinessComparisonResponse | 200 | Safe | CR-004 |
 
@@ -631,7 +661,7 @@ The implemented API-CAR-001/002 subset reads the nine SRS-supported careers and 
 PostgreSQL. Backend and Frontend use approved `career-v2`; the other supported catalogs retain `career-v1`. Profile responses expose localized names, purpose, configured technologies,
 required and preferred competencies, evaluation categories, priority labels, roadmap-template order, and exact
 profile version metadata. Catalog endpoints do not calculate readiness, gaps, technical scores, or recommendation priority.
-API-CAR-003 target validation resolves the same authoritative career catalog rather than a separate browser or
+API-ID-006 (retired alias API-CAR-003) target validation resolves the same authoritative career catalog rather than a separate browser or
 configuration list. Extension candidates remain excluded.
 
 The implemented API-CAR-004/005/006 subset returns owner-scoped immutable `readiness-v1` results and ordered category
@@ -646,7 +676,7 @@ historical score or recommendation priority.
 The implemented API-CMP-001/002 subset reads the six SRS-supported companies and immutable active `company-v1`
 profiles from PostgreSQL. It exposes only generic technology focus, engineering culture, competency emphasis,
 recommendation-type ordering, and configured increase-only policy labels. It does not expose or imply confidential
-hiring criteria, readiness, interview prediction, or guaranteed outcomes. API-CMP-003 target validation uses this
+hiring criteria, readiness, interview prediction, or guaranteed outcomes. API-ID-007 (retired alias API-CMP-003) target validation uses this
 same catalog; extension candidates remain unavailable.
 
 ## 16. Recommendation APIs
@@ -864,7 +894,7 @@ Administrative APIs must not expose infrastructure secrets, provider tokens, hid
 |---|---|---:|---|
 | jobId | string | Yes | Opaque job identifier. |
 | jobType | enum | Yes | Type such as `REPOSITORY_SYNC`, `ANALYSIS`, `KNOWLEDGE_INGESTION`, `EMBEDDING_GENERATION`, `AI_GENERATION`, `PORTFOLIO_GENERATION`, `RESUME_GENERATION`, `EXPORT_GENERATION`. |
-| status | enum | Yes | `queued`, `running`, `succeeded`, `failed`, `cancelled`, `expired`. |
+| status | enum | Yes | Common model: `queued`, `running`, `succeeded`, `failed`, `cancelled`, `expired`. Implemented values and casing are resource-specific; see §26.4. |
 | progress | object | Optional | Percentage or phase-based progress. |
 | submittedAt | timestamp | Yes | Submission timestamp. |
 | startedAt | timestamp | Optional | Start timestamp. |
@@ -900,6 +930,28 @@ Administrative APIs must not expose infrastructure secrets, provider tokens, hid
 | Export generation | Artifact export URL | Supported before file creation | Supported |
 
 Long-running operations should return `202 Accepted` with `JobStatusResponse`.
+
+### 26.4 Implemented Job Resources
+
+The implemented API has no generic `/api/v1/jobs/{jobId}` resource; that polling form is **not implemented**. Each job
+type is polled through its own resource:
+
+| Job | Polling Endpoint | ID | `jobType` | `status` Values |
+|---|---|---|---|---|
+| Repository synchronization | `GET /api/v1/repository-sync-jobs/{jobId}` | API-INT-007 | `REPOSITORY_SYNC` | `queued`, `running`, `succeeded`, `failed`, `cancelled`, `expired` |
+| Repository analysis | `GET /api/v1/analysis-jobs/{jobId}` | API-ANA-002 | `REPOSITORY_ANALYSIS` | `queued`, `running`, `succeeded`, `failed`, `cancelled`, `expired` |
+| Knowledge ingestion | `GET /api/v1/knowledge-ingestion-jobs/{jobId}` | API-KNW-008 | `KNOWLEDGE_INGESTION` | `queued`, `running`, `succeeded`, `failed` |
+| AI generation | `GET /api/v1/generation-jobs/{jobId}`; cancel with `POST /api/v1/generation-jobs/{jobId}/cancel` | API-AI-002, API-AI-003 | None | `QUEUED`, `RUNNING`, `SUCCEEDED`, `FAILED`, `CANCELED` |
+
+The first three resources return `pollingUrl` pointing at their own endpoint and `resultResourceUrl` when a result
+exists. The dashboard summary (API-DSH-001) also lists recent repository synchronization and analysis jobs as job items
+with upper-case `status` values (`QUEUED`, `RUNNING`, `SUCCEEDED`, `FAILED`, `CANCELLED`, `EXPIRED`) and `jobType`
+`REPOSITORY_SYNC` or `ANALYSIS`.
+
+**Known inconsistency:** status casing and spelling differ by resource (lower-case on job resources, upper-case on
+generation jobs and dashboard job items, and `CANCELED` with a single `L` on generation jobs), and the analysis job type
+is `REPOSITORY_ANALYSIS` on the analysis job resource but `ANALYSIS` on dashboard job items. The machine-readable
+contract matches the implementation for each resource; clients must interpret status values per resource.
 
 ## 27. Pagination, Filtering, and Sorting
 
@@ -1052,8 +1104,8 @@ Uploaded binary content must not be embedded directly in JSON. APIs return objec
 
 | Metadata | Purpose | Exposure |
 |---|---|---|
-| requestId | Identifies one API request. | Response metadata and error responses. |
-| correlationId | Connects related requests/jobs. | Response metadata and job resources. |
+| requestId | Identifies one API request. | Response metadata, error responses, and the `X-Request-Id` response header. |
+| correlationId | Connects related requests/jobs. | `X-Correlation-Id` response header only; not included in response metadata or job resources. |
 | traceId | Internal tracing reference. | May be exposed in safe form. |
 | jobId | Identifies async job. | Job responses. |
 | providerRequestReference | Safe external provider request category/reference. | Admin or diagnostic responses only. |
@@ -1300,8 +1352,8 @@ recalculation. A missing matrix and a matrix owned by another user both return `
 
 | Step | Endpoint Reference | Expected Result |
 |---|---|---|
-| 1 | API-CAR-003 | User sets target career. |
-| 2 | API-CMP-003 | User sets target company. |
+| 1 | API-ID-006 | User sets target career. |
+| 2 | API-ID-007 | User sets target company. |
 | 3 | API-SKL-001 | Client retrieves latest Skill Matrix. |
 | 4 | API-CMP-004 | Client retrieves company readiness. |
 | 5 | API-CAR-006 | Client retrieves related skill gaps. |
@@ -1457,4 +1509,7 @@ Every major functional requirement range maps to at least one API operation. Det
 | GET | `/api/v1/users/me` | `API-ID-001` | Implemented |
 | POST | `/api/v1/session/logout` | Session foundation | Implemented by Spring Security |
 
-The machine-readable subset is `contracts/openapi/devpath-openapi.yaml`. It documents opaque cookie authentication, the `X-CSRF-TOKEN` header, safe current-user projection, and authentication errors. All other catalog operations remain specification-only.
+The machine-readable contract is `contracts/openapi/devpath-openapi.yaml`. For the identity foundation it documents opaque cookie authentication, the `X-CSRF-TOKEN` header, safe current-user projection, and authentication errors. This table records only the identity foundation. The implemented business operations are listed, with their
+canonical `x-api-id`, in `contracts/openapi/devpath-openapi.yaml` and summarized in `docs/22_API_Reference.md`. This
+document also catalogues planned endpoints that are not implemented; an endpoint absent from the machine-readable
+contract is not implemented.
