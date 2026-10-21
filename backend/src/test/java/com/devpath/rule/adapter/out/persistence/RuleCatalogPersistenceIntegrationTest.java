@@ -160,10 +160,14 @@ class RuleCatalogPersistenceIntegrationTest {
 
         var policy = adapter.loadActivePolicy(UUID.fromString("11000000-0000-0000-0000-000000000002"));
 
-        assertThat(policy.versionLabel()).isEqualTo("skill-matrix-v2");
+        assertThat(policy.versionLabel()).isEqualTo("skill-matrix-v3");
         assertThat(policy.skills()).hasSize(8);
         assertThat(policy.developingMinimum()).isEqualByComparingTo("40.00");
         assertThat(policy.strengthMinimum()).isEqualByComparingTo("80.00");
+        assertThat(policy.evidenceMinimumCount()).isEqualTo(2);
+        assertThat(policy.evidenceConfidenceThreshold()).isEqualByComparingTo("60.00");
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT COUNT(*) FROM flyway_schema_history WHERE version = '30' AND success", Integer.class)).isEqualTo(1);
         assertThat(adapter.findAllByIdsAndOwner(List.of(UUID.randomUUID(), UUID.randomUUID()), UUID.randomUUID()))
             .isEmpty();
         Integer tableCount = jdbcTemplate.queryForObject(

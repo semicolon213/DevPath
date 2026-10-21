@@ -63,7 +63,8 @@ class SkillMatrixSecurityTest {
 
         mockMvc.perform(get("/api/v1/skill-matrices/current")).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/skill-matrices/current").with(oauth2Login().oauth2User(principal())))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("CURRENT"));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.status").value("CURRENT"))
+            .andExpect(jsonPath("$.data.skills[0].evidenceStatus").value("SUFFICIENT"));
         mockMvc.perform(get("/api/v1/skill-matrices/{skillMatrixId}", MATRIX_ID)
                 .with(oauth2Login().oauth2User(principal())))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.skills").isArray());
@@ -94,7 +95,8 @@ class SkillMatrixSecurityTest {
 
         mockMvc.perform(get("/api/v1/skills/{skillId}", SKILL_ID)).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/skills/{skillId}", SKILL_ID).with(oauth2Login().oauth2User(principal())))
-            .andExpect(status().isOk()).andExpect(jsonPath("$.data.skill.skillId").value(SKILL_ID.toString()));
+            .andExpect(status().isOk()).andExpect(jsonPath("$.data.skill.skillId").value(SKILL_ID.toString()))
+            .andExpect(jsonPath("$.data.skill.evidenceStatus").value("SUFFICIENT"));
         mockMvc.perform(get("/api/v1/skills/{skillId}/evidence", SKILL_ID)
                 .with(oauth2Login().oauth2User(principal())))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.evidence[0].evidenceType").value("REPOSITORY_PATH"));
@@ -103,8 +105,8 @@ class SkillMatrixSecurityTest {
     }
 
     private SkillMatrixView view() {
-        return new SkillMatrixView(MATRIX_ID, UUID.randomUUID(), "skill-matrix-v1", "baseline-v1", "CURRENT",
-            List.of(), List.of(), List.of(), Instant.parse("2026-08-11T10:00:00Z"));
+        return new SkillMatrixView(MATRIX_ID, UUID.randomUUID(), "skill-matrix-v3", "baseline-v2", "CURRENT",
+            List.of(detail().skill()), List.of(), List.of(), Instant.parse("2026-08-11T10:00:00Z"));
     }
     private SkillMatrixView otherView() {
         return new SkillMatrixView(OTHER_MATRIX_ID, UUID.randomUUID(), "skill-matrix-v2", "baseline-v2", "SUPERSEDED",
@@ -114,7 +116,7 @@ class SkillMatrixSecurityTest {
         return new SkillDetailView(MATRIX_ID, UUID.randomUUID(), "skill-matrix-v2", "baseline-v2", "CURRENT",
             Instant.parse("2026-08-11T10:00:00Z"), new SkillAssessmentView(UUID.randomUUID(), SKILL_ID,
                 "testing-discipline", "Testing Discipline", "TESTING", new BigDecimal("70"), "COMPETENT",
-                new BigDecimal("90"), false, false, "UNAVAILABLE", "category:TESTING", List.of(UUID.randomUUID()),
+                new BigDecimal("90"), "SUFFICIENT", false, false, "UNAVAILABLE", "category:TESTING", List.of(UUID.randomUUID()),
                 List.of(UUID.randomUUID()), List.of("TEST_FILES"), "baseline-v2"));
     }
     private SkillEvidenceListView evidence() {

@@ -33,6 +33,7 @@ class DeterministicSkillMatrixBuilderTest {
         SkillAssessment assessment = matrix.assessments().getFirst();
         assertThat(assessment.score()).isEqualByComparingTo("75.00");
         assertThat(assessment.level()).isEqualTo(SkillLevel.COMPETENT);
+        assertThat(assessment.evidenceStatus()).isNull();
         assertThat(assessment.strength()).isFalse();
         assertThat(assessment.weakness()).isFalse();
         assertThat(assessment.evidenceIds()).containsExactly(evidenceId);
@@ -55,10 +56,39 @@ class DeterministicSkillMatrixBuilderTest {
         assertThat(policy.level(new BigDecimal("100"))).isEqualTo(SkillLevel.STRONG);
     }
 
+    @Test
+    void appliesEveryConfiguredEvidenceStatusBoundaryExactly() {
+        SkillMatrixPolicy policy = evidencePolicy();
+        UUID first = UUID.randomUUID();
+        UUID second = UUID.randomUUID();
+
+        assertThat(DeterministicSkillMatrixBuilder.evidenceStatus(policy, List.of(), new BigDecimal("100")))
+            .isEqualTo(EvidenceStatus.NONE);
+        assertThat(DeterministicSkillMatrixBuilder.evidenceStatus(policy, List.of(first), new BigDecimal("100")))
+            .isEqualTo(EvidenceStatus.INSUFFICIENT);
+        assertThat(DeterministicSkillMatrixBuilder.evidenceStatus(policy, List.of(first, first), new BigDecimal("100")))
+            .isEqualTo(EvidenceStatus.INSUFFICIENT);
+        assertThat(DeterministicSkillMatrixBuilder.evidenceStatus(
+            policy, List.of(first, second), new BigDecimal("59.99")))
+            .isEqualTo(EvidenceStatus.INSUFFICIENT);
+        assertThat(DeterministicSkillMatrixBuilder.evidenceStatus(
+            policy, List.of(first, second), new BigDecimal("60.00")))
+            .isEqualTo(EvidenceStatus.SUFFICIENT);
+        assertThat(DeterministicSkillMatrixBuilder.evidenceStatus(
+            policy(UUID.randomUUID()), List.of(first, second), new BigDecimal("100"))).isNull();
+    }
+
     private static SkillMatrixPolicy policy(UUID versionId) {
         var skill = new SkillDefinition(UUID.randomUUID(), "testing-discipline", "Testing Discipline", RuleCategory.TESTING);
         return new SkillMatrixPolicy(UUID.randomUUID(), versionId, "skill-matrix-v1", BigDecimal.ONE,
             new BigDecimal("40"), new BigDecimal("60"), new BigDecimal("80"), new BigDecimal("39.99"),
-            new BigDecimal("80"), List.of(skill));
+            new BigDecimal("80"), null, null, List.of(skill));
+    }
+
+    private static SkillMatrixPolicy evidencePolicy() {
+        var skill = new SkillDefinition(UUID.randomUUID(), "testing-discipline", "Testing Discipline", RuleCategory.TESTING);
+        return new SkillMatrixPolicy(UUID.randomUUID(), UUID.randomUUID(), "skill-matrix-v3", BigDecimal.ONE,
+            new BigDecimal("40"), new BigDecimal("60"), new BigDecimal("80"), new BigDecimal("39.99"),
+            new BigDecimal("80"), 2, new BigDecimal("60"), List.of(skill));
     }
 }

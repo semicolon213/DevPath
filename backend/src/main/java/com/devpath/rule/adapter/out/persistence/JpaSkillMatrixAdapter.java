@@ -1,6 +1,7 @@
 package com.devpath.rule.adapter.out.persistence;
 
 import com.devpath.rule.application.SkillMatrixPersistencePort;
+import com.devpath.rule.domain.EvidenceStatus;
 import com.devpath.rule.domain.RuleCategory;
 import com.devpath.rule.domain.SkillAssessment;
 import com.devpath.rule.domain.SkillDefinition;
@@ -57,7 +58,7 @@ class JpaSkillMatrixAdapter implements SkillMatrixPersistencePort {
         }).toList();
         return new SkillMatrixPolicy(policy.id(), policy.ruleSetVersionId(), policy.versionLabel(), policy.beginnerMinimum(),
             policy.developingMinimum(), policy.competentMinimum(), policy.strongMinimum(), policy.weaknessMaximum(),
-            policy.strengthMinimum(), definitions);
+            policy.strengthMinimum(), policy.evidenceMinimumCount(), policy.evidenceConfidenceThreshold(), definitions);
     }
 
     @Override public Optional<SkillMatrix> findByEvaluationAndOwner(UUID evaluationId, UUID userId) {
@@ -125,7 +126,8 @@ class JpaSkillMatrixAdapter implements SkillMatrixPersistencePort {
             SkillJpaEntity skill = skillById.get(value.skillId());
             var definition = new SkillDefinition(skill.id(), skill.stableKey(), skill.name(), RuleCategory.valueOf(skill.category()));
             hydrated.add(new SkillAssessment(value.id(), definition, value.score(), SkillLevel.valueOf(value.level()),
-                value.confidence(), value.strength(), value.weakness(), value.growthTrend(), value.aggregateReference(),
+                value.confidence(), value.evidenceStatus() == null ? null : EvidenceStatus.valueOf(value.evidenceStatus()),
+                value.strength(), value.weakness(), value.growthTrend(), value.aggregateReference(),
                 evidenceByAssessment.getOrDefault(value.id(), List.of()),
                 repositoriesByAssessment.getOrDefault(value.id(), List.of()),
                 factsByAssessment.getOrDefault(value.id(), List.of()), value.ruleSetVersion()));

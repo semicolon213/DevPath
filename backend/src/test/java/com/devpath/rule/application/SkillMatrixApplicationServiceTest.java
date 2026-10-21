@@ -102,7 +102,7 @@ class SkillMatrixApplicationServiceTest {
             RuleCategory.DOCUMENTATION);
         return new SkillMatrixPolicy(UUID.randomUUID(), versionId, "skill-matrix-v1", BigDecimal.ONE,
             new BigDecimal("40"), new BigDecimal("60"), new BigDecimal("80"), new BigDecimal("39.99"),
-            new BigDecimal("80"), List.of(skill));
+            new BigDecimal("80"), null, null, List.of(skill));
     }
 
     private record EvaluationPort(CompletedRuleEvaluation evaluation, RuleEvaluationEvidenceLink link)

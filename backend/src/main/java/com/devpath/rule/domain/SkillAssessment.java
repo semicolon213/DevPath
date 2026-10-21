@@ -11,6 +11,7 @@ public record SkillAssessment(
     BigDecimal score,
     SkillLevel level,
     BigDecimal confidence,
+    EvidenceStatus evidenceStatus,
     boolean strength,
     boolean weakness,
     String growthTrend,

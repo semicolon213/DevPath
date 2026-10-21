@@ -113,7 +113,8 @@ public class SkillMatrixApplicationService {
     private SkillAssessmentView toView(SkillAssessment value) {
         return new SkillAssessmentView(value.assessmentId(), value.skill().skillId(), value.skill().stableKey(),
             value.skill().name(), value.skill().category().name(), value.score(), value.level().name(), value.confidence(),
-            value.strength(), value.weakness(), value.growthTrend(), value.aggregateRuleResultReference(),
+            value.evidenceStatus() == null ? null : value.evidenceStatus().name(), value.strength(), value.weakness(),
+            value.growthTrend(), value.aggregateRuleResultReference(),
             value.evidenceIds(), value.repositoryIds(), value.recommendationInputFacts(), value.ruleSetVersion());
     }
 }

@@ -36,6 +36,8 @@ class SkillMatrixPolicyJpaEntity {
     @Column(name = "strong_minimum", nullable = false, precision = 5, scale = 2) private BigDecimal strongMinimum;
     @Column(name = "weakness_maximum", nullable = false, precision = 5, scale = 2) private BigDecimal weaknessMaximum;
     @Column(name = "strength_minimum", nullable = false, precision = 5, scale = 2) private BigDecimal strengthMinimum;
+    @Column(name = "evidence_min_count") private Integer evidenceMinimumCount;
+    @Column(name = "evidence_confidence_threshold", precision = 5, scale = 2) private BigDecimal evidenceConfidenceThreshold;
     @Column(name = "status", nullable = false, length = 24) private String status;
     @Column(name = "created_at", nullable = false, updatable = false) private Instant createdAt;
     protected SkillMatrixPolicyJpaEntity() {}
@@ -43,6 +45,8 @@ class SkillMatrixPolicyJpaEntity {
     BigDecimal beginnerMinimum() { return beginnerMinimum; } BigDecimal developingMinimum() { return developingMinimum; }
     BigDecimal competentMinimum() { return competentMinimum; } BigDecimal strongMinimum() { return strongMinimum; }
     BigDecimal weaknessMaximum() { return weaknessMaximum; } BigDecimal strengthMinimum() { return strengthMinimum; }
+    Integer evidenceMinimumCount() { return evidenceMinimumCount; }
+    BigDecimal evidenceConfidenceThreshold() { return evidenceConfidenceThreshold; }
 }
 
 @Entity
@@ -90,6 +94,7 @@ class SkillAssessmentJpaEntity {
     @Column(name = "score", nullable = false, updatable = false, precision = 5, scale = 2) private BigDecimal score;
     @Column(name = "skill_level", nullable = false, updatable = false, length = 24) private String level;
     @Column(name = "confidence", nullable = false, updatable = false, precision = 5, scale = 2) private BigDecimal confidence;
+    @Column(name = "evidence_status", updatable = false, length = 24) private String evidenceStatus;
     @Column(name = "strength_flag", nullable = false, updatable = false) private boolean strength;
     @Column(name = "weakness_flag", nullable = false, updatable = false) private boolean weakness;
     @Column(name = "growth_trend", nullable = false, updatable = false, length = 24) private String growthTrend;
@@ -98,11 +103,14 @@ class SkillAssessmentJpaEntity {
     protected SkillAssessmentJpaEntity() {}
     SkillAssessmentJpaEntity(UUID matrixId, SkillAssessment value) {
         id = value.assessmentId(); this.matrixId = matrixId; skillId = value.skill().skillId(); score = value.score();
-        level = value.level().name(); confidence = value.confidence(); strength = value.strength(); weakness = value.weakness();
+        level = value.level().name(); confidence = value.confidence();
+        evidenceStatus = value.evidenceStatus() == null ? null : value.evidenceStatus().name();
+        strength = value.strength(); weakness = value.weakness();
         growthTrend = value.growthTrend(); aggregateReference = value.aggregateRuleResultReference(); ruleSetVersion = value.ruleSetVersion();
     }
     UUID id() { return id; } UUID skillId() { return skillId; } BigDecimal score() { return score; } String level() { return level; }
     BigDecimal confidence() { return confidence; } boolean strength() { return strength; } boolean weakness() { return weakness; }
+    String evidenceStatus() { return evidenceStatus; }
     String growthTrend() { return growthTrend; } String aggregateReference() { return aggregateReference; } String ruleSetVersion() { return ruleSetVersion; }
 }
 

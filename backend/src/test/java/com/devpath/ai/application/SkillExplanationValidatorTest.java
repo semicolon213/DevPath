@@ -54,10 +54,10 @@ class SkillExplanationValidatorTest {
     void appendsConcreteGroundedAdviceToImprovementAreas() {
         UUID commitEvidence = UUID.randomUUID(), evaluationId = UUID.randomUUID();
         var activity = new SkillAssessmentView(UUID.randomUUID(), UUID.randomUUID(), "development-activity", "Activity",
-            "ACTIVITY", BigDecimal.ONE, "FOUNDATIONAL", BigDecimal.ONE, false, true, "STABLE", "activity-result",
+            "ACTIVITY", BigDecimal.ONE, "FOUNDATIONAL", BigDecimal.ONE, null, false, true, "STABLE", "activity-result",
             List.of(commitEvidence), List.of(), List.of(), "rule-v1");
         var delivery = new SkillAssessmentView(UUID.randomUUID(), UUID.randomUUID(), "delivery-operations", "Delivery",
-            "DEVOPS", BigDecimal.ZERO, "FOUNDATIONAL", BigDecimal.ONE, false, true, "STABLE", "delivery-result",
+            "DEVOPS", BigDecimal.ZERO, "FOUNDATIONAL", BigDecimal.ONE, null, false, true, "STABLE", "delivery-result",
             List.of(), List.of(), List.of(), "rule-v1");
         var weakMatrix = new SkillMatrixView(UUID.randomUUID(), evaluationId, "skill-v1", "rule-v1", "CURRENT",
             List.of(activity, delivery), List.of(), List.of("development-activity", "delivery-operations"),
@@ -94,7 +94,7 @@ class SkillExplanationValidatorTest {
 
     private static SkillMatrixView matrix(UUID evidenceId) {
         var skill = new SkillAssessmentView(UUID.randomUUID(), UUID.randomUUID(), "testing-discipline", "Testing",
-            "TESTING", BigDecimal.valueOf(80), "STRONG", BigDecimal.valueOf(90), true, false, "STABLE", "rule-result", List.of(evidenceId),
+            "TESTING", BigDecimal.valueOf(80), "STRONG", BigDecimal.valueOf(90), null, true, false, "STABLE", "rule-result", List.of(evidenceId),
             List.of(UUID.randomUUID()), List.of(), "rule-v1");
         return new SkillMatrixView(UUID.randomUUID(), UUID.randomUUID(), "skill-v1", "rule-v1", "CURRENT",
             List.of(skill), List.of("testing-discipline"), List.of(), Instant.parse("2026-08-31T00:00:00Z"));

@@ -15,6 +15,8 @@ public record SkillMatrixPolicy(
     BigDecimal strongMinimum,
     BigDecimal weaknessMaximum,
     BigDecimal strengthMinimum,
+    Integer evidenceMinimumCount,
+    BigDecimal evidenceConfidenceThreshold,
     List<SkillDefinition> skills
 ) {
     public SkillMatrixPolicy {
@@ -33,6 +35,12 @@ public record SkillMatrixPolicy(
             || weaknessMaximum.compareTo(strengthMinimum) >= 0) {
             throw new IllegalArgumentException("skill matrix thresholds are invalid");
         }
+        if ((evidenceMinimumCount == null) != (evidenceConfidenceThreshold == null)
+            || evidenceMinimumCount != null && (evidenceMinimumCount < 1
+                || evidenceConfidenceThreshold.signum() < 0
+                || evidenceConfidenceThreshold.compareTo(new BigDecimal("100")) > 0)) {
+            throw new IllegalArgumentException("evidence status thresholds are invalid");
+        }
         skills = List.copyOf(Objects.requireNonNull(skills));
         if (skills.isEmpty() || skills.stream().map(SkillDefinition::skillId).distinct().count() != skills.size()
             || skills.stream().map(SkillDefinition::category).distinct().count() != skills.size()) {
@@ -47,4 +55,5 @@ public record SkillMatrixPolicy(
         if (score.compareTo(developingMinimum) >= 0) return SkillLevel.DEVELOPING;
         return SkillLevel.BEGINNER;
     }
+
 }

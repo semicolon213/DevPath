@@ -6,7 +6,7 @@ import java.util.UUID;
 
 public record SkillAssessmentView(
     UUID assessmentId, UUID skillId, String skillKey, String skillName, String category,
-    BigDecimal score, String level, BigDecimal confidence, boolean strength, boolean weakness,
+    BigDecimal score, String level, BigDecimal confidence, String evidenceStatus, boolean strength, boolean weakness,
     String growthTrend, String aggregateRuleResultReference, List<UUID> evidenceIds,
     List<UUID> repositoryIds, List<String> recommendationInputFacts, String ruleSetVersion
 ) {

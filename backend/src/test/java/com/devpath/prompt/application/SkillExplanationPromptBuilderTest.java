@@ -89,10 +89,10 @@ class SkillExplanationPromptBuilderTest {
 
     private static SkillMatrixView matrix(UUID matrixId) {
         var skill = new SkillAssessmentView(UUID.randomUUID(), UUID.randomUUID(), "testing-discipline", "Testing",
-            "TESTING", BigDecimal.valueOf(80), "STRONG", BigDecimal.valueOf(90), true, false, "STABLE", "rule-result", List.of(UUID.randomUUID(), UUID.randomUUID()),
+            "TESTING", BigDecimal.valueOf(80), "STRONG", BigDecimal.valueOf(90), null, true, false, "STABLE", "rule-result", List.of(UUID.randomUUID(), UUID.randomUUID()),
             List.of(UUID.randomUUID()), List.of(), "rule-v1");
         var weakSkill = new SkillAssessmentView(UUID.randomUUID(), UUID.randomUUID(), "delivery-operations", "Delivery",
-            "TESTING", BigDecimal.ZERO, "FOUNDATIONAL", BigDecimal.ONE, false, true, "STABLE", "rule-result", List.of(),
+            "TESTING", BigDecimal.ZERO, "FOUNDATIONAL", BigDecimal.ONE, null, false, true, "STABLE", "rule-result", List.of(),
             List.of(UUID.randomUUID()), List.of(), "rule-v1");
         return new SkillMatrixView(matrixId, UUID.randomUUID(), "skill-v1", "rule-v1", "CURRENT", List.of(skill, weakSkill),
             List.of("testing-discipline"), List.of("delivery-operations"), Instant.parse("2026-08-31T00:00:00Z"));

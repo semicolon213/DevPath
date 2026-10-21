@@ -37,14 +37,27 @@ public final class DeterministicSkillMatrixBuilder {
                 "CONFIDENCE=" + category.confidence().toPlainString(),
                 "MISSING_EVIDENCE_COUNT=" + category.missingEvidence().size()
             );
+            List<UUID> evidenceIds = evidenceByCategory.getOrDefault(skill.category(), List.of());
             return new SkillAssessment(UUID.randomUUID(), skill, category.score(), policy.level(category.score()),
-                category.confidence(), category.score().compareTo(policy.strengthMinimum()) >= 0,
+                category.confidence(), evidenceStatus(policy, evidenceIds, category.confidence()),
+                category.score().compareTo(policy.strengthMinimum()) >= 0,
                 category.score().compareTo(policy.weaknessMaximum()) <= 0, "UNAVAILABLE",
                 "evaluation:" + evaluation.id() + ":category:" + skill.category().name(),
-                evidenceByCategory.getOrDefault(skill.category(), List.of()), List.of(repositoryId), facts,
+                evidenceIds, List.of(repositoryId), facts,
                 evaluation.result().ruleSetVersion());
         }).toList();
         return new SkillMatrix(matrixId, evaluation.userId(), evaluation.id(), policy.policyId(), policy.versionLabel(),
             evaluation.result().ruleSetVersion(), "CURRENT", generatedAt, assessments);
+    }
+
+    static EvidenceStatus evidenceStatus(SkillMatrixPolicy policy, List<UUID> evidenceIds, java.math.BigDecimal confidence) {
+        if (policy.evidenceMinimumCount() == null) return null;
+        long evidenceCount = evidenceIds.stream().distinct().count();
+        if (evidenceCount == 0) return EvidenceStatus.NONE;
+        if (evidenceCount < policy.evidenceMinimumCount()
+            || confidence.compareTo(policy.evidenceConfidenceThreshold()) < 0) {
+            return EvidenceStatus.INSUFFICIENT;
+        }
+        return EvidenceStatus.SUFFICIENT;
     }
 }

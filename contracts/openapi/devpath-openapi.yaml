@@ -2624,7 +2624,7 @@ components:
     SkillAssessment:
       type: object
       additionalProperties: false
-      required: [assessmentId, skillId, skillKey, skillName, category, score, level, confidence, strength, weakness, growthTrend, aggregateRuleResultReference, evidenceIds, repositoryIds, recommendationInputFacts, ruleSetVersion]
+      required: [assessmentId, skillId, skillKey, skillName, category, score, level, confidence, evidenceStatus, strength, weakness, growthTrend, aggregateRuleResultReference, evidenceIds, repositoryIds, recommendationInputFacts, ruleSetVersion]
       properties:
         assessmentId: {type: string, format: uuid}
         skillId: {type: string, format: uuid}
@@ -2634,6 +2634,11 @@ components:
         score: {type: number, format: double, minimum: 0, maximum: 100}
         level: {type: string, enum: [NONE, BEGINNER, DEVELOPING, COMPETENT, STRONG]}
         confidence: {type: number, format: double, minimum: 0, maximum: 100}
+        evidenceStatus:
+          type: string
+          nullable: true
+          enum: [NONE, INSUFFICIENT, SUFFICIENT]
+          description: Deterministic evidence sufficiency; null for matrices from earlier policy versions.
         strength: {type: boolean}
         weakness: {type: boolean}
         growthTrend: {type: string, enum: [UNAVAILABLE, IMPROVING, STABLE, DECLINING]}

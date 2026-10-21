@@ -9,6 +9,7 @@ export type SkillAssessment = {
   score: number;
   level: "NONE" | "BEGINNER" | "DEVELOPING" | "COMPETENT" | "STRONG";
   confidence: number;
+  evidenceStatus: "NONE" | "INSUFFICIENT" | "SUFFICIENT" | null;
   strength: boolean;
   weakness: boolean;
   growthTrend: "UNAVAILABLE" | "IMPROVING" | "STABLE" | "DECLINING";

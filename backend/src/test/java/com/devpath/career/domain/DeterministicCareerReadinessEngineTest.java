@@ -73,7 +73,7 @@ class DeterministicCareerReadinessEngineTest {
             ? SkillLevel.STRONG : value.compareTo(new BigDecimal("60")) >= 0 ? SkillLevel.COMPETENT
             : value.compareTo(new BigDecimal("40")) >= 0 ? SkillLevel.DEVELOPING : SkillLevel.BEGINNER;
         return new SkillAssessment(UUID.randomUUID(), new SkillDefinition(UUID.randomUUID(), key, key, category),
-            value, level, new BigDecimal(confidence), level == SkillLevel.STRONG,
+            value, level, new BigDecimal(confidence), null, level == SkillLevel.STRONG,
             level == SkillLevel.NONE || level == SkillLevel.BEGINNER, "UNAVAILABLE", "evaluation:test",
             List.of(UUID.randomUUID()), List.of(UUID.randomUUID()), List.of("category=" + category), "baseline-v2");
     }

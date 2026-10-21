@@ -81,6 +81,27 @@ class SkillMatrixPersistenceIntegrationTest {
         assertThat(multipleAssessmentQueries).isEqualTo(singleAssessmentQueries);
     }
 
+    @Test
+    void loadsEarlierPolicyAssessmentWithoutRecomputingEvidenceStatus() {
+        var adapter = adapter();
+        TestBasis basis = seedBasis(3);
+        UUID matrixId = UUID.randomUUID();
+        UUID assessmentId = UUID.randomUUID();
+        var at = basis.now().atOffset(ZoneOffset.UTC);
+        jdbc.update("INSERT INTO skill_matrices(skill_matrix_id,user_id,evaluation_id,skill_matrix_policy_id,policy_version,rule_set_version,status,generated_at,version) VALUES (?,?,?,?,?,?,?,?,0)",
+            matrixId, basis.userId(), basis.evaluationId(), UUID.fromString("21000000-0000-0000-0000-000000000002"),
+            "skill-matrix-v2", "baseline-v2", "CURRENT", at);
+        jdbc.update("INSERT INTO skill_assessments(skill_assessment_id,skill_matrix_id,skill_id,score,skill_level,confidence,strength_flag,weakness_flag,growth_trend,aggregate_rule_result_reference,rule_set_version) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+            assessmentId, matrixId, UUID.fromString("20000000-0000-0000-0000-000000000003"), 60, "COMPETENT", 100,
+            false, false, "UNAVAILABLE", "evaluation:" + basis.evaluationId(), "baseline-v2");
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(adapter.findByIdAndOwner(matrixId, basis.userId())).get()
+            .satisfies(matrix -> assertThat(matrix.assessments()).singleElement()
+                .satisfies(assessment -> assertThat(assessment.evidenceStatus()).isNull()));
+    }
+
     private JpaSkillMatrixAdapter adapter() {
         return new JpaSkillMatrixAdapter(skills, policies, mappings, matrices, assessments, evidenceLinks,
             repositoryLinks, facts, evaluations);
@@ -88,9 +109,11 @@ class SkillMatrixPersistenceIntegrationTest {
 
     private SkillMatrix matrix(JpaSkillMatrixAdapter adapter, TestBasis basis, int assessmentCount) {
         var policy = adapter.loadActivePolicy(UUID.fromString("11000000-0000-0000-0000-000000000002"));
+        assertThat(policy.versionLabel()).isEqualTo("skill-matrix-v3");
         List<SkillAssessment> values = java.util.stream.IntStream.range(0, assessmentCount).mapToObj(index ->
             new SkillAssessment(UUID.randomUUID(), policy.skills().get(index), new BigDecimal("50.00"),
-                SkillLevel.DEVELOPING, new BigDecimal("90.00"), false, false, "UNAVAILABLE",
+                SkillLevel.DEVELOPING, new BigDecimal("90.00"), com.devpath.rule.domain.EvidenceStatus.SUFFICIENT,
+                false, false, "UNAVAILABLE",
                 "evaluation:" + basis.evaluationId(), basis.evidenceIds(), basis.repositoryIds(),
                 List.of("fact-" + index + "-first", "fact-" + index + "-second"), "baseline-v2")
         ).toList();
