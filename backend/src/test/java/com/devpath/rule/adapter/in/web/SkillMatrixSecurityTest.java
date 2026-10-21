@@ -96,6 +96,7 @@ class SkillMatrixSecurityTest {
         mockMvc.perform(get("/api/v1/skills/{skillId}", SKILL_ID)).andExpect(status().isUnauthorized());
         mockMvc.perform(get("/api/v1/skills/{skillId}", SKILL_ID).with(oauth2Login().oauth2User(principal())))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.skill.skillId").value(SKILL_ID.toString()))
+            .andExpect(jsonPath("$.data.policyVersion").value("skill-matrix-v3"))
             .andExpect(jsonPath("$.data.skill.evidenceStatus").value("SUFFICIENT"));
         mockMvc.perform(get("/api/v1/skills/{skillId}/evidence", SKILL_ID)
                 .with(oauth2Login().oauth2User(principal())))
@@ -113,7 +114,7 @@ class SkillMatrixSecurityTest {
             List.of(), List.of(), List.of(), Instant.parse("2026-08-10T10:00:00Z"));
     }
     private SkillDetailView detail() {
-        return new SkillDetailView(MATRIX_ID, UUID.randomUUID(), "skill-matrix-v2", "baseline-v2", "CURRENT",
+        return new SkillDetailView(MATRIX_ID, UUID.randomUUID(), "skill-matrix-v3", "baseline-v2", "CURRENT",
             Instant.parse("2026-08-11T10:00:00Z"), new SkillAssessmentView(UUID.randomUUID(), SKILL_ID,
                 "testing-discipline", "Testing Discipline", "TESTING", new BigDecimal("70"), "COMPETENT",
                 new BigDecimal("90"), "SUFFICIENT", false, false, "UNAVAILABLE", "category:TESTING", List.of(UUID.randomUUID()),

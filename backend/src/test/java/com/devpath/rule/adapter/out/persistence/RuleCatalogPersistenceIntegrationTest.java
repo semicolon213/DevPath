@@ -1,6 +1,7 @@
 package com.devpath.rule.adapter.out.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.devpath.rule.domain.RuleCategory;
 import com.devpath.rule.domain.CompletedRuleEvaluation;
@@ -20,6 +21,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.boot.test.autoconfigure.orm.jpa.TestEntityManager;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -175,6 +177,44 @@ class RuleCatalogPersistenceIntegrationTest {
             Integer.class
         );
         assertThat(tableCount).isEqualTo(8);
+    }
+
+    @Test
+    void v30SupersedesSkillMatrixV2AndKeepsItsThresholdsAndMappingsInV3() {
+        UUID baselineV2 = UUID.fromString("11000000-0000-0000-0000-000000000002");
+        UUID v2 = UUID.fromString("21000000-0000-0000-0000-000000000002");
+        UUID v3 = UUID.fromString("21000000-0000-0000-0000-000000000003");
+
+        assertThat(jdbcTemplate.queryForObject(
+            "SELECT status FROM skill_matrix_policies WHERE skill_matrix_policy_id = ?", String.class, v2))
+            .isEqualTo("SUPERSEDED");
+        assertThat(jdbcTemplate.queryForList(
+            "SELECT skill_matrix_policy_id FROM skill_matrix_policies WHERE rule_set_version_id = ? AND status = 'ACTIVE'",
+            UUID.class, baselineV2)).containsExactly(v3);
+        String thresholds = "SELECT beginner_minimum, developing_minimum, competent_minimum, strong_minimum,"
+            + " weakness_maximum, strength_minimum, rule_set_version_id FROM skill_matrix_policies"
+            + " WHERE skill_matrix_policy_id = ?";
+        assertThat(jdbcTemplate.queryForMap(thresholds, v3)).isEqualTo(jdbcTemplate.queryForMap(thresholds, v2));
+        String mappings = "SELECT skill_id, source_category, enabled FROM skill_policy_mappings"
+            + " WHERE skill_matrix_policy_id = ? ORDER BY source_category";
+        var v2Mappings = jdbcTemplate.queryForList(mappings, v2);
+        assertThat(v2Mappings).hasSize(8);
+        assertThat(jdbcTemplate.queryForList(mappings, v3)).isEqualTo(v2Mappings);
+    }
+
+    @Test
+    void onlyOneActiveSkillMatrixPolicyIsAllowedPerRuleSetVersion() {
+        UUID baselineV2 = UUID.fromString("11000000-0000-0000-0000-000000000002");
+        String insert = "INSERT INTO skill_matrix_policies (skill_matrix_policy_id, rule_set_version_id, version_label,"
+            + " beginner_minimum, developing_minimum, competent_minimum, strong_minimum, weakness_maximum,"
+            + " strength_minimum, status, created_at) VALUES (?, ?, ?, 1, 40, 60, 80, 39.99, 80, ?, now())";
+
+        // A further non-active policy for the same rule-set version is permitted after V30.
+        jdbcTemplate.update(insert, UUID.randomUUID(), baselineV2, "skill-matrix-test-retired", "DEPRECATED");
+        assertThatThrownBy(() -> jdbcTemplate.update(insert, UUID.randomUUID(), baselineV2,
+            "skill-matrix-test-active", "ACTIVE"))
+            .isInstanceOf(DataIntegrityViolationException.class)
+            .hasMessageContaining("uq_skill_matrix_policy_active_rule_set");
     }
 
     private void seedSnapshot(UUID userId, UUID identityId, UUID repositoryId, UUID snapshotId, Instant now) {
