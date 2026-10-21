@@ -1273,13 +1273,14 @@ confidence, strength/weakness flags, explicit growth state, aggregate rule-resul
 Repository IDs, structured downstream facts, and exact rule-set version. The browser displays these values without
 recalculation. A missing matrix and a matrix owned by another user both return `404`.
 
-**Planned — not implemented (D-4, owner decision 2026-10-19):** each skill assessment in SkillMatrixResponse
-(API-SKL-001/002, and the matrices returned by API-SKL-003) and in SkillDetailResponse (API-SKL-004) will carry a
-nullable `evidenceStatus` field with the enum `NONE | INSUFFICIENT | SUFFICIENT`. The Rule Engine calculates it under
-the versioned Skill Matrix policy defined in `02_Rule_Engine.md` §16.6; the server stores and returns it, and the
-browser displays it without recalculation. The field is `null` or absent for matrices generated under earlier policy
-versions, which are not recomputed; clients treat that as unknown and show no special indication. The current OpenAPI
-contract does not include this field.
+**Implemented in the backend (D-4, owner decision 2026-10-19; implemented 2026-10-21; UI display pending):** each
+skill assessment in SkillMatrixResponse (API-SKL-001/002, and the matrices returned by API-SKL-003) and in
+SkillDetailResponse (API-SKL-004) carries a nullable `evidenceStatus` field with the enum
+`NONE | INSUFFICIENT | SUFFICIENT`. The Rule Engine calculates it under the versioned Skill Matrix policy
+`skill-matrix-v3` defined in `02_Rule_Engine.md` §16.6 (migration V30); the server stores and returns it, and the
+browser displays it without recalculation. The field is always present and is `null` for matrices generated under
+earlier policy versions (`skill-matrix-v1`, `skill-matrix-v2`), which are not recomputed; clients treat that as
+unknown and show no special indication. The OpenAPI contract declares the field as required and nullable.
 | CreateAnalysisRequest | repositoryId, snapshotId, analysisScope, targetCareerId | Request analysis from supported references. | User private | Analysis |
 | AnalysisJobResponse | jobId, status, progress, resultResourceUrl | Analysis job status. | User private | AnalysisJob |
 | AnalysisResultResponse | analysisId, snapshotId, evaluationId, skillMatrixId, completedAt | Completed analysis. | User private | Analysis |

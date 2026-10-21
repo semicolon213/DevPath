@@ -210,8 +210,10 @@ htmlUrl, discoveredAt, lastSyncedAt?, currentSnapshotId?}`.
 | API-SKL-005 | `GET /api/v1/skills/{skillId}/evidence` | 현재 평가의 증거 | — | `200` `{skillId, skillAssessmentId, skillMatrixId, evidence[] {evidenceId, snapshotId, evidenceType, sourceReference, observedFactSummary, confidence}}` | 404 |
 
 `SkillAssessment` = `{assessmentId, skillId, skillKey, skillName, category, score, level: NONE|BEGINNER|DEVELOPING|COMPETENT|STRONG,
-confidence, strength, weakness, growthTrend: UNAVAILABLE|IMPROVING|STABLE|DECLINING, aggregateRuleResultReference,
-evidenceIds[], repositoryIds[], recommendationInputFacts[], ruleSetVersion}`.
+confidence, evidenceStatus: NONE|INSUFFICIENT|SUFFICIENT|null, strength, weakness,
+growthTrend: UNAVAILABLE|IMPROVING|STABLE|DECLINING, aggregateRuleResultReference,
+evidenceIds[], repositoryIds[], recommendationInputFacts[], ruleSetVersion}`. `evidenceStatus`(D-4)는 Rule Engine이
+`skill-matrix-v3`에서 계산하며, 이전 policy 버전으로 생성된 Matrix에서는 `null`이다.
 
 ### 2.6 직무, 회사, 준비도
 

@@ -243,11 +243,11 @@ Skill Matrix는 측정 가능한 증거를 구조화된 스킬 정보로 변환�
 | Related Repository IDs | 스킬에 기여한 저장소 |
 | Growth Trend | 결정적 성장 추세 |
 | Weakness/Strength | threshold 기반 약점/강점 flag |
-| Evidence Status | 계획됨(D-4, 미구현): 결정적 근거 충분성 상태(`NONE`, `INSUFFICIENT`, `SUFFICIENT`) |
+| Evidence Status | 백엔드 구현됨(D-4, 2026-10-21, 화면 표시 대기): `skill-matrix-v3`에서 계산하는 결정적 근거 충분성 상태(`NONE`, `INSUFFICIENT`, `SUFFICIENT`) |
 
-### 16.6 근거 상태 (계획됨 — D-4)
+### 16.6 근거 상태 (D-4)
 
-소유자 결정 D-4(2026-10-19)는 기술별 근거 상태를 정의한다. **명세일 뿐이며 아직 구현되지 않았다.** Rule Engine이 Skill Matrix 생성 중 각 `SkillAssessment`의 일부로 상태를 계산한다. AI, 프롬프트 조립, 브라우저는 이 상태를 계산·추론·변경하지 않는다.
+소유자 결정 D-4(2026-10-19)는 기술별 근거 상태를 정의한다. **백엔드에서 `skill-matrix-v3` policy와 Flyway migration V30으로 구현되었다(2026-10-21). 화면 표시(UI-10)는 남아 있다.** Rule Engine이 Skill Matrix 생성 중 각 `SkillAssessment`의 일부로 상태를 계산한다. AI, 프롬프트 조립, 브라우저는 이 상태를 계산·추론·변경하지 않는다.
 
 입력은 평가에 저장된 값이다.
 
@@ -262,9 +262,9 @@ Skill Matrix는 측정 가능한 증거를 구조화된 스킬 정보로 변환�
 
 조건은 순서대로 판정한다. 근거 수가 0이면 신뢰도와 관계없이 `NONE`, 그렇지 않고 근거 수가 1이거나 신뢰도가 기준 미만이면 `INSUFFICIENT`, 나머지는 `SUFFICIENT`이다.
 
-최소 근거 수(`2`)와 신뢰도 기준(`60`)은 클라이언트 상수가 아니라 버전 관리되는 Skill Matrix policy의 매개변수이다. 따라서 상태 도입에는 새 Skill Matrix policy 버전(`skill-matrix-vN` 규칙에 따른 계획 버전 `skill-matrix-v3`)이 필요하고, 이후 기준을 바꿀 때도 새 policy 버전이 필요하다. 같은 스냅샷, RuleSetVersion, policy 버전은 항상 같은 상태를 만들며, 상태는 계산에 사용한 Evidence ID와 비교한 신뢰도 값으로 추적할 수 있다.
+최소 근거 수(`2`)와 신뢰도 기준(`60`)은 클라이언트 상수가 아니라 버전 관리되는 Skill Matrix policy의 매개변수이다. 따라서 상태 도입에 새 Skill Matrix policy 버전(`skill-matrix-vN` 규칙에 따른 `skill-matrix-v3`)이 필요했고, 이후 기준을 바꿀 때도 새 policy 버전이 필요하다. Migration V30은 Skill Matrix policy에 nullable 매개변수 두 개를, 기술 평가에 nullable 근거 상태를 추가하고, `skill-matrix-v2`와 같은 RuleSetVersion(`baseline-v2`), 같은 수준·강점/약점 기준, 같은 기술 매핑에 최소 근거 수 `2`와 신뢰도 기준 `60`을 둔 `skill-matrix-v3`을 추가한다. `skill-matrix-v3`은 `skill-matrix-v2`를 대체하며, RuleSetVersion마다 활성 policy는 최대 하나이다. 같은 스냅샷, RuleSetVersion, policy 버전은 항상 같은 상태를 만들며, 상태는 계산에 사용한 Evidence ID와 비교한 신뢰도 값으로 추적할 수 있다.
 
-이전 policy 버전(`skill-matrix-v1`, `skill-matrix-v2`)으로 만든 Matrix는 불변이며 다시 계산하지 않는다. 그 평가에는 근거 상태가 없고, 소비자는 값이 없으면 알 수 없음으로 보고 별도 표시를 하지 않는다. 새 policy 버전으로 생성된 Matrix만 상태를 가진다.
+이전 policy 버전(`skill-matrix-v1`, `skill-matrix-v2`)으로 만든 Matrix는 불변이며 다시 계산하지 않는다. 그 평가에는 근거 상태가 없고(`null`), 소비자는 값이 없으면 알 수 없음으로 보고 별도 표시를 하지 않는다. `skill-matrix-v3` 이후 policy 버전으로 생성된 Matrix만 상태를 가진다.
 
 ## 17. 출력 모델
 

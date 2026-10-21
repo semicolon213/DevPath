@@ -208,8 +208,10 @@ htmlUrl, discoveredAt, lastSyncedAt?, currentSnapshotId?}`.
 | API-SKL-005 | `GET /api/v1/skills/{skillId}/evidence` | Evidence for current assessment | — | `200` `{skillId, skillAssessmentId, skillMatrixId, evidence[] {evidenceId, snapshotId, evidenceType, sourceReference, observedFactSummary, confidence}}` | 404 |
 
 `SkillAssessment` = `{assessmentId, skillId, skillKey, skillName, category, score, level: NONE|BEGINNER|DEVELOPING|COMPETENT|STRONG,
-confidence, strength, weakness, growthTrend: UNAVAILABLE|IMPROVING|STABLE|DECLINING, aggregateRuleResultReference,
-evidenceIds[], repositoryIds[], recommendationInputFacts[], ruleSetVersion}`.
+confidence, evidenceStatus: NONE|INSUFFICIENT|SUFFICIENT|null, strength, weakness,
+growthTrend: UNAVAILABLE|IMPROVING|STABLE|DECLINING, aggregateRuleResultReference,
+evidenceIds[], repositoryIds[], recommendationInputFacts[], ruleSetVersion}`. `evidenceStatus` (D-4) is calculated by the
+Rule Engine under `skill-matrix-v3` and is `null` for matrices generated under earlier policy versions.
 
 ### 2.6 Careers, companies, and readiness
 

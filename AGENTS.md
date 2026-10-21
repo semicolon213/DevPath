@@ -61,7 +61,7 @@ DevPath는 AI 보조 개발자 커리어 인텔리전스 플랫폼이다. GitHub
 - 검증된 AI 생성 workflow: `SKILL_ANALYSIS_EXPLANATION`, `REPOSITORY_REVIEW`, `REPOSITORY_SUMMARY`, `CAREER_COACHING`, `LEARNING_RECOMMENDATION`. 불변 PromptContext, 버전 template, Ollama generation adapter, 취소, 최대 2회 재시도, validator 통과 후 `VALIDATED` GeneratedArtifact 저장(M42~M43 구현 근거. live 평가와 owner 승인은 미완료)
 - ADR-029 object storage port와 local/test 전용 filesystem adapter
 - React Query 기반 세션 bootstrap 및 repository, analysis, skill, readiness, roadmap, knowledge 화면과 AI 생성 패널
-- PostgreSQL, Spring Data JPA adapter, Flyway V1~V29 migration
+- PostgreSQL, Spring Data JPA adapter, Flyway V1~V30 migration
 - ADR-027 PostgreSQL durable job·transactional outbox 기반 repository sync, analysis, knowledge ingestion, AI generation worker
 - 도메인, 애플리케이션, 영속성, 보안, 아키텍처 및 프론트엔드 테스트
 
