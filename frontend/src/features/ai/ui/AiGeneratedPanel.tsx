@@ -1,5 +1,6 @@
 import { useId, type ReactNode } from "react";
 import type { GenerationJob } from "../api/generationApi";
+import { mutationErrorMessage } from "../../../shared/api/apiClient";
 
 type Messages = {
   queued: string;
@@ -19,7 +20,7 @@ type Props = {
   generatedAt?: string;
   validationStatus?: "PENDING" | "PASSED" | "REJECTED";
   requestPending: boolean;
-  requestError: boolean;
+  requestError: unknown;
   jobError: boolean;
   artifactPending: boolean;
   artifactError: boolean;
@@ -61,7 +62,7 @@ export function AiGeneratedPanel({
       <div><dt>검증 상태</dt><dd>{validationLabel(status)}</dd></div>
     </dl> : !jobError && !artifactError ? <p className="ai-generated-panel__metadata">{generationStateLabel(job?.status)}</p> : null}
 
-    {requestError && <Failure message={messages.failed} retry={onRequest} />}
+    {Boolean(requestError) && <Failure message={mutationErrorMessage(requestError, messages.failed)} retry={onRequest} />}
     {job && (job.status === "QUEUED" || job.status === "RUNNING") && <div className="state-panel" role="status">
       <p>{job.status === "QUEUED" ? messages.queued : messages.running}</p>
       <button type="button" disabled={cancelPending} onClick={onCancel}>생성 취소</button>

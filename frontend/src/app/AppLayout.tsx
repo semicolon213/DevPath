@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useLogout } from "../features/session/model/useSession";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
@@ -16,7 +16,7 @@ export const appNavigation = [
   ["설정", "/settings"]
 ] as const;
 
-export function AppLayout() {
+export function AppLayout({ children }: { children?: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [confirmingLogout, setConfirmingLogout] = useState(false);
@@ -71,7 +71,7 @@ export function AppLayout() {
       <button className="button-secondary app-logout" type="button" disabled={logout.isPending} onClick={requestLogout}>{logout.isPending ? "로그아웃 중…" : "로그아웃"}</button>
     </header>
     {logout.isError && !confirmingLogout ? <p className="app-logout-error" role="alert">로그아웃에 실패했습니다. 다시 시도해 주세요.</p> : null}
-    <main ref={main} className="shell workspace" tabIndex={-1}><Outlet /></main>
+    <main ref={main} className="shell workspace" tabIndex={-1}>{children ?? <Outlet />}</main>
     <ConfirmDialog open={confirmingLogout} title="저장하지 않은 변경사항이 있습니다" description="로그아웃하면 프로필 변경사항이 저장되지 않습니다." confirmLabel="변경사항 버리고 로그아웃" pending={logout.isPending} error={logout.isError ? "로그아웃에 실패했습니다. 다시 시도해 주세요." : undefined} returnFocusFallback={main} onCancel={() => setConfirmingLogout(false)} onConfirm={performLogout} />
   </div></UnsavedChangesContext.Provider>;
 }

@@ -9,7 +9,7 @@ export function RepositoryReviewPanel({ analysisId }: { analysisId: string }) {
     description="AI가 공식 점수를 바꾸지 않고, 이 분석에 연결된 공식 분석 결과(Rule Engine)와 근거만 영역별로 설명합니다."
     actionLabel="리뷰 생성" messages={{ queued: "리뷰 생성을 기다리고 있습니다.", running: "근거를 바탕으로 리뷰를 생성하고 있습니다.", canceled: "리뷰 생성을 취소했습니다.", failed: "리뷰를 생성하지 못했습니다.", rejected: "생성된 리뷰가 근거·안전성 검증을 통과하지 못했습니다.", loading: "검증된 리뷰를 불러오는 중입니다." }}
     job={generation.job.data} generatedAt={artifact?.provenance.generatedAt} validationStatus={artifact?.validation.status}
-    requestPending={generation.request.isPending} requestError={generation.request.isError} jobError={generation.job.isError}
+    requestPending={generation.request.isPending} requestError={generation.request.error} jobError={generation.job.isError}
     artifactPending={generation.artifact.isPending} artifactError={generation.artifact.isError} cancelPending={generation.cancel.isPending}
     onRequest={() => generation.request.mutate()} onReset={() => generation.request.reset()} onCancel={() => generation.cancel.mutate()}
     onRefetchJob={() => { void generation.job.refetch(); }} onRefetchArtifact={() => { void generation.artifact.refetch(); }}>

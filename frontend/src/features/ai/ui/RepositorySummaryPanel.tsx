@@ -9,7 +9,7 @@ export function RepositorySummaryPanel({ analysisId }: { analysisId: string }) {
   return <AiGeneratedPanel title="저장소 요약" description="제공된 분석 근거와 기술 목록만 사용하며 공식 점수를 계산하거나 변경하지 않습니다."
     actionLabel="요약 생성" messages={{ queued: "요약 생성을 기다리고 있습니다.", running: "요약을 생성하고 있습니다.", canceled: "요약 생성을 취소했습니다.", failed: "요약을 생성하지 못했습니다.", rejected: "생성된 요약이 근거 검증을 통과하지 못했습니다.", loading: "검증된 요약을 불러오는 중입니다." }}
     job={generation.job.data} generatedAt={artifact?.provenance.generatedAt} validationStatus={artifact?.validation.status}
-    requestPending={generation.request.isPending} requestError={generation.request.isError} jobError={generation.job.isError}
+    requestPending={generation.request.isPending} requestError={generation.request.error} jobError={generation.job.isError}
     artifactPending={generation.artifact.isPending} artifactError={generation.artifact.isError} cancelPending={generation.cancel.isPending}
     onRequest={() => generation.request.mutate()} onReset={() => generation.request.reset()} onCancel={() => generation.cancel.mutate()}
     onRefetchJob={() => { void generation.job.refetch(); }} onRefetchArtifact={() => { void generation.artifact.refetch(); }}>

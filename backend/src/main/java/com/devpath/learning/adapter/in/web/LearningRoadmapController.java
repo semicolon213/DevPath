@@ -7,6 +7,7 @@ import com.devpath.shared.api.ApiResponse;
 import com.devpath.shared.api.RequestIds;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.Pattern;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,6 @@ public class LearningRoadmapController {
     @GetMapping("/active") ApiResponse<LearningRoadmapView> active(Authentication authentication,HttpServletRequest request){return ApiResponse.of(service.getActiveRoadmap(userId(authentication)),RequestIds.resolve(request));}
     @GetMapping("/{roadmapId}") ApiResponse<LearningRoadmapView> get(Authentication authentication,@PathVariable UUID roadmapId,HttpServletRequest request){return ApiResponse.of(service.getRoadmap(userId(authentication),roadmapId),RequestIds.resolve(request));}
     @GetMapping ApiResponse<LearningRoadmapListView> list(Authentication authentication,HttpServletRequest request){return ApiResponse.of(service.listRoadmaps(userId(authentication)),RequestIds.resolve(request));}
-    @PostMapping("/{roadmapId}/archive") ApiResponse<LearningRoadmapView> archive(Authentication authentication,@PathVariable UUID roadmapId,@RequestHeader("Idempotency-Key") @Size(min=1,max=128) String idempotencyKey,HttpServletRequest request){return ApiResponse.of(service.archiveRoadmap(userId(authentication),roadmapId),RequestIds.resolve(request));}
+    @PostMapping("/{roadmapId}/archive") ApiResponse<LearningRoadmapView> archive(Authentication authentication,@PathVariable UUID roadmapId,@RequestHeader("Idempotency-Key") @Size(min=1,max=128) @Pattern(regexp="^[A-Za-z0-9._:-]+$") String idempotencyKey,HttpServletRequest request){return ApiResponse.of(service.archiveRoadmap(userId(authentication),roadmapId),RequestIds.resolve(request));}
     private UUID userId(Authentication authentication){return UUID.fromString(authentication.getName());}
 }

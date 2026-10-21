@@ -67,7 +67,7 @@ public class GitHubIntegrationController {
     void callback(
         Authentication authentication,
         HttpSession session,
-        @RequestParam String state,
+        @RequestParam(required = false) String state,
         @RequestParam(required = false) String code,
         @RequestParam(required = false) String error,
         HttpServletResponse response
@@ -110,7 +110,7 @@ public class GitHubIntegrationController {
         session.removeAttribute(STATE);
         session.removeAttribute(USER);
         session.removeAttribute(EXPIRES);
-        boolean validState = expected instanceof String value
+        boolean validState = received != null && expected instanceof String value
             && MessageDigest.isEqual(value.getBytes(java.nio.charset.StandardCharsets.UTF_8), received.getBytes(java.nio.charset.StandardCharsets.UTF_8));
         boolean validUser = expectedUser instanceof String value && value.equals(authentication.getName());
         boolean validExpiry = expires instanceof Long value && value >= clock.instant().toEpochMilli();

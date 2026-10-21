@@ -33,12 +33,13 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 }
 
-export function SafeErrorPage() {
-  return (
-    <main className="shell">
+export function SafeErrorPage({ embedded = false }: { embedded?: boolean }) {
+  const content = (
+    <>
       <h1>DevPath</h1>
       <p role="alert">화면을 표시하지 못했습니다. 페이지를 새로고침해 주세요.</p>
       <button type="button" onClick={() => window.location.reload()}>페이지 새로고침</button>
-    </main>
+    </>
   );
+  return embedded ? <div className="state-panel">{content}</div> : <main className="shell">{content}</main>;
 }

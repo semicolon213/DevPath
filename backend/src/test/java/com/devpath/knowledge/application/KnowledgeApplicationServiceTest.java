@@ -1,12 +1,14 @@
 package com.devpath.knowledge.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.devpath.integration.application.NotionConnectionPort;
 import com.devpath.knowledge.domain.KnowledgeIngestionJob;
+import com.devpath.shared.application.DuplicateRequestException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -39,5 +41,17 @@ class KnowledgeApplicationServiceTest {
         assertThat(replay.jobId()).isEqualTo(accepted.id());
         verify(notion, never()).verifyPageAccess(userId, connectionId, "page-1");
         verify(persistence, never()).saveJob(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void rejectsReuseOfAnIdempotencyKeyForAnotherImport() {
+        UUID userId = UUID.randomUUID(), connectionId = UUID.randomUUID();
+        KnowledgeIngestionJob accepted = KnowledgeIngestionJob.queue(
+            userId, connectionId, "page-1", UUID.randomUUID(), "stable-key", NOW);
+        when(persistence.findJobByOwnerAndKey(userId, "stable-key")).thenReturn(Optional.of(accepted));
+        var service = new KnowledgeApplicationService(persistence, notion, audit, Clock.fixed(NOW, ZoneOffset.UTC));
+
+        assertThatThrownBy(() -> service.importNotion(userId, connectionId, "page-2", "stable-key"))
+            .isInstanceOf(DuplicateRequestException.class);
     }
 }

@@ -96,6 +96,13 @@ class GitHubIntegrationSecurityTest {
     }
 
     @Test
+    void callbackWithoutStateRedirectsToTheSafeFailureResult() throws Exception {
+        mockMvc.perform(get("/api/v1/integrations/github/callback"))
+            .andExpect(status().isFound())
+            .andExpect(header().string("Location", "http://localhost:5173/settings/integrations?githubConnection=failed"));
+    }
+
+    @Test
     void repositoryListingRequiresTheAuthenticatedOwner() throws Exception {
         when(service.listRepositories(USER_ID)).thenReturn(new GitHubRepositoryListView(List.of()));
         mockMvc.perform(get("/api/v1/integrations/github/repositories"))

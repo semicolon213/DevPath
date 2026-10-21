@@ -14,7 +14,7 @@ public interface GenerationPersistencePort {
     GenerationJob saveJob(GenerationJob job);
     Optional<GenerationJob> findJob(UUID userId, UUID jobId);
     Optional<GenerationJob> findJobForUpdate(UUID userId, UUID jobId);
-    UUID findSourceResourceId(UUID promptContextId);
+    UUID findRequestedSourceResourceId(UUID promptContextId);
     Optional<GenerationWorkItem> claim(Instant now, int maxAttempts);
     UUID saveSubmittedExecution(GenerationWorkItem item, String provider, String model, Instant submittedAt);
     void completeExecution(UUID executionId, long latencyMs, Integer promptTokens, Integer completionTokens, Instant now);

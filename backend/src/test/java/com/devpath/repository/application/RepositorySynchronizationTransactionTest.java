@@ -1,6 +1,7 @@
 package com.devpath.repository.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,6 +13,7 @@ import com.devpath.repository.domain.RepositoryCommit;
 import com.devpath.repository.domain.RepositorySnapshot;
 import com.devpath.repository.domain.RepositorySyncJob;
 import com.devpath.repository.domain.RepositorySyncJobStatus;
+import com.devpath.shared.application.DuplicateRequestException;
 import java.time.Instant;
 import java.util.List;
 import java.util.ArrayList;
@@ -21,6 +23,22 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 class RepositorySynchronizationTransactionTest {
+    @Test
+    void rejectsReuseOfAnIdempotencyKeyForAnotherRepository() {
+        UUID userId = UUID.randomUUID(), firstRepository = UUID.randomUUID();
+        Instant now = Instant.parse("2026-08-27T00:00:00Z");
+        var repositories = mock(RepositoryPersistencePort.class);
+        var synchronization = mock(RepositorySynchronizationPersistencePort.class);
+        var audit = mock(RepositoryAuditPort.class);
+        when(synchronization.findByOwnerAndIdempotencyKey(userId, "same-key")).thenReturn(Optional.of(
+            RepositorySyncJob.queue(userId, firstRepository, "same-key", now)
+        ));
+        var transaction = new RepositorySynchronizationTransaction(repositories, synchronization, audit);
+
+        assertThatThrownBy(() -> transaction.request(userId, UUID.randomUUID(), "same-key", now))
+            .isInstanceOf(DuplicateRequestException.class);
+    }
+
     @Test
     void acceptsOneHundredDistinctJobsIntoTheDurableQueue() {
         UUID userId = UUID.randomUUID();

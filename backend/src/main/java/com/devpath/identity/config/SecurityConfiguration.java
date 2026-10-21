@@ -98,7 +98,7 @@ public class SecurityConfiguration {
                         response,
                         objectMapper,
                         ApiErrorResponse.of(
-                            "ACCESS_DENIED",
+                            "AUTHORIZATION_DENIED",
                             "The request is not permitted.",
                             RequestIds.resolve(request)
                         )

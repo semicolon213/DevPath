@@ -12,7 +12,7 @@ import {
   useRestoreRepository
 } from "../features/repositories/model/useRepositories";
 import { repositoriesKey } from "../features/repositories/model/useRepositories";
-import { ApiError, rateLimitMessage } from "../shared/api/apiClient";
+import { ApiError, mutationErrorMessage, rateLimitMessage } from "../shared/api/apiClient";
 import { categoryLabel, repositoryLifecycleLabel, repositorySyncStatusLabel } from "../shared/ui/labels";
 import { analysisHistoryKey, useAnalysisJob, useRequestAnalysis } from "../features/analysis/model/useAnalysis";
 import { currentSkillMatrixKey } from "../features/skills/model/useSkillMatrix";
@@ -180,7 +180,7 @@ export function RepositoryDetailPage() {
             const next = new URLSearchParams(current); next.delete("analysisJobId"); return next;
           }, { replace: true })}>작업 표시 닫기</button></section>
       ) : requestAnalysis.isError ? (
-        <p role="alert" className="form-error">분석 요청을 만들지 못했습니다. 동기화 상태를 확인한 뒤 다시 시도해 주세요.</p>
+        <p role="alert" className="form-error">{mutationErrorMessage(requestAnalysis.error, "분석 요청을 만들지 못했습니다. 동기화 상태를 확인한 뒤 다시 시도해 주세요.")}</p>
       ) : null}
 
       <section className="detail-grid" aria-label="저장소 상세 정보">
@@ -457,6 +457,7 @@ function syncRequestError(error: Error) {
   const limited = rateLimitMessage(error);
   if (limited) return limited;
   if (!(error instanceof ApiError)) return "브라우저에서 동기화 요청을 만들지 못했습니다. 페이지를 새로고침해 주세요.";
+  if (error.status === 409 && error.code === "DUPLICATE_REQUEST") return mutationErrorMessage(error, "");
   if (error.status === 401) return "로그인 세션이 만료되었습니다. 다시 로그인해 주세요.";
   if (error.status === 403) return "보안 토큰이 만료되었습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.";
   if (error.status === 404) return "현재 계정에서 이 저장소를 찾을 수 없습니다.";

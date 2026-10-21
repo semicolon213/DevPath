@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { apiRequest } from "./apiClient";
+import { ApiError, apiRequest, mutationErrorMessage } from "./apiClient";
 
 describe("apiRequest correlation", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -52,4 +52,9 @@ describe("apiRequest correlation", () => {
       rateLimitReset: "1786406400"
     });
   });
+});
+
+it("maps duplicate mutation requests to safe Korean guidance", () => {
+  expect(mutationErrorMessage(new ApiError(409, "internal", null, null, "DUPLICATE_REQUEST"), "fallback"))
+    .toBe("같은 요청 키가 다른 작업에 이미 사용되었습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요.");
 });

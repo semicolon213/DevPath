@@ -6,11 +6,14 @@ import com.devpath.shared.api.ApiErrorResponse;
 import com.devpath.shared.api.RequestIds;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Order(Ordered.LOWEST_PRECEDENCE - 1)
 @RestControllerAdvice(assignableTypes = {CareerCatalogController.class, CareerReadinessController.class})
 public class CareerApiExceptionHandler {
     @ExceptionHandler(CareerNotFoundException.class)

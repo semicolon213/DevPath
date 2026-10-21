@@ -35,12 +35,12 @@ function RouteFrame() {
   return <><RouteAccessibility /><Outlet /></>;
 }
 
-export function RouteErrorBoundary() {
+export function RouteErrorBoundary({ embedded = false }: { embedded?: boolean }) {
   const error = useRouteError();
   useEffect(() => {
     console.error("DevPath route error boundary captured an error.", error);
   }, [error]);
-  return <SafeErrorPage />;
+  return <SafeErrorPage embedded={embedded} />;
 }
 
 export const appRoutes: RouteObject[] = [{
@@ -50,6 +50,7 @@ export const appRoutes: RouteObject[] = [{
     { index: true, element: <HomePage /> },
     {
       element: <AppLayout />,
+      errorElement: <AppLayout><RouteErrorBoundary embedded /></AppLayout>,
       children: [
         { path: "onboarding", element: <OnboardingPage /> },
         { path: "settings", element: <SettingsPage /> },

@@ -92,3 +92,9 @@ export function requestContextHeaders() {
     "X-Correlation-Id": browserCorrelationId
   };
 }
+
+export function mutationErrorMessage(error: unknown, fallback: string) {
+  return error instanceof ApiError && error.status === 409 && error.code === "DUPLICATE_REQUEST"
+    ? "같은 요청 키가 다른 작업에 이미 사용되었습니다. 페이지를 새로고침한 뒤 다시 시도해 주세요."
+    : fallback;
+}

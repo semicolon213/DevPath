@@ -6,6 +6,7 @@ import com.devpath.integration.application.GitHubIntegrationUnavailableException
 import com.devpath.integration.application.GitHubRateLimitExceededException;
 import com.devpath.shared.api.ApiErrorResponse;
 import com.devpath.shared.api.RequestIds;
+import com.devpath.shared.application.DuplicateRequestException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
@@ -21,6 +22,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice(assignableTypes = {RepositoryController.class, RepositorySynchronizationController.class})
 public class RepositoryExceptionHandler {
+    @ExceptionHandler(DuplicateRequestException.class)
+    ResponseEntity<ApiErrorResponse> duplicate(RuntimeException exception, HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of(
+            "DUPLICATE_REQUEST", "The idempotency key was already used for another request.", RequestIds.resolve(request)
+        ));
+    }
     @ExceptionHandler(GitHubRateLimitExceededException.class)
     ResponseEntity<ApiErrorResponse> providerRateLimited(
         GitHubRateLimitExceededException exception,

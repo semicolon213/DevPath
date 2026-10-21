@@ -30,6 +30,9 @@ interface AnalysisJobJpaRepository extends JpaRepository<AnalysisJobJpaEntity, U
 
 interface AnalysisResultJpaRepository extends JpaRepository<AnalysisResultJpaEntity, UUID> {
     Optional<AnalysisResultJpaEntity> findByIdAndUserId(UUID id, UUID userId);
+    Optional<AnalysisResultJpaEntity> findFirstByEvaluationIdAndUserIdOrderByCompletedAtDescIdDesc(
+        UUID evaluationId, UUID userId
+    );
     Optional<AnalysisResultJpaEntity> findFirstByUserIdAndRepositoryIdOrderByCompletedAtDescIdDesc(
         UUID userId, UUID repositoryId
     );

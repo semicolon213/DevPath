@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.devpath.ai.application.AiGenerationApplicationService;
 import com.devpath.ai.application.GenerationJobView;
+import com.devpath.shared.application.DuplicateRequestException;
 import com.devpath.identity.adapter.in.security.AbsoluteSessionTimeoutFilter;
 import com.devpath.identity.adapter.in.security.DevPathOAuth2User;
 import com.devpath.identity.adapter.in.security.GitHubOAuth2UserService;
@@ -52,6 +53,8 @@ class AiGenerationSecurityTest {
     void generationCommandsRequireSessionAndCsrf() throws Exception {
         when(service.request(USER, "SKILL_ANALYSIS_EXPLANATION", List.of(MATRIX), "SKILL_EXPLANATION", "key"))
             .thenReturn(job());
+        when(service.request(USER, "SKILL_ANALYSIS_EXPLANATION", List.of(MATRIX), "SKILL_EXPLANATION", "duplicate"))
+            .thenThrow(new DuplicateRequestException());
         when(service.getJob(USER, JOB)).thenReturn(job());
         String body = "{\"taskType\":\"SKILL_ANALYSIS_EXPLANATION\",\"sourceResourceRefs\":[\"" + MATRIX
             + "\"],\"outputType\":\"SKILL_EXPLANATION\"}";
@@ -62,6 +65,12 @@ class AiGenerationSecurityTest {
         mockMvc.perform(post("/api/v1/generation-requests").with(oauth2Login().oauth2User(principal())).with(csrf())
             .contentType(MediaType.APPLICATION_JSON).content(body).header("Idempotency-Key", "key"))
             .andExpect(status().isAccepted()).andExpect(jsonPath("$.data.jobId").value(JOB.toString()));
+        mockMvc.perform(post("/api/v1/generation-requests").with(oauth2Login().oauth2User(principal())).with(csrf())
+            .contentType(MediaType.APPLICATION_JSON).content(body).header("Idempotency-Key", "invalid key"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"));
+        mockMvc.perform(post("/api/v1/generation-requests").with(oauth2Login().oauth2User(principal())).with(csrf())
+            .contentType(MediaType.APPLICATION_JSON).content(body).header("Idempotency-Key", "duplicate"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("DUPLICATE_REQUEST"));
         mockMvc.perform(get("/api/v1/generation-jobs/{id}", JOB).with(oauth2Login().oauth2User(principal())))
             .andExpect(status().isOk());
         verify(service).getJob(USER, JOB);

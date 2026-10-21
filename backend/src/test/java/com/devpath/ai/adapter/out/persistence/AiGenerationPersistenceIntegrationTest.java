@@ -4,8 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.devpath.ai.application.StoredPromptContext;
+import com.devpath.ai.application.AiGenerationApplicationService;
+import com.devpath.ai.config.AiGenerationProperties;
 import com.devpath.ai.domain.GenerationJob;
+import com.devpath.shared.application.DuplicateRequestException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -43,6 +50,29 @@ class AiGenerationPersistenceIntegrationTest {
     @Autowired JpaGenerationPersistenceAdapter persistence;
     @Autowired JdbcTemplate jdbc;
     @Autowired PlatformTransactionManager transactionManager;
+
+    @Test
+    void skillExplanationReplaysByRequestedMatrixDespiteAnalysisProvenance() {
+        Instant now = Instant.parse("2026-10-21T00:00:00Z");
+        UUID owner = UUID.randomUUID(), matrix = UUID.randomUUID(), analysis = UUID.randomUUID();
+        UUID context = UUID.randomUUID(), jobId = UUID.randomUUID();
+        insertUser(owner, now);
+        insertMatrix(matrix, owner, now);
+        insertAnalysis(analysis, matrix, owner, now);
+        var template = persistence.loadActiveTemplate(AiGenerationApplicationService.SKILL_EXPLANATION_TASK);
+        persistence.saveContext(new StoredPromptContext(context, owner, template.id(), matrix, analysis, null, null,
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, 4096, "e".repeat(64), "{}", "safe prompt", now));
+        persistence.saveJob(new GenerationJob(jobId, owner, context, "replay-key",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK,
+            com.devpath.ai.domain.GenerationJobStatus.QUEUED, "PENDING", 0, null, now, null, null, now));
+        var service = replayOnlyService(now);
+
+        assertThat(service.request(owner, AiGenerationApplicationService.SKILL_EXPLANATION_TASK, List.of(matrix),
+            AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT, "replay-key").jobId()).isEqualTo(jobId);
+        assertThatThrownBy(() -> service.request(owner, AiGenerationApplicationService.SKILL_EXPLANATION_TASK,
+            List.of(UUID.randomUUID()), AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT, "replay-key"))
+            .isInstanceOf(DuplicateRequestException.class);
+    }
 
     @Test
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -224,6 +254,13 @@ class AiGenerationPersistenceIntegrationTest {
         } finally {
             jdbc.execute("set session_replication_role = origin");
         }
+    }
+
+    private AiGenerationApplicationService replayOnlyService(Instant now) {
+        return new AiGenerationApplicationService(persistence,
+            null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null,
+            null, new AiGenerationProperties("http://localhost", "qwen-test", Duration.ofSeconds(1),
+                Duration.ofSeconds(2), 2), null, null, new ObjectMapper(), Clock.fixed(now, java.time.ZoneOffset.UTC));
     }
 
     private static void await(CountDownLatch latch) {

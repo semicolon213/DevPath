@@ -9,6 +9,7 @@ import com.devpath.analysis.domain.CompletedAnalysis;
 import com.devpath.repository.domain.RepositoryBranch;
 import com.devpath.repository.domain.RepositoryCommit;
 import com.devpath.repository.domain.RepositorySnapshot;
+import com.devpath.shared.application.DuplicateRequestException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -92,7 +93,7 @@ class AnalysisApplicationServiceTest {
         service.request(userId, repositoryId, null, null, "same-key");
 
         assertThatThrownBy(() -> service.request(userId, UUID.randomUUID(), null, null, "same-key"))
-            .isInstanceOf(IllegalArgumentException.class);
+            .isInstanceOf(DuplicateRequestException.class);
     }
 
     private static RepositorySnapshot snapshot(UUID userId, UUID repositoryId) {
@@ -138,6 +139,10 @@ class AnalysisApplicationServiceTest {
         public CompletedAnalysis saveResult(CompletedAnalysis analysis) { results.add(analysis); return analysis; }
         public Optional<CompletedAnalysis> findResultByIdAndOwner(UUID id, UUID userId) {
             return results.stream().filter(value -> value.id().equals(id) && value.userId().equals(userId)).findFirst();
+        }
+        public Optional<CompletedAnalysis> findResultByEvaluationAndOwner(UUID evaluationId, UUID userId) {
+            return results.stream().filter(value -> value.evaluationId().equals(evaluationId)
+                && value.userId().equals(userId)).findFirst();
         }
         public boolean isCurrentForRepository(UUID userId, UUID repositoryId, UUID analysisId) {
             return results.stream().filter(value -> value.userId().equals(userId)

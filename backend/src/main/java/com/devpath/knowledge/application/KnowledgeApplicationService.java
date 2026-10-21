@@ -1,5 +1,7 @@
 package com.devpath.knowledge.application;
 
+import com.devpath.shared.application.DuplicateRequestException;
+
 import com.devpath.integration.application.NotionConnectionPort;
 import com.devpath.knowledge.domain.KnowledgeDocument;
 import com.devpath.knowledge.domain.KnowledgeIngestionJob;
@@ -31,7 +33,7 @@ public class KnowledgeApplicationService {
         if (repeated.isPresent()) {
             KnowledgeIngestionJob job = repeated.get();
             if (!job.connectionId().equals(connectionId) || !job.sourceObjectId().equals(providerPageId)) {
-                throw new IllegalArgumentException("Idempotency key belongs to another knowledge import");
+                throw new DuplicateRequestException();
             }
             return KnowledgeIngestionJobView.from(job);
         }

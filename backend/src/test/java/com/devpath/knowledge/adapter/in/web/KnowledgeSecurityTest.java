@@ -26,6 +26,7 @@ import com.devpath.knowledge.application.KnowledgeIngestionJobView;
 import com.devpath.knowledge.application.KnowledgeSearchApplicationService;
 import com.devpath.knowledge.application.KnowledgeSearchFilters;
 import com.devpath.knowledge.application.KnowledgeSearchView;
+import com.devpath.shared.application.DuplicateRequestException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -56,6 +57,7 @@ class KnowledgeSecurityTest {
 
     @Test void commandsRequireSessionAndCsrfAndReadsRemainOwnerScoped() throws Exception {
         when(service.importNotion(USER,CONNECTION,"page-1","key")).thenReturn(job());
+        when(service.importNotion(USER,CONNECTION,"page-1","duplicate")).thenThrow(new DuplicateRequestException());
         when(service.getJob(USER,JOB)).thenReturn(job());
         when(service.list(USER)).thenReturn(new KnowledgeDocumentListView(List.of(document())));
         when(service.get(USER,DOCUMENT)).thenReturn(document());
@@ -70,6 +72,8 @@ class KnowledgeSecurityTest {
         mockMvc.perform(post("/api/v1/knowledge-documents/imports/notion").with(oauth2Login().oauth2User(principal())).contentType(MediaType.APPLICATION_JSON).content(body).header("Idempotency-Key","key")).andExpect(status().isForbidden());
         mockMvc.perform(post("/api/v1/knowledge-documents/imports/notion").with(oauth2Login().oauth2User(principal())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body).header("Idempotency-Key","key"))
             .andExpect(status().isAccepted()).andExpect(jsonPath("$.data.jobType").value("KNOWLEDGE_INGESTION"));
+        mockMvc.perform(post("/api/v1/knowledge-documents/imports/notion").with(oauth2Login().oauth2User(principal())).with(csrf()).contentType(MediaType.APPLICATION_JSON).content(body).header("Idempotency-Key","duplicate"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("DUPLICATE_REQUEST"));
         mockMvc.perform(get("/api/v1/knowledge-ingestion-jobs/{id}",JOB).with(oauth2Login().oauth2User(principal())))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.jobId").value(JOB.toString()));
         mockMvc.perform(get("/api/v1/knowledge-documents/{id}",DOCUMENT).with(oauth2Login().oauth2User(principal()))).andExpect(status().isOk());

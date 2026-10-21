@@ -6,9 +6,12 @@ import com.devpath.integration.application.NotionConnectionNotFoundException;
 import com.devpath.integration.application.NotionIntegrationUnavailableException;
 import com.devpath.shared.api.ApiErrorResponse;
 import com.devpath.shared.api.RequestIds;
+import com.devpath.shared.application.DuplicateRequestException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -17,8 +20,14 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Order(Ordered.LOWEST_PRECEDENCE - 1)
 @RestControllerAdvice(assignableTypes=KnowledgeController.class)
 public class KnowledgeExceptionHandler {
+    @ExceptionHandler(DuplicateRequestException.class)
+    ResponseEntity<ApiErrorResponse> duplicate(RuntimeException exception,HttpServletRequest request) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiErrorResponse.of("DUPLICATE_REQUEST",
+            "The idempotency key was already used for another request.",RequestIds.resolve(request)));
+    }
     @ExceptionHandler({KnowledgeNotFoundException.class,NotionConnectionNotFoundException.class})
     ResponseEntity<ApiErrorResponse> notFound(RuntimeException exception,HttpServletRequest request) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiErrorResponse.of("RESOURCE_NOT_FOUND",

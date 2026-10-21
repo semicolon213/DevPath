@@ -5,6 +5,7 @@ import { useConnections, useNotionWorkspaces } from "../features/connections/mod
 import { useImportNotionKnowledge, useKnowledgeDocuments, useKnowledgeJob, useKnowledgeSearch, knowledgeDocumentsKey } from "../features/knowledge/model/useKnowledge";
 import type { KnowledgeIngestionJob } from "../features/knowledge/api/knowledgeApi";
 import { knowledgeFreshnessLabel, safeJobErrorMessage } from "../shared/ui/labels";
+import { mutationErrorMessage } from "../shared/api/apiClient";
 
 export function KnowledgePage() {
   const connections = useConnections();
@@ -60,7 +61,7 @@ export function KnowledgePage() {
       {workspaces.data ? <div className="knowledge-source-list">{workspaces.data.workspaces.flatMap(workspace => workspace.pages.filter(page => !page.inTrash && page.objectType === "PAGE").map(page =>
         <article key={page.providerPageId}><div><h3>{page.title}</h3><p>{workspace.workspaceName} · {new Date(page.lastEditedAt).toLocaleString("ko-KR")}</p></div>
           <button type="button" disabled={importer.isPending} onClick={() => startImport(workspace.connectionId, page.providerPageId)}>{importer.isPending && importer.variables?.providerPageId === page.providerPageId ? "가져오는 중…" : "지식으로 가져오기"}</button></article>))}</div> : null}
-      {importer.isError ? <p role="alert">가져오기 작업을 시작하지 못했습니다. 페이지 공유 권한을 다시 확인해 주세요.</p> : null}
+      {importer.isError ? <p role="alert">{mutationErrorMessage(importer.error, "가져오기 작업을 시작하지 못했습니다. 페이지 공유 권한을 다시 확인해 주세요.")}</p> : null}
     </section>
     <section className="knowledge-section" aria-labelledby="document-list-title"><h2 id="document-list-title">수집된 문서</h2>
       {documents.isPending ? <p role="status">지식 문서를 불러오는 중입니다.</p> : null}

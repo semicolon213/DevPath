@@ -18,6 +18,7 @@ public interface AnalysisPersistencePort {
     AnalysisJob saveJob(AnalysisJob job);
     CompletedAnalysis saveResult(CompletedAnalysis analysis);
     Optional<CompletedAnalysis> findResultByIdAndOwner(UUID analysisId, UUID userId);
+    Optional<CompletedAnalysis> findResultByEvaluationAndOwner(UUID evaluationId, UUID userId);
     boolean isCurrentForRepository(UUID userId, UUID repositoryId, UUID analysisId);
     List<AnalysisHistoryItemView> findHistoryByOwner(UUID userId, int page, int limit);
     List<AnalysisHistoryItemView> findHistoryByOwnerAndRepository(UUID userId, UUID repositoryId, int page, int limit);

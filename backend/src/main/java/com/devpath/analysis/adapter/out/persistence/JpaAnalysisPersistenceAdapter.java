@@ -64,6 +64,10 @@ class JpaAnalysisPersistenceAdapter implements AnalysisPersistencePort {
     public Optional<CompletedAnalysis> findResultByIdAndOwner(UUID analysisId, UUID userId) {
         return results.findByIdAndUserId(analysisId, userId).map(AnalysisResultJpaEntity::toDomain);
     }
+    public Optional<CompletedAnalysis> findResultByEvaluationAndOwner(UUID evaluationId, UUID userId) {
+        return results.findFirstByEvaluationIdAndUserIdOrderByCompletedAtDescIdDesc(evaluationId, userId)
+            .map(AnalysisResultJpaEntity::toDomain);
+    }
     public boolean isCurrentForRepository(UUID userId, UUID repositoryId, UUID analysisId) {
         return results.findFirstByUserIdAndRepositoryIdOrderByCompletedAtDescIdDesc(userId, repositoryId)
             .map(value -> value.toDomain().id().equals(analysisId)).orElse(false);

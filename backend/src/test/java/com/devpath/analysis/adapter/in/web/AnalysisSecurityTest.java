@@ -16,6 +16,7 @@ import com.devpath.analysis.application.AnalysisHistoryItemView;
 import com.devpath.analysis.application.AnalysisHistoryView;
 import com.devpath.analysis.application.AnalysisResultView;
 import com.devpath.analysis.application.AnalysisComparisonView;
+import com.devpath.shared.application.DuplicateRequestException;
 import com.devpath.identity.adapter.in.security.AbsoluteSessionTimeoutFilter;
 import com.devpath.identity.adapter.in.security.DevPathOAuth2User;
 import com.devpath.identity.adapter.in.security.GitHubOAuth2UserService;
@@ -64,6 +65,8 @@ class AnalysisSecurityTest {
     void commandsRequireSessionAndCsrfWhileReadsUseAuthenticatedOwner() throws Exception {
         when(service.request(eq(USER_ID), eq(REPOSITORY_ID), eq(null), eq("REPOSITORY_BASELINE"), eq("key")))
             .thenReturn(job());
+        when(service.request(eq(USER_ID), eq(REPOSITORY_ID), eq(null), eq("REPOSITORY_BASELINE"), eq("duplicate")))
+            .thenThrow(new DuplicateRequestException());
         when(service.getJob(USER_ID, JOB_ID)).thenReturn(job());
         when(service.getResult(USER_ID, ANALYSIS_ID)).thenReturn(result());
         when(service.listHistory(USER_ID, 10, null)).thenReturn(history());
@@ -80,11 +83,18 @@ class AnalysisSecurityTest {
         mockMvc.perform(post("/api/v1/analyses").with(oauth2Login().oauth2User(principal())).with(csrf())
             .contentType(MediaType.APPLICATION_JSON).content(body).header("Idempotency-Key", "key"))
             .andExpect(status().isAccepted()).andExpect(jsonPath("$.data.status").value("queued"));
+        mockMvc.perform(post("/api/v1/analyses").with(oauth2Login().oauth2User(principal())).with(csrf())
+            .contentType(MediaType.APPLICATION_JSON).content(body).header("Idempotency-Key", "duplicate"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("DUPLICATE_REQUEST"));
         mockMvc.perform(get("/api/v1/analysis-jobs/{jobId}", JOB_ID).with(oauth2Login().oauth2User(principal())))
             .andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/analyses/{analysisId}", ANALYSIS_ID).with(oauth2Login().oauth2User(principal())))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.analysisId").value(ANALYSIS_ID.toString()))
             .andExpect(jsonPath("$.data.currentForRepository").value(true));
+        mockMvc.perform(get("/api/v1/analyses/{analysisId}", "not-a-uuid")
+                .with(oauth2Login().oauth2User(principal())))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.error.message").value("The analysis request is invalid."));
         mockMvc.perform(get("/api/v1/analyses").param("limit", "10").with(oauth2Login().oauth2User(principal())))
             .andExpect(status().isOk()).andExpect(jsonPath("$.data.analyses[0].overallScore").value(75.5))
             .andExpect(jsonPath("$.data.analyses[0].currentForRepository").value(true));

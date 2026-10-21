@@ -4,6 +4,7 @@ import com.devpath.ai.config.AiGenerationProperties;
 import com.devpath.ai.domain.GenerationJob;
 import com.devpath.ai.domain.GenerationJobStatus;
 import com.devpath.analysis.application.AnalysisApplicationService;
+import com.devpath.analysis.application.AnalysisResultView;
 import com.devpath.career.application.CareerReadinessApplicationService;
 import com.devpath.learning.application.LearningRoadmapView;
 import com.devpath.prompt.application.CareerCoachingPromptBuilder;
@@ -20,6 +21,7 @@ import com.devpath.recommendation.application.RecommendationSetView;
 import com.devpath.rule.application.CompletedRuleEvaluationApplicationService;
 import com.devpath.rule.application.SkillMatrixApplicationService;
 import com.devpath.shared.application.ObjectContentPort;
+import com.devpath.shared.application.DuplicateRequestException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
@@ -104,8 +106,8 @@ public class AiGenerationApplicationService {
         Optional<GenerationJob> repeated = persistence.findByOwnerAndIdempotencyKey(userId, idempotencyKey);
         if (repeated.isPresent()) {
             if (!repeated.get().taskType().equals(taskType)
-                || !persistence.findSourceResourceId(repeated.get().promptContextId()).equals(sourceId)) {
-                throw new IllegalArgumentException("Idempotency key belongs to another generation request");
+                || !persistence.findRequestedSourceResourceId(repeated.get().promptContextId()).equals(sourceId)) {
+                throw new DuplicateRequestException();
             }
             return view(repeated.get());
         }
@@ -118,6 +120,7 @@ public class AiGenerationApplicationService {
         if (SKILL_EXPLANATION_TASK.equals(taskType)) {
             matrixId = sourceId;
             var matrix = matrices.get(userId, matrixId);
+            analysisId = analyses.findByEvaluation(userId, matrix.evaluationId()).map(AnalysisResultView::analysisId).orElse(null);
             var evidence = evaluations.getEvidence(userId, matrix.evaluationId());
             prompt = prompts.build(matrix, evaluations.getEvaluation(userId, matrix.evaluationId()), evidence, template);
         } else if (REPOSITORY_REVIEW_TASK.equals(taskType) || REPOSITORY_SUMMARY_TASK.equals(taskType)) {

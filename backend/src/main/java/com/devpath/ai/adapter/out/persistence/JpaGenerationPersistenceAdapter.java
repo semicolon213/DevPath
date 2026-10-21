@@ -81,8 +81,9 @@ class JpaGenerationPersistenceAdapter implements GenerationPersistencePort {
     }
 
     @Override
-    public UUID findSourceResourceId(UUID promptContextId) {
+    public UUID findRequestedSourceResourceId(UUID promptContextId) {
         PromptContextJpaEntity context = contexts.findById(promptContextId).orElseThrow();
+        if (AiGenerationApplicationService.SKILL_EXPLANATION_TASK.equals(context.taskType)) return context.skillMatrixId;
         if (context.learningRoadmapId != null) return context.learningRoadmapId;
         if (context.careerReadinessId != null) return context.careerReadinessId;
         return context.analysisId == null ? context.skillMatrixId : context.analysisId;

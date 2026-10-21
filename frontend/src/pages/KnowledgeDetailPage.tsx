@@ -4,6 +4,7 @@ import { chunkStatusLabel, jobStatusLabel } from "../shared/ui/labels";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { useRef, useState } from "react";
 import { PageState } from "../shared/ui/PageState";
+import { mutationErrorMessage } from "../shared/api/apiClient";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 
 export function KnowledgeDetailPage() {
@@ -28,7 +29,7 @@ export function KnowledgeDetailPage() {
       {value.status === "ACTIVE" ? <button className="button-secondary" type="button" disabled={archive.isPending} onClick={() => { archive.reset(); setArchiveMessage(""); setConfirmingArchive(true); }}>문서 보관</button> : null}</div>
     <p ref={archiveMessageRef} role="status" tabIndex={-1}>{archiveMessage}</p>
     <ConfirmDialog open={confirmingArchive} title="이 문서를 보관할까요?" description="문서 메타데이터는 유지되지만 활성 지식 검색 범위에서는 제외됩니다." confirmLabel="문서 보관" destructive pending={archive.isPending} error={archive.isError ? "문서를 보관하지 못했습니다. 다시 시도해 주세요." : undefined} returnFocusFallback={archiveMessageRef} onCancel={() => setConfirmingArchive(false)} onConfirm={() => archive.mutate(documentId, { onSuccess: () => { setArchiveMessage("문서를 보관했습니다."); setConfirmingArchive(false); } })} />
-    {reindex.isError ? <p role="alert">재색인 작업을 시작하지 못했습니다.</p> : null}
+    {reindex.isError ? <p role="alert">{mutationErrorMessage(reindex.error, "재색인 작업을 시작하지 못했습니다.")}</p> : null}
     <section className="knowledge-section"><h2>청크 메타데이터</h2>{chunks.data.chunks.length === 0 ? <p>현재 버전에 청크가 없습니다.</p> : <ol className="knowledge-chunk-list">{chunks.data.chunks.map(chunk => <li key={chunk.chunkId}><div><strong>{chunk.heading ?? `청크 ${chunk.position + 1}`}</strong><span>{chunkStatusLabel(chunk.status)} · 약 {chunk.tokenEstimate} 토큰</span></div><code>{chunk.contentHash}</code></li>)}</ol>}</section>
     <button className="button-secondary" type="button" onClick={() => navigate("/knowledge")}>지식 작업 공간으로 돌아가기</button>
   </Shell>;

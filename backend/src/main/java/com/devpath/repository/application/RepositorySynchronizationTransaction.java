@@ -1,5 +1,7 @@
 package com.devpath.repository.application;
 
+import com.devpath.shared.application.DuplicateRequestException;
+
 import com.devpath.integration.application.GitHubRepositorySnapshot;
 import com.devpath.repository.domain.Repository;
 import com.devpath.repository.domain.RepositoryBranch;
@@ -43,7 +45,7 @@ class RepositorySynchronizationTransaction {
         Optional<RepositorySyncJob> repeated = synchronization.findByOwnerAndIdempotencyKey(userId, idempotencyKey);
         if (repeated.isPresent()) {
             if (!repeated.get().repositoryId().equals(repositoryId)) {
-                throw new IllegalArgumentException("Idempotency key belongs to another repository command");
+                throw new DuplicateRequestException();
             }
             return RepositorySyncJobView.from(repeated.get());
         }

@@ -5,13 +5,20 @@ import com.devpath.recommendation.application.RecommendationNotFoundException;
 import com.devpath.shared.api.ApiErrorResponse;
 import com.devpath.shared.api.RequestIds;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Order(Ordered.LOWEST_PRECEDENCE - 1)
 @RestControllerAdvice(assignableTypes={RecommendationController.class,LearningRoadmapController.class})
 public class RecommendationApiExceptionHandler {
+    @ExceptionHandler({org.springframework.web.bind.MissingRequestHeaderException.class,
+        org.springframework.web.method.annotation.HandlerMethodValidationException.class,
+        jakarta.validation.ConstraintViolationException.class})
+    ResponseEntity<ApiErrorResponse> invalid(Exception exception,HttpServletRequest request){return ResponseEntity.badRequest().body(ApiErrorResponse.of("VALIDATION_ERROR","The roadmap request is invalid.",RequestIds.resolve(request)));}
     @ExceptionHandler(RecommendationNotFoundException.class)
     ResponseEntity<ApiErrorResponse> notFound(RecommendationNotFoundException exception,HttpServletRequest request){return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiErrorResponse.of("RESOURCE_NOT_FOUND","The recommendation or roadmap was not found.",RequestIds.resolve(request)));}
 }

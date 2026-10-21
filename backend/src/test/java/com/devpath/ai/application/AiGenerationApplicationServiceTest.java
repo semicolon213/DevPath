@@ -40,6 +40,7 @@ import com.devpath.rule.application.SkillMatrixApplicationService;
 import com.devpath.rule.application.SkillMatrixNotFoundException;
 import com.devpath.rule.application.SkillMatrixView;
 import com.devpath.shared.application.ObjectContentPort;
+import com.devpath.shared.application.DuplicateRequestException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Clock;
 import java.time.Duration;
@@ -97,6 +98,7 @@ class AiGenerationApplicationServiceTest {
     @Test
     void createsOneLockedContextFromAnOwnerScopedSkillMatrix() {
         UUID owner = UUID.randomUUID(), matrixId = UUID.randomUUID(), evaluationId = UUID.randomUUID();
+        UUID analysisId = UUID.randomUUID();
         UUID templateId = UUID.randomUUID();
         SkillMatrixView matrix = org.mockito.Mockito.mock(SkillMatrixView.class);
         RuleEvaluationView evaluation = org.mockito.Mockito.mock(RuleEvaluationView.class);
@@ -104,6 +106,10 @@ class AiGenerationApplicationServiceTest {
         when(persistence.findByOwnerAndIdempotencyKey(owner, "key")).thenReturn(Optional.empty());
         when(matrices.get(owner, matrixId)).thenReturn(matrix);
         when(matrix.evaluationId()).thenReturn(evaluationId);
+        when(analyses.findByEvaluation(owner, evaluationId)).thenReturn(Optional.of(new AnalysisResultView(
+            analysisId, UUID.randomUUID(), UUID.randomUUID(), evaluationId, matrixId,
+            "REPOSITORY_BASELINE", true, NOW
+        )));
         when(evaluations.getEvaluation(owner, evaluationId)).thenReturn(evaluation);
         when(evaluations.getEvidence(owner, evaluationId)).thenReturn(evidence);
         when(persistence.loadActiveTemplate(AiGenerationApplicationService.SKILL_EXPLANATION_TASK)).thenReturn(
@@ -123,7 +129,9 @@ class AiGenerationApplicationServiceTest {
         verify(persistence).saveContext(context.capture());
         assertThat(context.getValue().userId()).isEqualTo(owner);
         assertThat(context.getValue().skillMatrixId()).isEqualTo(matrixId);
-        assertThat(context.getValue().analysisId()).isNull();
+        assertThat(context.getValue().analysisId()).isEqualTo(analysisId);
+        assertThat(context.getValue().contextHash()).isEqualTo("a".repeat(64));
+        assertThat(context.getValue().contextPayload()).isEqualTo("{}");
         assertThat(context.getValue().templateVersionId()).isEqualTo(templateId);
         assertThat(result.status()).isEqualTo("QUEUED");
     }
@@ -691,6 +699,19 @@ class AiGenerationApplicationServiceTest {
         ArgumentCaptor<GenerationJob> jobs = ArgumentCaptor.forClass(GenerationJob.class);
         verify(persistence, org.mockito.Mockito.times(2)).saveJob(jobs.capture());
         assertThat(jobs.getAllValues()).extracting(GenerationJob::userId).containsExactly(first, second);
+    }
+
+    @Test
+    void rejectsReuseOfAnIdempotencyKeyForAnotherGenerationSource() {
+        UUID owner = UUID.randomUUID(), context = UUID.randomUUID(), requested = UUID.randomUUID();
+        GenerationJob existing = GenerationJob.queue(owner, context, "same-key",
+            AiGenerationApplicationService.SKILL_EXPLANATION_TASK, NOW);
+        when(persistence.findByOwnerAndIdempotencyKey(owner, "same-key")).thenReturn(Optional.of(existing));
+        when(persistence.findRequestedSourceResourceId(context)).thenReturn(UUID.randomUUID());
+
+        assertThatThrownBy(() -> service.request(owner, AiGenerationApplicationService.SKILL_EXPLANATION_TASK,
+            List.of(requested), AiGenerationApplicationService.SKILL_EXPLANATION_OUTPUT, "same-key"))
+            .isInstanceOf(DuplicateRequestException.class);
     }
 
     @Test

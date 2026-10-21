@@ -24,6 +24,7 @@ import com.devpath.repository.application.RepositoryActivityTimelineView;
 import com.devpath.repository.application.RepositoryEvidenceSummaryView;
 import com.devpath.repository.application.RepositorySyncJobView;
 import com.devpath.repository.application.RepositorySynchronizationApplicationService;
+import com.devpath.shared.application.DuplicateRequestException;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
@@ -60,14 +61,22 @@ class RepositorySynchronizationSecurityTest {
     @Test
     void syncRequiresSessionCsrfAndIdempotencyKey() throws Exception {
         when(service.request(USER_ID, REPOSITORY_ID, "sync-1")).thenReturn(job());
+        when(service.request(USER_ID, REPOSITORY_ID, "duplicate")).thenThrow(new DuplicateRequestException());
 
         mockMvc.perform(post("/api/v1/repositories/{repositoryId}/sync", REPOSITORY_ID)
                 .with(oauth2Login().oauth2User(principal())).header("Idempotency-Key", "sync-1"))
-            .andExpect(status().isForbidden());
+            .andExpect(status().isForbidden()).andExpect(jsonPath("$.error.code").value("AUTHORIZATION_DENIED"));
+        mockMvc.perform(post("/api/v1/repositories/{repositoryId}/sync", REPOSITORY_ID)
+                .with(oauth2Login().oauth2User(principal())).with(csrf()))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.error.code").value("VALIDATION_ERROR"))
+            .andExpect(jsonPath("$.error.message").value("The request is invalid."));
         mockMvc.perform(post("/api/v1/repositories/{repositoryId}/sync", REPOSITORY_ID)
                 .with(oauth2Login().oauth2User(principal())).with(csrf()).header("Idempotency-Key", "sync-1"))
             .andExpect(status().isAccepted())
             .andExpect(jsonPath("$.data.status").value("queued"));
+        mockMvc.perform(post("/api/v1/repositories/{repositoryId}/sync", REPOSITORY_ID)
+                .with(oauth2Login().oauth2User(principal())).with(csrf()).header("Idempotency-Key", "duplicate"))
+            .andExpect(status().isConflict()).andExpect(jsonPath("$.error.code").value("DUPLICATE_REQUEST"));
 
         verify(service).request(USER_ID, REPOSITORY_ID, "sync-1");
     }

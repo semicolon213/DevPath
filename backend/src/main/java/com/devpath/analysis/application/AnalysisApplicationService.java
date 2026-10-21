@@ -3,6 +3,7 @@ package com.devpath.analysis.application;
 import com.devpath.analysis.domain.AnalysisJob;
 import com.devpath.analysis.domain.AnalysisJobStatus;
 import com.devpath.analysis.domain.CompletedAnalysis;
+import com.devpath.shared.application.DuplicateRequestException;
 import java.time.Clock;
 import java.time.Instant;
 import java.nio.charset.StandardCharsets;
@@ -46,7 +47,7 @@ public class AnalysisApplicationService {
             AnalysisJob existing = repeated.get();
             if (!existing.repositoryId().equals(repositoryId) || !existing.analysisScope().equals(scope)
                 || snapshotId != null && !existing.snapshotId().equals(snapshotId)) {
-                throw new IllegalArgumentException("Idempotency key belongs to another analysis command");
+                throw new DuplicateRequestException();
             }
             return AnalysisJobView.from(existing);
         }
@@ -82,6 +83,12 @@ public class AnalysisApplicationService {
             persistence.isCurrentForRepository(userId, analysis.repositoryId(), analysis.id()));
         audit.record(AnalysisAuditEvent.ANALYSIS_RESULT_VIEWED, userId, analysisId.toString(), clock.instant());
         return result;
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<AnalysisResultView> findByEvaluation(UUID userId, UUID evaluationId) {
+        return persistence.findResultByEvaluationAndOwner(evaluationId, userId)
+            .map(analysis -> AnalysisResultView.from(analysis, false));
     }
 
     @Transactional
