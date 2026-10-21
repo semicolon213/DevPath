@@ -4,9 +4,10 @@
 > `contracts/openapi/devpath-openapi.yaml` (info.version `0.27.0`) remains the machine-readable contract. This document is a
 > non-authoritative, implementation-verified **reference** derived from those two sources plus the backend web adapters
 > (`backend/src/main/java/com/devpath/**/adapter/in/web/**`, `identity/config/SecurityConfiguration.java`,
-> `platform/health/InternalHealthController.java`, `shared/api/**`) at commit `d6753b9`. Where this reference and the
-> authoritative sources disagree, the authoritative sources win; observed differences are listed in
-> [Appendix A](#appendix-a-contract-verification) and are **not** fixed here.
+> `platform/health/InternalHealthController.java`, `shared/api/**`) at commit `d6753b9`, updated on 2026-10-21 for the
+> API-FIX change set (backend, OpenAPI, frontend; reviewed snapshot based on `5eaf85b`). Where this reference and the
+> authoritative sources disagree, the authoritative sources win; observed differences and their resolution status are
+> listed in [Appendix A](#appendix-a-contract-verification).
 
 ## 1. Overview
 
@@ -40,7 +41,7 @@
 | Scope | Spring Security CSRF protection is enabled for all state-changing methods (`POST`, `PUT`, `PATCH`, `DELETE`). |
 | Token issue | `GET /api/v1/csrf` returns `{headerName, parameterName, token}`; the token is also held in a cookie-backed repository (`CookieCsrfTokenRepository`, cookie path `/`) (`SecurityConfiguration.java:45-47`, `CsrfController.java:14-20`). |
 | Header | Send the token in `X-CSRF-TOKEN`. |
-| Failure | Missing/invalid token returns `403` with code `ACCESS_DENIED` (`SecurityConfiguration.java:95-106`). |
+| Failure | Missing/invalid token returns `403` with code `AUTHORIZATION_DENIED` (`SecurityConfiguration.java:95-106`). |
 
 ### 1.4 CORS
 
@@ -80,10 +81,11 @@ are fixed, user-safe strings; provider payloads, SQL errors, and stack traces ar
 
 | Code | HTTP | Produced by (implemented) |
 |---|---:|---|
-| `VALIDATION_ERROR` | 400 | Bean-validation failures, unreadable JSON, missing headers (where mapped), unsupported values, idempotency-key reuse for a different command, invalid cursor/limit |
+| `VALIDATION_ERROR` | 400 | Bean-validation failures, unreadable JSON, missing or invalid headers, non-UUID path/query IDs, unsupported values, invalid cursor/limit |
 | `AUTHENTICATION_REQUIRED` | 401 | No valid session; disabled or missing account on identity endpoints |
-| `ACCESS_DENIED` | 403 | CSRF failure / Spring Security access denial |
+| `AUTHORIZATION_DENIED` | 403 | CSRF failure / Spring Security access denial |
 | `RESOURCE_NOT_FOUND` | 404 | Resource absent **or owned by another user** (ownership never revealed) |
+| `DUPLICATE_REQUEST` | 409 | `Idempotency-Key` reused by the same owner for a different command (sync, analysis, knowledge import/re-index, AI generation) |
 | `RESOURCE_CONFLICT` | 409 | Concurrent write races (`DataIntegrityViolationException`, optimistic locking) |
 | `RATE_LIMIT_EXCEEDED` | 429 | GitHub or Notion provider quota exhausted; `Retry-After` and (GitHub) `X-RateLimit-Reset` headers when known |
 | `DEPENDENCY_UNAVAILABLE` | 503 | GitHub/Notion unavailable, configuration missing, reconnection required |
@@ -92,9 +94,9 @@ are fixed, user-safe strings; provider payloads, SQL errors, and stack traces ar
 Durable job resources additionally carry safe job-level `errorCode` values (for example `COLLECTION_LIMIT_EXCEEDED`,
 `RATE_LIMIT_EXCEEDED`, `SOURCE_PERMISSION_CHANGED`, `SOURCE_UNAVAILABLE`, `INGESTION_FAILED`) — see §3.
 
-Note: requests that fail before reaching a mapped handler (for example a non-UUID path variable, or a missing header on
-endpoints whose advice does not map `MissingRequestHeaderException`) receive the framework default error body rather
-than `ErrorEnvelope`; see Appendix A.
+Missing or invalid headers and non-UUID path/query IDs return `400 VALIDATION_ERROR` with `ErrorEnvelope` through the
+shared `shared/api/ApiValidationExceptionHandler.java` (lowest precedence; a module advice that maps the same exception
+first returns the same status and code). OpenAPI declares these through the reusable `ValidationError` response.
 
 ### 1.8 Pagination
 
@@ -117,7 +119,8 @@ endpoints return a complete, bounded array without pagination.
 | Situation | Implemented result |
 |---|---|
 | Same owner + key + same command | Original job returned (`202`) |
-| Same owner + key, different command | `400 VALIDATION_ERROR` |
+| Same owner + key, different command | `409 DUPLICATE_REQUEST`; the frontend shows Korean guidance to refresh and retry |
+| Roadmap archive | Key validated (1–128 chars, pattern) but not stored; idempotency comes from the archived state |
 | Equivalent active command with a different key | Existing active job reused (sync, analysis, knowledge import) |
 | Concurrent race on unique constraints | `409 RESOURCE_CONFLICT` |
 
@@ -125,8 +128,9 @@ endpoints return a complete, bounded array without pagination.
 
 Conventions: **Auth** = session cookie required unless marked *public*. **CSRF** = `X-CSRF-TOKEN` required.
 **Owner** = resources are scoped to the authenticated user; foreign IDs return `404`. All path IDs are UUIDs unless
-stated. Every authenticated endpoint can also return `401 AUTHENTICATION_REQUIRED`, and every CSRF endpoint
-`403 ACCESS_DENIED`; these are omitted from the "Errors" column for brevity.
+stated. Every authenticated endpoint can also return `401 AUTHENTICATION_REQUIRED`, every CSRF endpoint
+`403 AUTHORIZATION_DENIED`, and every endpoint with a required header or UUID path/query ID `400 VALIDATION_ERROR`;
+these are omitted from the "Errors" column for brevity.
 
 ### 2.1 Session, identity, and onboarding
 
@@ -151,7 +155,7 @@ stated. Every authenticated endpoint can also return `401 AUTHENTICATION_REQUIRE
 | API ID | Method + path | Purpose | Request | Success (`data`) | Errors |
 |---|---|---|---|---|---|
 | API-INT-001 | `POST /api/v1/integrations/github/authorize` (CSRF) | Start GitHub App user authorization; state bound to session+user, 10-minute TTL | — | `200` `{authorizationUrl}` | 503 config unavailable |
-| API-INT-002 | `GET /api/v1/integrations/github/callback` *(public route; uses session state)* | Complete authorization; single-use state | query `state` (req.), `code`, `error` | `302` to `{frontend}/settings/integrations?githubConnection=success\|failed\|installation-required` | invalid state / missing session → `302 …=failed` |
+| API-INT-002 | `GET /api/v1/integrations/github/callback` *(public, `permitAll`; uses session state)* | Complete authorization; single-use state | query `state` (OpenAPI: required), `code`, `error` | Always `302` to `{frontend}/settings/integrations?githubConnection=success\|failed\|installation-required` | missing/invalid state or missing session → `302 …=failed` (never 401) |
 | API-INT-003 | `DELETE /api/v1/integrations/github` (CSRF) | Disconnect; local credential removed, remote revocation attempted | — | `200` `ConnectedAccount` (status `REVOKED`) | 404 no active connection, 503 |
 | API-INT-004 | `GET /api/v1/integrations/github/repositories` | List repositories accessible through installed GitHub Apps | — | `200` `{repositories: [{providerRepositoryId, name, fullName, owner, privateRepository, archived, defaultBranch, htmlUrl}]}` | 429 (+`Retry-After`, `X-RateLimit-Reset`), 503 |
 | API-INT-008 | `POST /api/v1/integrations/notion/authorize` (CSRF) | Start Notion authorization (10-minute state) | — | `200` `{authorizationUrl}` | 503 |
@@ -172,7 +176,7 @@ htmlUrl, discoveredAt, lastSyncedAt?, currentSnapshotId?}`.
 | API-REP-002 | `GET /api/v1/repositories/{repositoryId}` | Repository detail | — | `200` `Repository` | 404 |
 | API-REP-004 | `POST /api/v1/repositories/{repositoryId}/archive` (CSRF) | Archive locally | — | `200` `Repository` | 404, 409 |
 | API-REP-005 | `POST /api/v1/repositories/{repositoryId}/restore` (CSRF) | Restore local archive (not provider-archived) | — | `200` `Repository` | 400, 404, 409 |
-| API-REP-006 | `POST /api/v1/repositories/{repositoryId}/sync` (CSRF, Idempotency-Key) | Queue durable full sync; no GitHub call on request thread | — | `202` `RepositorySyncJob` (§3) | 400 key/lifecycle, 404, 503 |
+| API-REP-006 | `POST /api/v1/repositories/{repositoryId}/sync` (CSRF, Idempotency-Key) | Queue durable full sync; no GitHub call on request thread | — | `202` `RepositorySyncJob` (§3) | 400 key/lifecycle, 404, 409 key reused, 503 |
 | API-INT-007 | `GET /api/v1/repository-sync-jobs/{jobId}` | Poll sync job | — | `200` `RepositorySyncJob` | 404 |
 | API-REP-007 | `GET /api/v1/repositories/{repositoryId}/snapshots` | Snapshot history (newest first) | — | `200` `{snapshots: RepositorySnapshot[]}` | 404 |
 | API-REP-008 | `GET /api/v1/repositories/{repositoryId}/snapshots/{snapshotId}` | Immutable snapshot metadata | — | `200` `{snapshotId, repositoryId, capturedAt, sourceRevision, status: READY\|FAILED\|SUPERSEDED\|DELETED_BY_POLICY, immutable, contentHash, branchCount, commitCount, pullRequestCount, issueCount, documentCount}` | 404 |
@@ -235,7 +239,7 @@ actualScore, actualLevel, expectedMinimum (60), gapState: MISSING|WEAK|PARTIAL|S
 | API-LRN-003 | `GET /api/v1/learning-roadmaps` | Roadmap history incl. archived | — | `200` `{roadmaps[]}` | — |
 | API-LRN-002 | `GET /api/v1/learning-roadmaps/active` | Active roadmap | — | `200` `LearningRoadmap` | 404 |
 | API-LRN-004 | `GET /api/v1/learning-roadmaps/{roadmapId}` | Roadmap detail | — | `200` `LearningRoadmap` | 404 |
-| API-LRN-009 | `POST /api/v1/learning-roadmaps/{roadmapId}/archive` (CSRF, Idempotency-Key) | Archive; repeat returns unchanged archived state | — | `200` `LearningRoadmap` | 404 |
+| API-LRN-009 | `POST /api/v1/learning-roadmaps/{roadmapId}/archive` (CSRF, Idempotency-Key) | Archive; repeat returns unchanged archived state | — | `200` `LearningRoadmap` | 400 invalid key, 404 |
 
 `LearningRoadmap` = `{roadmapId, recommendationSetId, policyVersion, status: CREATED|IN_PROGRESS|COMPLETED|ARCHIVED,
 progressPercent, milestones[] {milestoneId, position, category, title, status}, steps[] {roadmapStepId, milestoneId,
@@ -246,7 +250,7 @@ expectedEvidence[], status}, generatedAt, updatedAt}`. There is no public endpoi
 
 | API ID | Method + path | Purpose | Request | Success (`data`) | Errors |
 |---|---|---|---|---|---|
-| API-KNW-003 | `POST /api/v1/knowledge-documents/imports/notion` (CSRF, Idempotency-Key) | Import an authorized Notion page | `connectionId` uuid, required; `providerPageId` string, required, 1–255 | `202` `KnowledgeIngestionJob` (§3) | 400, 404 connection/page not found, 409, 503 |
+| API-KNW-003 | `POST /api/v1/knowledge-documents/imports/notion` (CSRF, Idempotency-Key) | Import an authorized Notion page | `connectionId` uuid, required; `providerPageId` string, required, 1–255 | `202` `KnowledgeIngestionJob` (§3) | 400, 404 connection or accessible page not found (403 is CSRF only), 409, 503 |
 | API-KNW-008 | `GET /api/v1/knowledge-ingestion-jobs/{jobId}` | Poll ingestion job | — | `200` `KnowledgeIngestionJob` | 404 |
 | API-KNW-004 | `GET /api/v1/knowledge-documents` | Owner documents | — | `200` `{documents[] {documentId, sourceType: NOTION, sourceObjectId, title, status: ACTIVE\|ARCHIVED, currentVersionId?, chunkCount, createdAt, updatedAt}}` | — |
 | API-KNW-005 | `GET /api/v1/knowledge-documents/{documentId}` | Document metadata | — | `200` `KnowledgeDocument` | 404 |
@@ -320,26 +324,32 @@ found. docs/10 additionally catalogues many planned endpoints (for example API-R
 API-REC-001/005–007, API-LRN-001/005–008/010, API-KNW-001/002/007, API-AI-004/006, API-DSH-002–010, API-ID-008/009,
 Prompt, Portfolio, Resume, Interview, and Admin APIs); these are **not implemented** and are not listed above.
 
-Discrepancies found (reported only; nothing was changed). Severity reflects contract impact, not runtime risk.
+Discrepancies found at `d6753b9`. All fifteen are now resolved: D3–D8, D10 and D14 by aligning docs/10 to the
+implementation (2026-10-19), and D1, D2, D9–D13 and D15 by the API-FIX code/OpenAPI change (2026-10-21). Evidence
+paths and line numbers in the table refer to `d6753b9`.
 
-| # | Area | Observation | Evidence |
-|---|---|---|---|
-| D1 | Error code (403) | docs/10 defines `AUTHORIZATION_DENIED` for 403; the implementation returns `ACCESS_DENIED` (CSRF/access denial). OpenAPI does not name 403 codes. | `docs/10_API_Specification.md:373`; `backend/.../identity/config/SecurityConfiguration.java:100-101` |
-| D2 | Idempotency conflict | docs/10 specifies `409 DUPLICATE_REQUEST` and OpenAPI lists 409 "idempotency conflict"; reusing a key for a different command actually throws `IllegalArgumentException` → `400 VALIDATION_ERROR`. 409 is produced only for concurrent constraint races. | `docs/10_API_Specification.md:376`; `contracts/openapi/devpath-openapi.yaml:1579,1661,1707`; `ai/application/AiGenerationApplicationService.java:108`; `knowledge/application/KnowledgeApplicationService.java:34`; `analysis/application/AnalysisApplicationService.java:49`; `repository/application/RepositorySynchronizationTransaction.java:46` |
-| D3 | Envelope shape | docs/10 examples use `data.id/type/attributes`, `links`, `metadata.correlationId`, and collection `items/pagination`; implementation and OpenAPI use `data` payloads with `metadata {requestId, apiVersion, timestamp}` only and resource-specific list keys. Correlation ID is a response header only. | `docs/10_API_Specification.md:271-313`; `shared/api/ApiMetadata.java:7`; `contracts/openapi/devpath-openapi.yaml:1793-1805` |
-| D4 | Error shape | docs/10 error model includes `userSafeDetail`, `fieldErrors`, `retryable`, `providerCategory`, `documentationRef`; implementation and OpenAPI return only `code` and `message`. | `docs/10_API_Specification.md:342-364`; `shared/api/ApiErrorResponse.java:8`; `contracts/openapi/devpath-openapi.yaml:3482-3490` |
-| D5 | Job polling URL | docs/10 example uses generic `/api/v1/jobs/{jobId}`; implemented polling is type-specific and no `/api/v1/jobs` endpoint exists. | `docs/10_API_Specification.md:323`; `repository/application/RepositorySyncJobView.java:28`; `analysis/application/AnalysisJobView.java:51` |
-| D6 | Job status casing/value | docs/10 job states are lower-case incl. `cancelled`; AI generation jobs use upper-case `QUEUED…CANCELED` (single L), and the dashboard job item uses upper-case statuses and `jobType` `ANALYSIS` while the analysis job resource uses lower-case and `REPOSITORY_ANALYSIS`. Internally inconsistent but OpenAPI matches code for each resource. | `docs/10_API_Specification.md:867`; `contracts/openapi/devpath-openapi.yaml:2127-2128,3056-3058,3276`; `dashboard/application/DashboardApplicationService.java:173-177` |
-| D7 | Duplicate API IDs in docs/10 | The same method+path carries two IDs in docs/10: sync `API-INT-006`/`API-REP-006`, Notion import `API-INT-012`/`API-KNW-003`, career target `API-CAR-003`/`API-ID-006`, company target `API-CMP-003`/`API-ID-007`. OpenAPI uses `API-REP-006`, `API-KNW-003`, `API-ID-006`, `API-ID-007`. | `docs/10_API_Specification.md:463,474,618,624`; `contracts/openapi/devpath-openapi.yaml:660,1560,195,230` |
-| D8 | Stale implementation statement | docs/10 §43 states that all catalog operations other than the identity foundation "remain specification-only", contradicting the 70 implemented ID'd operations in OpenAPI. | `docs/10_API_Specification.md:1460` |
-| D9 | GitHub integration callback auth | OpenAPI marks API-INT-002 as `sessionCookie`-secured with a `401` response; the route is `permitAll` and the controller converts every failure (including missing session/state) into a `302 …githubConnection=failed` redirect, so no 401 is produced. The Notion callback is not `permitAll` and does return 401 without a session. | `contracts/openapi/devpath-openapi.yaml:334,342-343`; `identity/config/SecurityConfiguration.java:61`; `integration/adapter/in/web/GitHubIntegrationController.java:75-87` |
-| D10 | Notion import 403 | OpenAPI lists `403` for "missing CSRF or page permission"; a page that is not owned/shared resolves to `NotionConnectionNotFoundException` → `404`, so 403 occurs only for CSRF. | `contracts/openapi/devpath-openapi.yaml:1577`; `integration/adapter/out/notion/NotionApiAdapter.java:138-143`; `knowledge/adapter/in/web/KnowledgeExceptionHandler.java:22-25` |
-| D11 | Profile 404 undocumented | API-ID-002/003 can return `404 RESOURCE_NOT_FOUND` (docs/10 lists it for API-ID-002) but OpenAPI declares only 200/401 (GET) and 200/400/401/403 (PATCH). | `docs/10_API_Specification.md:436`; `contracts/openapi/devpath-openapi.yaml:111-121,135-155`; `identity/adapter/in/web/IdentityApiExceptionHandler.java:30-33` |
-| D12 | Roadmap archive Idempotency-Key | Header is required (OpenAPI pattern `^[A-Za-z0-9._:-]+$`) but the controller validates only `@Size(1,128)` and does not pass the key to the service; idempotency comes from archive state. No 400 is declared, and the mapped advice handles only not-found, so missing/invalid headers get the framework default error body. | `contracts/openapi/devpath-openapi.yaml:1508,1509-1521`; `learning/adapter/in/web/LearningRoadmapController.java:27`; `recommendation/adapter/in/web/RecommendationApiExceptionHandler.java:15-16` |
-| D13 | Missing-header error body | `RepositoryExceptionHandler` does not map `MissingRequestHeaderException`, so `POST …/sync` without `Idempotency-Key` returns the framework default 400 body instead of `ErrorEnvelope` (analysis, knowledge, and AI advices do map it). Header constraint annotations on non-`@Validated` controllers (analysis, knowledge, AI) are enforced by Spring MVC method validation, whose exception is not mapped by those advices; service-level validation still returns `VALIDATION_ERROR` for keys that reach the service. Inferred from code; not executed. | `repository/adapter/in/web/RepositoryExceptionHandler.java:55-61`; `repository/adapter/in/web/RepositorySynchronizationController.java:37`; `analysis/adapter/in/web/AnalysisController.java:28-42`; `repository/application/RepositorySynchronizationApplicationService.java:50-51` |
-| D14 | Idempotency scope | docs/10 requires `Idempotency-Key` for API-INT-001/005/008 and other commands; the implementation and OpenAPI require it only on the six commands in §1.9 (import and authorize have none). | `docs/10_API_Specification.md:458,462,470`; `repository/adapter/in/web/RepositoryController.java:33-44` |
-| D15 | Non-UUID path/query IDs | Invalid UUIDs in path or query parameters fail type conversion before any mapped advice and return the framework default 400 body, not `ErrorEnvelope`. OpenAPI declares no 400 for most UUID-path GETs. Inferred from code; not executed. | e.g. `rule/adapter/in/web/RuleEvaluationController.java:26-28`; `contracts/openapi/devpath-openapi.yaml:1010-1026` |
+| # | Area | Observation (at `d6753b9`) | Evidence | Status |
+|---|---|---|---|---|
+| D1 | Error code (403) | docs/10 defines `AUTHORIZATION_DENIED` for 403; the implementation returns `ACCESS_DENIED` (CSRF/access denial). OpenAPI does not name 403 codes. | `docs/10_API_Specification.md:373`; `backend/.../identity/config/SecurityConfiguration.java:100-101` | Resolved (2026-10-21): code/OpenAPI aligned |
+| D2 | Idempotency conflict | docs/10 specifies `409 DUPLICATE_REQUEST` and OpenAPI lists 409 "idempotency conflict"; reusing a key for a different command actually throws `IllegalArgumentException` → `400 VALIDATION_ERROR`. 409 is produced only for concurrent constraint races. | `docs/10_API_Specification.md:376`; `contracts/openapi/devpath-openapi.yaml:1579,1661,1707`; `ai/application/AiGenerationApplicationService.java:108`; `knowledge/application/KnowledgeApplicationService.java:34`; `analysis/application/AnalysisApplicationService.java:49`; `repository/application/RepositorySynchronizationTransaction.java:46` | Resolved (2026-10-21): code/OpenAPI aligned (409 `DUPLICATE_REQUEST`; the same request replays the original job) |
+| D3 | Envelope shape | docs/10 examples use `data.id/type/attributes`, `links`, `metadata.correlationId`, and collection `items/pagination`; implementation and OpenAPI use `data` payloads with `metadata {requestId, apiVersion, timestamp}` only and resource-specific list keys. Correlation ID is a response header only. | `docs/10_API_Specification.md:271-313`; `shared/api/ApiMetadata.java:7`; `contracts/openapi/devpath-openapi.yaml:1793-1805` | Resolved (2026-10-19): docs/10 aligned to the implementation |
+| D4 | Error shape | docs/10 error model includes `userSafeDetail`, `fieldErrors`, `retryable`, `providerCategory`, `documentationRef`; implementation and OpenAPI return only `code` and `message`. | `docs/10_API_Specification.md:342-364`; `shared/api/ApiErrorResponse.java:8`; `contracts/openapi/devpath-openapi.yaml:3482-3490` | Resolved (2026-10-19): docs/10 aligned to the implementation |
+| D5 | Job polling URL | docs/10 example uses generic `/api/v1/jobs/{jobId}`; implemented polling is type-specific and no `/api/v1/jobs` endpoint exists. | `docs/10_API_Specification.md:323`; `repository/application/RepositorySyncJobView.java:28`; `analysis/application/AnalysisJobView.java:51` | Resolved (2026-10-19): docs/10 aligned to the implementation |
+| D6 | Job status casing/value | docs/10 job states are lower-case incl. `cancelled`; AI generation jobs use upper-case `QUEUED…CANCELED` (single L), and the dashboard job item uses upper-case statuses and `jobType` `ANALYSIS` while the analysis job resource uses lower-case and `REPOSITORY_ANALYSIS`. Internally inconsistent but OpenAPI matches code for each resource. | `docs/10_API_Specification.md:867`; `contracts/openapi/devpath-openapi.yaml:2127-2128,3056-3058,3276`; `dashboard/application/DashboardApplicationService.java:173-177` | Resolved (2026-10-19): docs/10 aligned to the implementation |
+| D7 | Duplicate API IDs in docs/10 | The same method+path carries two IDs in docs/10: sync `API-INT-006`/`API-REP-006`, Notion import `API-INT-012`/`API-KNW-003`, career target `API-CAR-003`/`API-ID-006`, company target `API-CMP-003`/`API-ID-007`. OpenAPI uses `API-REP-006`, `API-KNW-003`, `API-ID-006`, `API-ID-007`. | `docs/10_API_Specification.md:463,474,618,624`; `contracts/openapi/devpath-openapi.yaml:660,1560,195,230` | Resolved (2026-10-19): docs/10 aligned to the implementation |
+| D8 | Stale implementation statement | docs/10 §43 states that all catalog operations other than the identity foundation "remain specification-only", contradicting the 70 implemented ID'd operations in OpenAPI. | `docs/10_API_Specification.md:1460` | Resolved (2026-10-19): docs/10 aligned to the implementation |
+| D9 | GitHub integration callback auth | OpenAPI marks API-INT-002 as `sessionCookie`-secured with a `401` response; the route is `permitAll` and the controller converts every failure (including missing session/state) into a `302 …githubConnection=failed` redirect, so no 401 is produced. The Notion callback is not `permitAll` and does return 401 without a session. | `contracts/openapi/devpath-openapi.yaml:334,342-343`; `identity/config/SecurityConfiguration.java:61`; `integration/adapter/in/web/GitHubIntegrationController.java:75-87` | Resolved (2026-10-21): code/OpenAPI aligned (`security: []`, 302 only). Open (Low): OpenAPI still marks `state` required although a missing state yields `…=failed` |
+| D10 | Notion import 403 | OpenAPI lists `403` for "missing CSRF or page permission"; a page that is not owned/shared resolves to `NotionConnectionNotFoundException` → `404`, so 403 occurs only for CSRF. | `contracts/openapi/devpath-openapi.yaml:1577`; `integration/adapter/out/notion/NotionApiAdapter.java:138-143`; `knowledge/adapter/in/web/KnowledgeExceptionHandler.java:22-25` | Resolved (2026-10-19): docs/10 aligned to the implementation; Resolved (2026-10-21): code/OpenAPI aligned (403 = CSRF only, inaccessible page 404) |
+| D11 | Profile 404 undocumented | API-ID-002/003 can return `404 RESOURCE_NOT_FOUND` (docs/10 lists it for API-ID-002) but OpenAPI declares only 200/401 (GET) and 200/400/401/403 (PATCH). | `docs/10_API_Specification.md:436`; `contracts/openapi/devpath-openapi.yaml:111-121,135-155`; `identity/adapter/in/web/IdentityApiExceptionHandler.java:30-33` | Resolved (2026-10-21): code/OpenAPI aligned (GET and PATCH declare 404) |
+| D12 | Roadmap archive Idempotency-Key | Header is required (OpenAPI pattern `^[A-Za-z0-9._:-]+$`) but the controller validates only `@Size(1,128)` and does not pass the key to the service; idempotency comes from archive state. No 400 is declared, and the mapped advice handles only not-found, so missing/invalid headers get the framework default error body. | `contracts/openapi/devpath-openapi.yaml:1508,1509-1521`; `learning/adapter/in/web/LearningRoadmapController.java:27`; `recommendation/adapter/in/web/RecommendationApiExceptionHandler.java:15-16` | Resolved (2026-10-21): code/OpenAPI aligned (key size and pattern validated; `ErrorEnvelope` 400 declared) |
+| D13 | Missing-header error body | `RepositoryExceptionHandler` does not map `MissingRequestHeaderException`, so `POST …/sync` without `Idempotency-Key` returns the framework default 400 body instead of `ErrorEnvelope` (analysis, knowledge, and AI advices do map it). Header constraint annotations on non-`@Validated` controllers (analysis, knowledge, AI) are enforced by Spring MVC method validation, whose exception is not mapped by those advices; service-level validation still returns `VALIDATION_ERROR` for keys that reach the service. Inferred from code; not executed. | `repository/adapter/in/web/RepositoryExceptionHandler.java:55-61`; `repository/adapter/in/web/RepositorySynchronizationController.java:37`; `analysis/adapter/in/web/AnalysisController.java:28-42`; `repository/application/RepositorySynchronizationApplicationService.java:50-51` | Resolved (2026-10-21): code/OpenAPI aligned (shared `ApiValidationExceptionHandler`; reusable OpenAPI `ValidationError`) |
+| D14 | Idempotency scope | docs/10 requires `Idempotency-Key` for API-INT-001/005/008 and other commands; the implementation and OpenAPI require it only on the six commands in §1.9 (import and authorize have none). | `docs/10_API_Specification.md:458,462,470`; `repository/adapter/in/web/RepositoryController.java:33-44` | Resolved (2026-10-19): docs/10 aligned to the implementation |
+| D15 | Non-UUID path/query IDs | Invalid UUIDs in path or query parameters fail type conversion before any mapped advice and return the framework default 400 body, not `ErrorEnvelope`. OpenAPI declares no 400 for most UUID-path GETs. Inferred from code; not executed. | e.g. `rule/adapter/in/web/RuleEvaluationController.java:26-28`; `contracts/openapi/devpath-openapi.yaml:1010-1026` | Resolved (2026-10-21): code/OpenAPI aligned (`400 VALIDATION_ERROR` declared via `ValidationError`) |
 
 Verification method: OpenAPI read in full; all web controllers, exception advices, `SecurityConfiguration`, `shared/api`
 classes, and the job view records were read at `d6753b9`. No tests or HTTP calls were executed for this reference; items
-marked "inferred" are derived from Spring framework behaviour and should be confirmed by tests before any change.
+marked "inferred" were derived from Spring framework behaviour. The 2026-10-21 resolutions were verified against the
+API-FIX diff and its evidence: independent reviews PASS (2 cycles, 3 lenses); backend 255 tests (253 PASS, 2
+environment-conditional skips; Testcontainers with Docker); frontend 53 files / 214 tests PASS; builds PASS; contract
+lint 0 errors. Open (Low): five module exception advices have no explicit `@Order` relative to the shared validation
+advice (same status and code either way; only the message text could differ).
