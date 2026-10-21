@@ -713,7 +713,7 @@ The Skill Matrix is the Rule Engine output that translates measurable evidence i
 | Strength Flag | Deterministic flag based on configured thresholds. |
 | Recommendation Inputs | Structured facts downstream recommendation systems may consume. |
 | Rule Version | Rule version used to calculate the entry. |
-| Evidence Status | Implemented in the backend (D-4, 2026-10-21; UI display pending): deterministic evidence sufficiency state (`NONE`, `INSUFFICIENT`, `SUFFICIENT`) under `skill-matrix-v3`; see §16.6. |
+| Evidence Status | Implemented (backend and UI, 2026-10-22; D-4): deterministic evidence sufficiency state (`NONE`, `INSUFFICIENT`, `SUFFICIENT`) under `skill-matrix-v3`; see §16.6. |
 
 ### 16.3 Skill Levels
 
@@ -752,8 +752,8 @@ skills without changing the approved level thresholds. Historical `skill-matrix-
 
 ### 16.6 Evidence Status (D-4)
 
-Owner decision D-4 (2026-10-19) defines a per-skill evidence status. **Implemented in the backend (2026-10-21) with
-the `skill-matrix-v3` policy and Flyway migration V30; UI display (UI-10) is pending.** The Rule Engine calculates
+Owner decision D-4 (2026-10-19) defines a per-skill evidence status. **Implemented (backend and UI, 2026-10-22): the backend
+(2026-10-21) with the `skill-matrix-v3` policy and Flyway migration V30, and the UI display (UI-10) on 2026-10-22.** The Rule Engine calculates
 the status as part of each `SkillAssessment` during Skill Matrix
 generation. AI, prompt assembly, and the browser never calculate, infer, or override it.
 

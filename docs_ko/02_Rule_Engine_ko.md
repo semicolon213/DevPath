@@ -243,11 +243,11 @@ Skill Matrix는 측정 가능한 증거를 구조화된 스킬 정보로 변환�
 | Related Repository IDs | 스킬에 기여한 저장소 |
 | Growth Trend | 결정적 성장 추세 |
 | Weakness/Strength | threshold 기반 약점/강점 flag |
-| Evidence Status | 백엔드 구현됨(D-4, 2026-10-21, 화면 표시 대기): `skill-matrix-v3`에서 계산하는 결정적 근거 충분성 상태(`NONE`, `INSUFFICIENT`, `SUFFICIENT`) |
+| Evidence Status | 구현됨(백엔드와 화면, 2026-10-22, D-4): `skill-matrix-v3`에서 계산하는 결정적 근거 충분성 상태(`NONE`, `INSUFFICIENT`, `SUFFICIENT`) |
 
 ### 16.6 근거 상태 (D-4)
 
-소유자 결정 D-4(2026-10-19)는 기술별 근거 상태를 정의한다. **백엔드에서 `skill-matrix-v3` policy와 Flyway migration V30으로 구현되었다(2026-10-21). 화면 표시(UI-10)는 남아 있다.** Rule Engine이 Skill Matrix 생성 중 각 `SkillAssessment`의 일부로 상태를 계산한다. AI, 프롬프트 조립, 브라우저는 이 상태를 계산·추론·변경하지 않는다.
+소유자 결정 D-4(2026-10-19)는 기술별 근거 상태를 정의한다. **구현되었다(백엔드와 화면, 2026-10-22). 백엔드는 `skill-matrix-v3` policy와 Flyway migration V30으로 2026-10-21에, 화면 표시(UI-10)는 2026-10-22에 구현되었다.** Rule Engine이 Skill Matrix 생성 중 각 `SkillAssessment`의 일부로 상태를 계산한다. AI, 프롬프트 조립, 브라우저는 이 상태를 계산·추론·변경하지 않는다.
 
 입력은 평가에 저장된 값이다.
 

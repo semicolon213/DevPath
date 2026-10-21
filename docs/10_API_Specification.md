@@ -1273,7 +1273,7 @@ confidence, strength/weakness flags, explicit growth state, aggregate rule-resul
 Repository IDs, structured downstream facts, and exact rule-set version. The browser displays these values without
 recalculation. A missing matrix and a matrix owned by another user both return `404`.
 
-**Implemented in the backend (D-4, owner decision 2026-10-19; implemented 2026-10-21; UI display pending):** each
+**Implemented (backend and UI, 2026-10-22; D-4, owner decision 2026-10-19; backend 2026-10-21):** each
 skill assessment in SkillMatrixResponse (API-SKL-001/002, and the matrices returned by API-SKL-003) and in
 SkillDetailResponse (API-SKL-004) carries a nullable `evidenceStatus` field with the enum
 `NONE | INSUFFICIENT | SUFFICIENT`. The Rule Engine calculates it under the versioned Skill Matrix policy
