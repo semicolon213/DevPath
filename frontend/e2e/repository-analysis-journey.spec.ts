@@ -16,6 +16,7 @@ const skillMatrix = {
   skills: [{
     assessmentId: "assessment-id", skillId: "skill-id", skillKey: "testing-discipline",
     skillName: "Testing Discipline", category: "TESTING", score: 50, level: "DEVELOPING", confidence: 90,
+    evidenceStatus: "INSUFFICIENT",
     strength: false, weakness: true, growthTrend: "UNAVAILABLE",
     aggregateRuleResultReference: "evaluation-id:TESTING", evidenceIds: ["evidence-id"],
     repositoryIds: [repository.repositoryId], recommendationInputFacts: ["TEST_FILES"], ruleSetVersion: "baseline-v2"
@@ -25,6 +26,7 @@ const previousSkillMatrix = {
   ...skillMatrix, skillMatrixId: "matrix-previous-id", evaluationId: "evaluation-previous-id", status: "SUPERSEDED",
   strengths: [], weaknesses: [], skills: skillMatrix.skills.map(value => ({
     ...value, assessmentId: "assessment-previous-id", score: 55, level: "DEVELOPING", weakness: false,
+    evidenceStatus: "NONE",
     evidenceIds: ["evidence-previous-id"]
   }))
 };

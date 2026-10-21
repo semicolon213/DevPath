@@ -6,6 +6,7 @@ import { RepositorySummaryPanel } from "../features/ai/ui/RepositorySummaryPanel
 import { categoryLabel, evidenceTypeLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
+import { EvidenceStatus } from "../shared/ui/EvidenceStatus";
 
 export function AnalysisDetailPage() {
   const { analysisId } = useParams();
@@ -85,7 +86,8 @@ export function AnalysisDetailPage() {
           {matrix.skills.map(skill => (
             <article key={skill.assessmentId}>
               <div><strong>{skillNameLabel(skill.skillKey, skill.skillName)}</strong><span>{levelLabel(skill.level)}</span></div>
-              <progress max="100" value={skill.score}>{skill.score}점</progress>
+              <EvidenceStatus status={skill.evidenceStatus} />
+              {skill.evidenceStatus !== "NONE" ? <progress max="100" value={skill.score}>{skill.score}점</progress> : null}
               <small>공식 점수 {formatScore(skill.score)} · 신뢰도 {formatScore(skill.confidence)}%</small>
             </article>
           ))}

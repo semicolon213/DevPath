@@ -4,6 +4,7 @@ import { useSkillHistory, useSkillWorkspace } from "../features/skills/model/use
 import { categoryLabel, evidenceTypeLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
+import { EvidenceStatus } from "../shared/ui/EvidenceStatus";
 
 export function SkillDetailPage() {
   const { skillId } = useParams();
@@ -23,6 +24,7 @@ export function SkillDetailPage() {
       <Summary label="공식 점수" value={format(skill.score)} /><Summary label="등급" value={levelLabel(skill.level)} />
       <Summary label="신뢰도" value={`${format(skill.confidence)}%`} />
     </section>
+    <EvidenceStatus status={skill.evidenceStatus} />
     <section className="analysis-notice"><div><h2>결정론적 평가 기준</h2><p>점수와 등급은 서버에 저장된 값입니다. 브라우저는 계산하거나 수정하지 않습니다.</p></div>
       <time dateTime={detail.generatedAt}>{formatDate(detail.generatedAt)} 생성</time></section>
     <SkillHistorySection query={history} />
@@ -76,6 +78,7 @@ function SkillHistoryItem({ point }: { point: SkillHistoryPoint }) {
       {point.matrixStatus === "CURRENT" ? "현재 Matrix" : "과거 Matrix"}</span><h3>{point.repositoryFullName}</h3>
       <time dateTime={point.generatedAt}>{formatDate(point.generatedAt)}</time></div>
       <div className="official-score" aria-label={`저장된 공식 점수 ${format(point.skill.score)}점`}><strong>{format(point.skill.score)}</strong><span>/ 100</span></div></div>
+    <EvidenceStatus status={point.skill.evidenceStatus} />
     <dl className="skill-history-facts"><Fact label="등급" value={levelLabel(point.skill.level)} /><Fact label="신뢰도" value={`${format(point.skill.confidence)}%`} />
       <Fact label="연결 근거" value={`${point.skill.evidenceIds.length}개`} /><Fact label="정책·규칙" value={`${point.policyVersion} · ${point.ruleSetVersion}`} /></dl>
     <div className="skill-history-item__actions"><Link to={`/analyses/${point.analysisId}`}>분석 근거 보기</Link><Link to={`/repositories/${point.repositoryId}`}>저장소 보기</Link></div>

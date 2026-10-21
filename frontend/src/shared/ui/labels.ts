@@ -3,6 +3,7 @@ import type { Recommendation } from "../../features/recommendations/api/recommen
 import type { DetectedTechnology, EvidenceCategory, ImportedRepository, RepositorySyncJob } from "../../features/repositories/api/repositoryApi";
 import type { KnowledgeChunkSummary, KnowledgeIngestionJob, KnowledgeSearchResult } from "../../features/knowledge/api/knowledgeApi";
 import type { RuleEvidence } from "../../features/analysis/api/analysisApi";
+import type { SkillAssessment } from "../../features/skills/api/skillMatrixApi";
 
 const unknownLabel = "알 수 없음";
 
@@ -15,6 +16,10 @@ const categoryLabels = {
 const levelLabels = {
   NONE: "관찰 없음", BEGINNER: "입문", DEVELOPING: "성장", COMPETENT: "충분", STRONG: "강점"
 } as const satisfies Record<ReadinessLevel, string>;
+
+const evidenceStatusLabels = {
+  NONE: "근거 없음", INSUFFICIENT: "근거 부족", SUFFICIENT: "근거 충분"
+} as const satisfies Record<NonNullable<SkillAssessment["evidenceStatus"]>, string>;
 
 const priorityLabels = {
   CRITICAL: "긴급", HIGH: "높음", MEDIUM: "보통", LOW: "낮음"
@@ -59,6 +64,7 @@ function label(labels: Record<string, string>, value: string | null | undefined)
 
 export const categoryLabel = (value: string | null | undefined) => label(categoryLabels, value);
 export const levelLabel = (value: string | null | undefined) => label(levelLabels, value);
+export const evidenceStatusLabel = (value: string | null | undefined) => label(evidenceStatusLabels, value);
 export const priorityLabel = (value: string | null | undefined) => label(priorityLabels, value);
 export const recommendationTypeLabel = (value: string | null | undefined) => label(recommendationTypeLabels, value);
 export const recommendationStatusLabel = (value: string | null | undefined) => label(recommendationStatusLabels, value);

@@ -6,22 +6,22 @@ import { SkillMatrixComparisonPage } from "./SkillMatrixComparisonPage";
 
 afterEach(() => vi.unstubAllGlobals());
 
-const skill = (score: number, level: "DEVELOPING" | "STRONG", evidenceCount: number) => ({
+const skill = (score: number, level: "DEVELOPING" | "STRONG", evidenceCount: number, evidenceStatus: "NONE" | "INSUFFICIENT" | "SUFFICIENT" | null) => ({
   assessmentId: `assessment-${score}`, skillId: "skill-testing", skillKey: "testing-discipline",
-  skillName: "Testing Discipline", category: "TESTING", score, level, confidence: 90,
+  skillName: "Testing Discipline", category: "TESTING", score, level, confidence: 90, evidenceStatus,
   strength: level === "STRONG", weakness: false, growthTrend: "UNAVAILABLE",
   aggregateRuleResultReference: "category:TESTING", evidenceIds: Array.from({ length: evidenceCount }, (_, i) => `e-${i}`),
   repositoryIds: ["repository-1"], recommendationInputFacts: [], ruleSetVersion: "baseline-v2"
 });
-const matrix = (id: string, score: number, level: "DEVELOPING" | "STRONG", status: "CURRENT" | "SUPERSEDED") => ({
+const matrix = (id: string, score: number, level: "DEVELOPING" | "STRONG", status: "CURRENT" | "SUPERSEDED", evidenceStatus: "NONE" | "INSUFFICIENT" | "SUFFICIENT" | null) => ({
   skillMatrixId: id, evaluationId: `evaluation-${id}`, policyVersion: "skill-matrix-v2", ruleSetVersion: "baseline-v2",
-  status, skills: [skill(score, level, score === 85 ? 2 : 1)], strengths: level === "STRONG" ? ["testing-discipline"] : [],
+  status, skills: [skill(score, level, score === 85 ? 2 : 1, evidenceStatus)], strengths: level === "STRONG" ? ["testing-discipline"] : [],
   weaknesses: [], generatedAt: "2026-08-25T00:00:00Z"
 });
 
 it("compares stored skill values without deriving a delta", async () => {
   vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({
-    data: { matrices: [matrix("matrix-a", 55, "DEVELOPING", "SUPERSEDED"), matrix("matrix-b", 85, "STRONG", "CURRENT")] },
+    data: { matrices: [matrix("matrix-a", 55, "DEVELOPING", "SUPERSEDED", null), matrix("matrix-b", 85, "STRONG", "CURRENT", "SUFFICIENT")] },
     metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-25T00:00:00Z" }
   })));
   renderWithProviders(<Routes><Route path="/skills/compare" element={<SkillMatrixComparisonPage />} /></Routes>,
@@ -35,4 +35,20 @@ it("compares stored skill values without deriving a delta", async () => {
   const region = screen.getByRole("region", { name: "역량별 저장 결과 표" });
   expect(region).toHaveAttribute("tabindex", "0");
   expect(screen.getByText("표를 좌우로 스크롤해 비교할 수 있습니다.")).toBeInTheDocument();
+  expect(screen.queryByRole("note", { name: /근거 상태:/ })).not.toBeInTheDocument();
+});
+
+it("shows NONE guidance and an INSUFFICIENT text indicator without changing stored scores", async () => {
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({
+    data: { matrices: [matrix("matrix-a", 15, "DEVELOPING", "SUPERSEDED", "NONE"), matrix("matrix-b", 45, "DEVELOPING", "CURRENT", "INSUFFICIENT")] },
+    metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-25T00:00:00Z" }
+  })));
+  renderWithProviders(<Routes><Route path="/skills/compare" element={<SkillMatrixComparisonPage />} /></Routes>,
+    ["/skills/compare?skillMatrixId=matrix-a&skillMatrixId=matrix-b"]);
+
+  const row = await screen.findByRole("row", { name: /테스트 역량/ });
+  expect(row).toHaveTextContent("15");
+  expect(row).toHaveTextContent("45");
+  expect(screen.getByRole("note", { name: "근거 상태: 근거 없음" })).toHaveTextContent("저장소 근거를 추가한 뒤 다시 분석해 주세요.");
+  expect(screen.getByRole("note", { name: "근거 상태: 근거 부족" })).toBeInTheDocument();
 });

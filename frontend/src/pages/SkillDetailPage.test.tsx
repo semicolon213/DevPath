@@ -26,6 +26,7 @@ it("shows the current authoritative skill and its normalized evidence", async ()
         skills: [{ assessmentId: historical ? "assessment-0" : "assessment-1", skillId: "skill-1", skillKey: "testing-discipline",
           skillName: "Testing Discipline", category: "TESTING", score: historical ? 54 : 72,
           level: historical ? "DEVELOPING" : "COMPETENT", confidence: historical ? 80 : 90,
+          evidenceStatus: historical ? null : "SUFFICIENT",
           strength: false, weakness: historical, growthTrend: "UNAVAILABLE", aggregateRuleResultReference: "category:TESTING",
           evidenceIds: historical ? [] : ["evidence-1"], repositoryIds: ["repository-1"], recommendationInputFacts: [], ruleSetVersion: "baseline-v2" }]
       }, metadata }));
@@ -40,6 +41,7 @@ it("shows the current authoritative skill and its normalized evidence", async ()
       ruleSetVersion: "baseline-v2", matrixStatus: "CURRENT", generatedAt: "2026-08-25T00:00:00Z",
       skill: { assessmentId: "assessment-1", skillId: "skill-1", skillKey: "testing-discipline",
         skillName: "Testing Discipline", category: "TESTING", score: 72, level: "COMPETENT", confidence: 90,
+        evidenceStatus: "SUFFICIENT",
         strength: false, weakness: false, growthTrend: "UNAVAILABLE", aggregateRuleResultReference: "category:TESTING",
         evidenceIds: ["evidence-1"], repositoryIds: ["repository-1"], recommendationInputFacts: [], ruleSetVersion: "baseline-v2" }
     }, metadata }));
@@ -51,6 +53,7 @@ it("shows the current authoritative skill and its normalized evidence", async ()
   expect(screen.getAllByText("72")).toHaveLength(2);
   expect(screen.getByText("테스트 파일이 확인되었습니다.")).toBeInTheDocument();
   expect(screen.getByText(/브라우저는 계산하거나 수정하지 않습니다/)).toBeInTheDocument();
+  expect(screen.queryByRole("note", { name: /근거 상태:/ })).not.toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "기술 평가 이력" })).toBeInTheDocument();
   expect(screen.getByText(/변화량이나 성장 추세는 계산하지 않습니다/)).toBeInTheDocument();
   expect(screen.getByText("owner/devpath")).toBeInTheDocument();
@@ -72,6 +75,7 @@ it("keeps current detail available when only historical matrices fail", async ()
       ruleSetVersion: "baseline-v2", matrixStatus: "CURRENT", generatedAt: "2026-08-25T00:00:00Z",
       skill: { assessmentId: "assessment-1", skillId: "skill-1", skillKey: "testing-discipline",
         skillName: "Testing Discipline", category: "TESTING", score: 72, level: "COMPETENT", confidence: 90,
+        evidenceStatus: null,
         strength: false, weakness: false, growthTrend: "UNAVAILABLE", aggregateRuleResultReference: "category:TESTING",
         evidenceIds: [], repositoryIds: ["repository-1"], recommendationInputFacts: [], ruleSetVersion: "baseline-v2" }
     }, metadata }));
@@ -80,6 +84,34 @@ it("keeps current detail available when only historical matrices fail", async ()
   renderWithProviders(<Routes><Route path="/skills/:skillId" element={<SkillDetailPage />} /></Routes>, ["/skills/skill-1"]);
 
   expect(await screen.findByRole("heading", { name: "테스트 역량" })).toBeInTheDocument();
+  expect(screen.queryByRole("note", { name: /근거 상태:/ })).not.toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "기술 평가 이력만 불러오지 못했습니다." })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "이력 다시 시도" })).toBeInTheDocument();
+});
+
+it.each([
+  ["NONE", "근거 상태: 근거 없음"],
+  ["INSUFFICIENT", "근거 상태: 근거 부족"]
+] as const)("shows the API %s evidence status on the current skill", async (evidenceStatus, accessibleName) => {
+  vi.stubGlobal("fetch", vi.fn((input: string | URL | Request) => {
+    const url = String(input);
+    if (url.includes("/api/v1/analyses?")) return Promise.resolve(Response.json({ data: { analyses: [], nextCursor: null, totalCount: 0 }, metadata }));
+    if (url.endsWith("/evidence")) return Promise.resolve(Response.json({ data: {
+      skillId: "skill-1", skillAssessmentId: "assessment-1", skillMatrixId: "matrix-1", evidence: []
+    }, metadata }));
+    return Promise.resolve(Response.json({ data: {
+      skillMatrixId: "matrix-1", evaluationId: "evaluation-1", policyVersion: "skill-matrix-v3",
+      ruleSetVersion: "baseline-v2", matrixStatus: "CURRENT", generatedAt: "2026-08-25T00:00:00Z",
+      skill: { assessmentId: "assessment-1", skillId: "skill-1", skillKey: "testing-discipline",
+        skillName: "Testing Discipline", category: "TESTING", score: 72, level: "COMPETENT", confidence: 90,
+        evidenceStatus, strength: false, weakness: false, growthTrend: "UNAVAILABLE", aggregateRuleResultReference: "category:TESTING",
+        evidenceIds: evidenceStatus === "NONE" ? [] : ["evidence-1"], repositoryIds: ["repository-1"], recommendationInputFacts: [], ruleSetVersion: "baseline-v2" }
+    }, metadata }));
+  }));
+
+  renderWithProviders(<Routes><Route path="/skills/:skillId" element={<SkillDetailPage />} /></Routes>, ["/skills/skill-1"]);
+
+  expect(await screen.findByRole("note", { name: accessibleName })).toBeInTheDocument();
+  expect(screen.getByText("72")).toBeInTheDocument();
+  if (evidenceStatus === "NONE") expect(screen.getByText(/저장소 근거를 추가한 뒤 다시 분석해 주세요/)).toBeInTheDocument();
 });

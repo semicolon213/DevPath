@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../test/renderWithProviders";
 import { SkillsPage } from "./SkillsPage";
@@ -25,6 +25,7 @@ it("renders official scores, confidence, evidence, and Korean labels", async () 
         score: 100,
         level: "STRONG",
         confidence: 87.5,
+        evidenceStatus: "SUFFICIENT",
         strength: true,
         weakness: false,
         growthTrend: "UNAVAILABLE",
@@ -50,6 +51,41 @@ it("renders official scores, confidence, evidence, and Korean labels", async () 
   const officialRegion = screen.getByRole("heading", { name: "역량별 결과" }).closest("section")!;
   const aiRegion = screen.getByRole("region", { name: "AI 생성 기술 분석 설명" });
   expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+it("uses the API evidence status without deriving it from evidence counts", async () => {
+  const statuses = [
+    { id: "none", name: "근거 없는 역량", status: "NONE", score: 15, evidenceIds: [] },
+    { id: "insufficient", name: "근거 부족 역량", status: "INSUFFICIENT", score: 45, evidenceIds: ["evidence-1"] },
+    { id: "sufficient", name: "근거 충분 역량", status: "SUFFICIENT", score: 80, evidenceIds: [] },
+    { id: "legacy", name: "과거 역량", status: null, score: 60, evidenceIds: [] }
+  ];
+  vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({ data: {
+    skillMatrixId: "matrix-1", evaluationId: "evaluation-1", policyVersion: "skill-matrix-v3",
+    ruleSetVersion: "baseline-v1", status: "CURRENT", generatedAt: "2026-08-11T10:00:00Z",
+    strengths: [], weaknesses: [], skills: statuses.map(item => ({
+      assessmentId: item.id, skillId: item.id, skillKey: item.id, skillName: item.name,
+      category: "TESTING", score: item.score, level: "DEVELOPING", confidence: 90,
+      evidenceStatus: item.status, strength: false, weakness: false, growthTrend: "UNAVAILABLE",
+      aggregateRuleResultReference: "category:TESTING", evidenceIds: item.evidenceIds,
+      repositoryIds: ["repository-1"], recommendationInputFacts: [], ruleSetVersion: "baseline-v1"
+    }))
+  }, metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T10:00:00Z" } })));
+
+  renderWithProviders(<SkillsPage />, ["/skills"]);
+
+  const none = (await screen.findByRole("heading", { name: "근거 없는 역량" })).closest("article")!;
+  expect(within(none).queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(within(none).getByRole("note", { name: "근거 상태: 근거 없음" })).toHaveTextContent("저장소 근거를 추가한 뒤 다시 분석해 주세요.");
+  const insufficient = screen.getByRole("heading", { name: "근거 부족 역량" }).closest("article")!;
+  expect(within(insufficient).getByRole("progressbar")).toHaveAttribute("value", "45");
+  expect(within(insufficient).getByRole("note", { name: "근거 상태: 근거 부족" })).toBeInTheDocument();
+  const sufficient = screen.getByRole("heading", { name: "근거 충분 역량" }).closest("article")!;
+  expect(within(sufficient).getByRole("progressbar")).toHaveAttribute("value", "80");
+  expect(within(sufficient).queryByText("근거 없음")).not.toBeInTheDocument();
+  const legacy = screen.getByRole("heading", { name: "과거 역량" }).closest("article")!;
+  expect(within(legacy).getByRole("progressbar")).toHaveAttribute("value", "60");
+  expect(within(legacy).queryByRole("note", { name: /근거 상태:/ })).not.toBeInTheDocument();
 });
 
 it("renders an actionable empty state for a missing matrix", async () => {

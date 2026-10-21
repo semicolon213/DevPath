@@ -469,6 +469,9 @@ button:disabled {
 .status-badge { background: var(--evidence-surface); border-radius: var(--radius-pill); color: var(--text-secondary); flex: 0 0 auto; font-weight: 700; padding: 6px 10px; }
 .status-badge--active { background: var(--success-surface); color: var(--success-text); }
 .status-badge--info { background: var(--info-surface-soft); color: var(--brand-strong); }
+.evidence-status { align-items: flex-start; background: var(--warning-surface); border: 1px solid var(--warning-border); border-radius: var(--radius-card); display: flex; flex-wrap: wrap; gap: 8px 12px; padding: 12px; }
+.evidence-status p { flex-basis: 100%; margin: 0; }
+.skill-summary + .evidence-status { margin-bottom: 24px; }
 .skill-history { border-bottom: 1px solid var(--border-default); margin: 32px 0; padding-bottom: 32px; }
 .skill-history-list { display: grid; gap: 14px; list-style: none; margin: 0 0 18px; padding: 0; }
 .skill-history-list article { background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); display: grid; gap: 16px; padding: 20px; }

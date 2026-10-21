@@ -3,6 +3,7 @@ import type { SkillAssessment, SkillMatrix } from "../features/skills/api/skillM
 import { useSkillMatrixComparison } from "../features/skills/model/useSkillMatrix";
 import { categoryLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
+import { EvidenceStatus } from "../shared/ui/EvidenceStatus";
 
 export function SkillMatrixComparisonPage() {
   const [params] = useSearchParams();
@@ -46,7 +47,7 @@ function SkillRow({ skillKey, left, right }: { skillKey: string; left?: SkillAss
   return <tr><th scope="row"><strong>{skillNameLabel(skillKey, left?.skillName ?? right?.skillName)}</strong><small>{categoryLabel(left?.category ?? right?.category)}</small></th><SkillCell skill={left} /><SkillCell skill={right} /></tr>;
 }
 function SkillCell({ skill }: { skill?: SkillAssessment }) {
-  return <td>{skill ? <><strong>{formatScore(skill.score)}</strong><small>{levelLabel(skill.level)} · 신뢰도 {formatScore(skill.confidence)}% · 증거 {skill.evidenceIds.length}개</small></> : <span>없음</span>}</td>;
+  return <td>{skill ? <><strong>{formatScore(skill.score)}</strong><small>{levelLabel(skill.level)} · 신뢰도 {formatScore(skill.confidence)}% · 증거 {skill.evidenceIds.length}개</small><EvidenceStatus status={skill.evidenceStatus} /></> : <span>없음</span>}</td>;
 }
 function MatrixFacts({ label, matrix }: { label: string; matrix: SkillMatrix }) {
   return <article><h2>{label} 재현 정보</h2><dl><div><dt>Matrix ID</dt><dd><code>{matrix.skillMatrixId}</code></dd></div><div><dt>정책 버전</dt><dd>{matrix.policyVersion}</dd></div><div><dt>규칙 버전</dt><dd>{matrix.ruleSetVersion}</dd></div><div><dt>강점</dt><dd>{matrix.strengths.length}개</dd></div><div><dt>개선 영역</dt><dd>{matrix.weaknesses.length}개</dd></div></dl></article>;

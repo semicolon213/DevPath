@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   categoryLabel, chunkStatusLabel, evidenceTypeLabel, jobStatusLabel, knowledgeFreshnessLabel,
-  levelLabel, priorityLabel, recommendationStatusLabel, recommendationTypeLabel,
+  evidenceStatusLabel, levelLabel, priorityLabel, recommendationStatusLabel, recommendationTypeLabel,
   repositoryLifecycleLabel, repositorySyncStatusLabel, safeJobErrorMessage, skillNameLabel
 } from "./labels";
 
@@ -9,6 +9,7 @@ describe("shared Korean labels", () => {
   const tables = [
     [categoryLabel, ["LANGUAGE", "FRAMEWORK", "DATABASE", "ARCHITECTURE", "TESTING", "DEVOPS", "DOCUMENTATION", "ACTIVITY", "COLLABORATION"]],
     [levelLabel, ["NONE", "BEGINNER", "DEVELOPING", "COMPETENT", "STRONG"]],
+    [evidenceStatusLabel, ["NONE", "INSUFFICIENT", "SUFFICIENT"]],
     [priorityLabel, ["CRITICAL", "HIGH", "MEDIUM", "LOW"]],
     [recommendationTypeLabel, ["STUDY", "PROJECT", "ARCHITECTURE", "PORTFOLIO"]],
     [recommendationStatusLabel, ["PROPOSED", "ACCEPTED", "DISMISSED", "COMPLETED"]],
@@ -31,6 +32,14 @@ describe("shared Korean labels", () => {
   it("normalizes job status casing and hides unknown values", () => {
     expect(jobStatusLabel("SUCCEEDED")).toBe("완료");
     expect(categoryLabel("NEW_INTERNAL_VALUE")).toBe("알 수 없음");
+  });
+
+  it("maps every evidence status and uses a neutral fallback", () => {
+    expect(evidenceStatusLabel("NONE")).toBe("근거 없음");
+    expect(evidenceStatusLabel("INSUFFICIENT")).toBe("근거 부족");
+    expect(evidenceStatusLabel("SUFFICIENT")).toBe("근거 충분");
+    expect(evidenceStatusLabel("NEW_STATUS")).toBe("알 수 없음");
+    expect(evidenceStatusLabel(null)).toBe("알 수 없음");
   });
 
   it("uses an API skill name only when the local skill label is unknown", () => {

@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Route, Routes } from "react-router-dom";
 import { renderWithProviders } from "../test/renderWithProviders";
@@ -7,7 +7,9 @@ import { AnalysisDetailPage } from "./AnalysisDetailPage";
 afterEach(() => vi.unstubAllGlobals());
 const metadata = { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T10:00:00Z" };
 
-function analysisDetailResponse(input: RequestInfo | URL) {
+type EvidenceStatus = "NONE" | "INSUFFICIENT" | "SUFFICIENT" | null;
+
+function analysisDetailResponse(input: RequestInfo | URL, evidenceStatus: EvidenceStatus = null) {
   const url = input.toString();
   if (url.endsWith("/analyses/analysis-id")) return Promise.resolve(Response.json({ data: {
     analysisId: "analysis-id", repositoryId: "repository-id", snapshotId: "snapshot-id",
@@ -38,6 +40,7 @@ function analysisDetailResponse(input: RequestInfo | URL) {
     generatedAt: "2026-08-11T10:00:00Z", skills: [{ assessmentId: "assessment-id", skillId: "skill-id",
       skillKey: "technical-documentation", skillName: "Technical Documentation", category: "DOCUMENTATION",
       score: 100, level: "STRONG", confidence: 100, strength: true, weakness: false, growthTrend: "UNAVAILABLE",
+      evidenceStatus,
       aggregateRuleResultReference: "evaluation-id:DOCUMENTATION", evidenceIds: ["evidence-id"],
       repositoryIds: ["repository-id"], recommendationInputFacts: [], ruleSetVersion: "baseline-v1" }]
   }, metadata }));
@@ -62,6 +65,24 @@ it("explains immutable official rules and marks the repository's current result"
     const aiRegion = screen.getByRole("region", { name: `AI 생성 ${aiName}` });
     expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   }
+});
+
+it.each([
+  ["NONE", false, "근거 상태: 근거 없음"],
+  ["INSUFFICIENT", true, "근거 상태: 근거 부족"],
+  ["SUFFICIENT", true, null],
+  [null, true, null]
+] as const)("renders the API %s evidence status in the historical skill matrix", async (evidenceStatus, hasProgress, noteName) => {
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => analysisDetailResponse(input, evidenceStatus)));
+
+  renderWithProviders(<Routes><Route path="/analyses/:analysisId" element={<AnalysisDetailPage />} /></Routes>, ["/analyses/analysis-id"]);
+
+  const section = (await screen.findByRole("heading", { name: "이 분석의 역량 매트릭스" })).closest("section")!;
+  if (hasProgress) expect(within(section).getByRole("progressbar")).toHaveAttribute("value", "100");
+  else expect(within(section).queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(within(section).getByText(/공식 점수 100/)).toBeInTheDocument();
+  if (noteName) expect(within(section).getByRole("note", { name: noteName })).toBeInTheDocument();
+  else expect(within(section).queryByRole("note", { name: /근거 상태:/ })).not.toBeInTheDocument();
 });
 
 it("uses the shared network failure state and recovers on retry", async () => {

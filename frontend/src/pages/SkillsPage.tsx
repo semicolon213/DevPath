@@ -5,6 +5,7 @@ import { ApiError } from "../shared/api/apiClient";
 import { SkillExplanationPanel } from "../features/ai/ui/SkillExplanationPanel";
 import { categoryLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
+import { EvidenceStatus } from "../shared/ui/EvidenceStatus";
 
 export function SkillsPage() {
   const query = useCurrentSkillMatrix();
@@ -90,10 +91,11 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
         <strong>{formatScore(skill.score)}</strong>
         <span>{levelLabel(skill.level)}</span>
       </div>
-      <label className="skill-meter">
+      <EvidenceStatus status={skill.evidenceStatus} />
+      {skill.evidenceStatus !== "NONE" ? <label className="skill-meter">
         <span>공식 점수</span>
         <progress max="100" value={skill.score}>{skill.score}점</progress>
-      </label>
+      </label> : null}
       <dl className="skill-metadata">
         <div><dt>근거 신뢰도</dt><dd>{formatScore(skill.confidence)}%</dd></div>
         <div><dt>연결된 근거</dt><dd>{skill.evidenceIds.length}개</dd></div>
