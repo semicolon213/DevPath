@@ -39,7 +39,7 @@ export function SkillDetailPage() {
         <div className="skill-evidence-list">{evidence.evidence.map(item => <article key={item.evidenceId}>
           <div className="skill-card__heading"><div><span className="skill-category">{evidenceTypeLabel(item.evidenceType)}</span><h3>{item.observedFactSummary}</h3></div></div>
           <dl className="skill-metadata"><div><dt>신뢰도</dt><dd>{format(item.confidence)}%</dd></div><div><dt>스냅샷</dt><dd><code>{item.snapshotId}</code></dd></div></dl>
-          <details><summary>증거 참조 보기</summary><code>{item.sourceReference}</code></details>
+          <details className="skill-evidence-reference"><summary>증거 참조 보기</summary><code>{item.sourceReference}</code></details>
         </article>)}</div>}
     </section>
     <SkillExplanationPanel skillMatrixId={detail.skillMatrixId} />

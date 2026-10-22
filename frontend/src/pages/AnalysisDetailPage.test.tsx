@@ -85,6 +85,13 @@ it.each([
   expect(within(section).getByText(/공식 점수 100/)).toBeInTheDocument();
   if (noteName) expect(within(section).getByRole("note", { name: noteName })).toBeInTheDocument();
   else expect(within(section).queryByRole("note", { name: /근거 상태:/ })).not.toBeInTheDocument();
+  const row = section.querySelector(".historical-skill-row")!;
+  expect(Array.from(row.children).map(child => child.className)).toEqual(["historical-skill-row__name", "historical-skill-row__score", "historical-skill-row__status"]);
+  const score = row.querySelector<HTMLElement>(".historical-skill-row__score")!;
+  expect(within(score).getByText(/공식 점수 100/)).toBeInTheDocument();
+  if (hasProgress) expect(within(score).getByRole("progressbar")).toBeInTheDocument();
+  else expect(within(score).getByText("근거를 추가하면 공식 점수를 표시합니다.")).toBeInTheDocument();
+  if (noteName) expect(row.querySelector(".historical-skill-row__status")).toContainElement(within(section).getByRole("note", { name: noteName }));
 });
 
 it("uses the shared network failure state and recovers on retry", async () => {

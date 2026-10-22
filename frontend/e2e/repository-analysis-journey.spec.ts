@@ -78,6 +78,81 @@ test("dashboard has no horizontal overflow with desktop scrollbars visible", asy
   }
 });
 
+test("changed result pages have no horizontal overflow and keep single-column mobile rows", async () => {
+  const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ["--hide-scrollbars"] });
+  try {
+    for (const width of [1440, 1280, 721, 375]) {
+      const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width, height: 900 } });
+      const page = await context.newPage();
+      await installApiFixture(page, []);
+      for (const [path, heading] of [["/analyses/analysis-id", "이 분석의 역량 매트릭스"], ["/skills", "테스트 역량"], ["/roadmap", "실행 순서"], ["/recommendations", "추천 세트 이력"], [`/repositories/${repository.repositoryId}`, "감지된 기술 스택"], ["/skills/skill-id", "평가 추적 정보"]]) {
+        await page.goto(path);
+        await expect(page.getByRole("heading", { name: heading })).toBeVisible();
+        const size = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+        expect(size.scrollWidth, `${path} at ${width}px`).toBeLessThanOrEqual(size.clientWidth);
+        if (path === "/analyses/analysis-id" && width >= 1280) {
+          const slots = await page.locator(".historical-skill-row").evaluateAll(rows => rows.map(row => ["name", "score", "status"].map(slot => Math.round(row.querySelector(`.historical-skill-row__${slot}`)!.getBoundingClientRect().left))));
+          for (const row of slots) expect(row, `historical slots at ${width}px`).toEqual(slots[0]);
+          expect(slots[0][0]).toBeLessThan(slots[0][1]);
+          expect(slots[0][1]).toBeLessThan(slots[0][2]);
+        }
+        if (path === "/skills" && width === 375) {
+          const columns = await page.locator(".skill-card").first().evaluate(element => getComputedStyle(element).gridTemplateColumns.split(" ").length);
+          expect(columns).toBe(1);
+        }
+      }
+      await context.close();
+    }
+  } finally {
+    await browser.close();
+  }
+});
+
+test("archived and externally deleted repository rows keep actions in the action column", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await installApiFixture(page, []);
+  const rows = [
+    { ...repository, lifecycle: "ARCHIVED", providerArchived: true },
+    { ...repository, repositoryId: "deleted-id", fullName: "owner/deleted", lifecycle: "DELETED_EXTERNALLY" }
+  ];
+  await page.route(url => url.pathname === "/api/v1/repositories", route => fulfill(route, { repositories: rows, limit: 20, nextCursor: null, totalCount: 2 }));
+  await page.goto("/repositories");
+  await expect(page.getByText("GitHub에서 삭제된 저장소는 로컬에서 복원할 수 없습니다.")).toBeVisible();
+  const head = await page.locator(".repository-table__head span").last().boundingBox();
+  for (const card of await page.locator(".repository-table .repository-card").all()) {
+    const identity = (await card.locator(".repository-card__identity").boundingBox())!;
+    const actions = (await card.locator(".repository-card__actions").boundingBox())!;
+    expect(Math.abs(actions.x - head!.x)).toBeLessThanOrEqual(1);
+    expect(actions.y).toBeLessThan(identity.y + identity.height);
+  }
+  await expect(page.locator(".repository-table__head")).not.toContainText("최근 분석");
+});
+
+test("repository hero secondary actions stay legible on the indigo band", async ({ page }) => {
+  await installApiFixture(page, []);
+  const heroAction = async (name: string) => page.locator(".repository-detail-header").getByRole(name === "GitHub에서 보기" ? "link" : "button", { name }).evaluate(element => {
+    const style = getComputedStyle(element);
+    const band = getComputedStyle(element.closest(".skills-hero")!).backgroundColor;
+    return { color: style.color, borderColor: style.borderTopColor, band };
+  });
+  await page.goto(`/repositories/${repository.repositoryId}`);
+  await expect(page.locator(".repository-detail-header .status-badge")).toHaveText("사용 중 · 동기화 완료");
+  for (const name of ["GitHub 동기화", "GitHub에서 보기"]) {
+    const style = await heroAction(name);
+    expect(style.band).toBe("rgb(35, 39, 122)");
+    expect(style.color).toBe("rgb(255, 255, 255)");
+    expect(style.borderColor).toBe("rgb(124, 130, 224)");
+  }
+  await expectNoAccessibilityViolations(page);
+
+  await page.route("http://localhost:8080/api/v1/repositories/repository-id", route => fulfill(route, { ...repository, lifecycle: "ARCHIVED" }));
+  await page.reload();
+  const archived = await heroAction("저장소 복원");
+  expect(archived.color).toBe("rgb(255, 255, 255)");
+  expect(archived.borderColor).toBe("rgb(124, 130, 224)");
+  expect(archived.borderColor).not.toBe(archived.band);
+});
+
 test("profile and GitHub integration settings remain separate and accessible", async ({ page }) => {
   await installApiFixture(page, []);
   await page.goto("/settings");
@@ -254,11 +329,14 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expect(page.getByText("추천 recommendation-v1")).toBeVisible();
   await expect(page.getByText("로드맵 roadmap-v1")).toBeVisible();
   await expect(page.getByRole("heading", { name: "테스트 자동화 강화" }).first()).toBeVisible();
+  await expect(page.getByText("건너뜀")).toBeVisible();
   await expectNoAccessibilityViolations(page);
 
   await page.goto("/recommendations");
   await expect(page.getByRole("heading", { name: "추천 작업공간" })).toBeVisible();
   await expect(page.getByText("recommendation-v1")).toBeVisible();
+  await expect(page.getByText("지금 할 일")).toBeVisible();
+  await expectNoAccessibilityViolations(page);
   await page.getByRole("link", { name: "준비도 근거 보기" }).click();
   await expect(page).toHaveURL(/\/career-readiness\/career-readiness-id$/);
   await expect(page.getByRole("heading", { name: "커리어 준비도 상세" })).toBeFocused();
@@ -578,6 +656,12 @@ const responses: Record<string, unknown> = {
       effortHours: 16, prerequisiteStepIds: [],
       completionCriteria: "공식 Testing 점수 60 이상과 테스트 파일 근거를 확보합니다.",
       expectedEvidence: ["test files"], status: "NOT_STARTED"
+    }, {
+      roadmapStepId: "roadmap-step-skipped-id", milestoneId: "milestone-id", recommendationId: "recommendation-id",
+      position: 1, category: "TESTING", title: "통합 테스트 시나리오 추가", difficulty: "ADVANCED",
+      effortHours: 8, prerequisiteStepIds: ["roadmap-step-id"],
+      completionCriteria: "통합 테스트 파일 근거를 확보합니다.",
+      expectedEvidence: ["integration tests"], status: "SKIPPED"
     }]
   }
   ,"GET /api/v1/learning-roadmaps": {
@@ -590,6 +674,11 @@ const responses: Record<string, unknown> = {
         position: 0, category: "TESTING", title: "Add automated testing", difficulty: "INTERMEDIATE",
         effortHours: 16, prerequisiteStepIds: [], completionCriteria: "Reach the measurable Testing target.",
         expectedEvidence: ["test files"], status: "NOT_STARTED"
+      }, {
+        roadmapStepId: "roadmap-step-skipped-id", milestoneId: "milestone-id", recommendationId: "recommendation-id",
+        position: 1, category: "TESTING", title: "Add integration test scenarios", difficulty: "ADVANCED",
+        effortHours: 8, prerequisiteStepIds: ["roadmap-step-id"], completionCriteria: "Collect integration test evidence.",
+        expectedEvidence: ["integration tests"], status: "SKIPPED"
       }]
     }]
   }

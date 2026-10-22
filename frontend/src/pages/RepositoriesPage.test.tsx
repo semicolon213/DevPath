@@ -35,12 +35,17 @@ it("renders a visible repository workspace with summaries and registered reposit
 
   expect(await screen.findByRole("heading", { name: "등록된 저장소" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "내 GitHub 저장소" })).toBeInTheDocument();
-  expect(screen.getByText("현재 표시된 저장소")).toBeInTheDocument();
+  expect(within(screen.getByRole("region", { name: "저장소 요약" })).getByText("등록된 저장소")).toBeInTheDocument();
+  expect(screen.getByText("현재 불러온 저장소")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "owner/devpath" })).toBeInTheDocument();
-  expect(screen.getByText("동기화: 동기화 전")).toHaveClass("status-badge");
+  expect(screen.getByText("동기화 전")).toHaveClass("status-badge");
+  expect(screen.getByRole("list", { name: "등록된 저장소 목록" })).toBeInTheDocument();
   expect(screen.queryByText("동기화 상태")).not.toBeInTheDocument();
   expect(screen.getByRole("checkbox", { name: "보관 저장소 포함" })).not.toBeChecked();
   expect(screen.getByRole("link", { name: "저장소 추가" })).toHaveAttribute("href", "/settings/integrations#github");
+  expect(screen.getByRole("link", { name: "기술 분석 보기" })).not.toHaveClass("button-primary");
+  expect(screen.getByText("불러온 저장소 중 최근 동기화")).toBeInTheDocument();
+  expect(screen.getByText(/· 등록/).querySelector("time")).toHaveAttribute("dateTime");
 });
 
 it("uses one top-level main and only labeled navigation through the real route config", async () => {
@@ -128,10 +133,10 @@ it("archives, filters, and restores an owned repository from the workspace", asy
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/archive"), expect.objectContaining({ method: "POST" }));
 
   fireEvent.click(screen.getByRole("checkbox", { name: "보관 저장소 포함" }));
-  expect(await screen.findByText("보관됨")).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole("listitem")).toHaveTextContent("owner/devpath보관됨"));
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("includeArchived=true"), expect.anything());
 
   fireEvent.click(screen.getByRole("button", { name: "복원" }));
-  expect(await screen.findByText("사용 중")).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByRole("listitem")).toHaveTextContent("owner/devpath사용 중"));
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/restore"), expect.objectContaining({ method: "POST" }));
 });

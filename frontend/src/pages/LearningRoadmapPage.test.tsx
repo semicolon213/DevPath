@@ -29,6 +29,21 @@ describe("LearningRoadmapPage", () => {
     expect(screen.getByRole("button", { name: "현재 로드맵 보관" })).toBeInTheDocument();
   });
 
+  it("shows every server-provided roadmap step status with text and an icon", async () => {
+    const statuses = ["COMPLETED", "IN_PROGRESS", "NOT_STARTED", "SKIPPED"] as const;
+    const fetchMock = journeyFetch();
+    fetchMock.mockImplementation((input: string | URL | Request) => {
+      const url = String(input);
+      if (url.endsWith("/recommendations/current")) return Promise.resolve(Response.json({ data: { recommendationSetId: "rs1", careerReadinessId: "cr1", policyVersion: "recommendation-v1", status: "PUBLISHED", generatedAt: metadata.timestamp, recommendations: [{ recommendationId: "rec1", skillGapId: "g1", category: "TESTING", type: "PROJECT", priority: "HIGH", rationaleCode: "CAREER_REQUIRED_GAP", title: "Add testing", completionCriteria: "Done", expectedEvidence: [], evidenceIds: [], effortHours: 16, position: 0, status: "PROPOSED" }] }, metadata }));
+      if (url.endsWith("/learning-roadmaps")) return Promise.resolve(Response.json({ data: { roadmaps: [{ ...roadmap, steps: statuses.map((status, position) => ({ ...roadmap.steps[0], roadmapStepId: `step-${position}`, position, title: `Step ${position + 1}`, status })) }] }, metadata }));
+      return Promise.reject(new Error(url));
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderWithProviders(undefined, ["/roadmap"]);
+    for (const label of ["완료", "진행 중", "예정", "건너뜀"]) expect(await screen.findByText(label)).toBeInTheDocument();
+    expect(document.querySelectorAll(".roadmap-step__status [aria-hidden='true']")).toHaveLength(4);
+  });
+
   it("archives only after the shared confirmation is accepted", async () => {
     const fetchMock = journeyFetch(true);
     vi.stubGlobal("fetch", fetchMock);

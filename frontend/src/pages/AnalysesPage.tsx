@@ -14,7 +14,7 @@ export function AnalysesPage() {
   const totalCount = query.data.pages[0]?.totalCount ?? 0;
   return (
     <>
-      <header className="workspace-header">
+      <header className="workspace-header skills-hero analysis-list-hero">
         <div>
           <p className="eyebrow">재현 가능한 분석 기록</p>
           <h1>분석 이력</h1>

@@ -85,10 +85,11 @@ export function RepositoryDetailPage() {
   return (
     <>
       <Breadcrumbs items={[{ label: "저장소", to: "/repositories" }, { label: repository.fullName }]} />
-      <header className="repository-detail-header">
+      <header className="repository-detail-header skills-hero repository-hero">
         <div>
           <p className="eyebrow">GitHub 저장소</p>
           <h1>{repository.fullName}</h1>
+          <span className="status-badge">{repositoryLifecycleLabel(repository.lifecycle)} · {repositorySyncStatusLabel(repository.syncStatus)}</span>
           <p>GitHub 동기화 상태와 재현 가능한 저장소 스냅샷을 관리합니다.</p>
         </div>
         <div className="repository-detail-actions">
@@ -257,12 +258,10 @@ export function RepositoryDetailPage() {
                 <strong>{technology.name}</strong>
                 <span>{categoryLabel(technology.category)}</span>
               </div>
-              {technology.percentage !== null ? (
-                <progress max="100" value={technology.percentage}>{technology.percentage}%</progress>
-              ) : null}
+              {technology.percentage !== null ? <div className="technology-card__score"><progress max="100" value={technology.percentage}>{technology.percentage}%</progress><strong>{technology.percentage.toFixed(1)}%</strong></div> : null}
               <small>
                 {technology.byteCount !== null
-                  ? `${technology.byteCount.toLocaleString("ko-KR")}바이트 · ${technology.percentage?.toFixed(1)}%`
+                  ? `${technology.byteCount.toLocaleString("ko-KR")}바이트`
                   : `의존성 ${technology.evidenceLabel}`}
               </small>
               {technology.evidencePaths.length > 0 ? <small>증거: {technology.evidencePaths.join(", ")}</small> : null}

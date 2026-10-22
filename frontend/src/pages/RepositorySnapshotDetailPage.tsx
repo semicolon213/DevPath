@@ -17,7 +17,7 @@ export function RepositorySnapshotDetailPage() {
   const value = snapshot.data;
   const current = repository.data.currentSnapshotId === value.snapshotId;
   return <Shell repositoryId={repositoryId}>
-    <header className="workspace-header snapshot-detail-header"><div><p className="eyebrow">불변 저장소 스냅샷</p>
+    <header className="workspace-header skills-hero snapshot-detail-header"><div><p className="eyebrow">불변 저장소 스냅샷</p>
       <h1>{repository.data.fullName} 스냅샷</h1><p>한 번 완료된 동기화 결과의 출처와 수집 범위를 변경 없이 확인합니다.</p></div>
       <div className="analysis-version" aria-label="스냅샷 적용 상태"><span>{current ? "현재 분석 기준" : "과거 기록"}</span><span>{snapshotStatusLabel(value.status)}</span></div>
     </header>

@@ -24,12 +24,12 @@ export function RepositoriesPage() {
 
   const repositories = query.data.pages.flatMap(page => page.repositories);
   const totalCount = query.data.pages[0]?.totalCount ?? 0;
-  const privateCount = repositories.filter(repository => repository.visibility === "PRIVATE").length;
-  const archivedCount = repositories.filter(repository => repository.lifecycle === "ARCHIVED").length;
+  const latestSync = repositories.reduce<string | null>((latest, repository) =>
+    repository.lastSyncedAt && (!latest || repository.lastSyncedAt > latest) ? repository.lastSyncedAt : latest, null);
 
   return (
     <>
-      <header className="workspace-header">
+      <header className="workspace-header skills-hero repository-hero">
         <div>
           <p className="eyebrow">저장소 작업 공간</p>
           <h1>내 GitHub 저장소</h1>
@@ -42,9 +42,9 @@ export function RepositoriesPage() {
       </header>
 
       <section className="repository-stats" aria-label="저장소 요약">
-        <Summary label="현재 표시된 저장소" value={totalCount} />
-        <Summary label="현재 표시된 비공개" value={privateCount} />
-        <Summary label="현재 표시된 보관 저장소" value={archivedCount} />
+        <Summary label="등록된 저장소" value={totalCount} />
+        <Summary label="현재 불러온 저장소" value={repositories.length} />
+        <div><strong className="repository-stats__date">{latestSync ? formatDate(latestSync) : "아직 없음"}</strong><span>불러온 저장소 중 최근 동기화</span></div>
       </section>
 
       <div className="repository-toolbar">
@@ -78,7 +78,10 @@ export function RepositoriesPage() {
               <p>동기화가 시작되기 전까지는 GitHub 메타데이터만 보관됩니다.</p>
             </div>
           </div>
-          <div className="repository-grid">
+          <div className="repository-table" role="list" aria-label="등록된 저장소 목록">
+            <div className="repository-table__head" aria-hidden="true">
+              <span>저장소</span><span>공개 범위</span><span>동기화</span><span>최근 동기화</span><span>작업</span>
+            </div>
             {repositories.map(repository => <RepositoryCard key={repository.repositoryId} repository={repository} returnFocusFallback={archiveMessageRef} onArchiveMessage={setArchiveMessage} />)}
           </div>
           {query.hasNextPage ? (
@@ -101,17 +104,11 @@ function RepositoryCard({ repository, returnFocusFallback, onArchiveMessage }: {
     && !(repository.lifecycle === "ARCHIVED" && repository.providerArchived);
 
   return (
-    <article className={`repository-card${repository.lifecycle === "ARCHIVED" ? " repository-card--archived" : ""}`}>
-      <div className="repository-card__topline">
-        <span className="status-badge">{repository.visibility === "PRIVATE" ? "비공개" : "공개"}</span>
-        <span>{repositoryLifecycleLabel(repository.lifecycle)}</span>
-        <span className="status-badge">동기화: {repositorySyncStatusLabel(repository.syncStatus)}</span>
-      </div>
-      <h3><Link to={`/repositories/${repository.repositoryId}`}>{repository.fullName}</Link></h3>
-      <dl className="metadata-list">
-        <div><dt>기본 브랜치</dt><dd>{repository.defaultBranch}</dd></div>
-        <div><dt>등록일</dt><dd>{formatDate(repository.discoveredAt)}</dd></div>
-      </dl>
+    <article role="listitem" className={`repository-card${repository.lifecycle === "ARCHIVED" ? " repository-card--archived" : ""}`}>
+      <div className="repository-card__identity"><h3><Link to={`/repositories/${repository.repositoryId}`}>{repository.fullName}</Link></h3><span>{repositoryLifecycleLabel(repository.lifecycle)} · 기본 {repository.defaultBranch} · 등록 <time dateTime={repository.discoveredAt}>{formatDate(repository.discoveredAt)}</time></span></div>
+      <span data-label="공개 범위">{repository.visibility === "PRIVATE" ? "비공개" : "공개"}</span>
+      <span data-label="동기화"><span className="status-badge">{repositorySyncStatusLabel(repository.syncStatus)}</span></span>
+      <time data-label="최근 동기화" dateTime={repository.lastSyncedAt ?? undefined}>{repository.lastSyncedAt ? formatDate(repository.lastSyncedAt) : "아직 없음"}</time>
       {repository.lifecycle === "ARCHIVED" && repository.providerArchived ? (
         <p className="muted">GitHub에서 먼저 저장소 보관을 해제해야 DevPath에서도 복원할 수 있습니다.</p>
       ) : repository.lifecycle === "DELETED_EXTERNALLY" ? (
@@ -119,7 +116,7 @@ function RepositoryCard({ repository, returnFocusFallback, onArchiveMessage }: {
       ) : null}
       {repository.lifecycle === "ARCHIVED" && mutation.isError ? <p className="form-error" role="alert">저장소 상태를 변경하지 못했습니다. 다시 시도해 주세요.</p> : null}
       <ConfirmDialog open={confirmingArchive} title={`${repository.fullName} 저장소를 보관할까요?`} description="활성 목록에서 숨겨지고 새 동기화와 분석을 시작할 수 없습니다. 기존 메타데이터, 불변 스냅샷과 공식 분석 결과는 유지됩니다." confirmLabel="저장소 보관" destructive pending={archive.isPending} error={archive.isError ? "저장소를 보관하지 못했습니다. 다시 시도해 주세요." : undefined} returnFocusFallback={returnFocusFallback} onCancel={() => setConfirmingArchive(false)} onConfirm={() => archive.mutate(repository.repositoryId, { onSuccess: () => { onArchiveMessage(`${repository.fullName} 저장소를 보관했습니다.`); setConfirmingArchive(false); } })} />
-      <div className="repository-card__actions">
+      <div data-label="작업" className="repository-card__actions">
         <Link to={`/repositories/${repository.repositoryId}`}>상세 보기</Link>
         <button
           type="button"

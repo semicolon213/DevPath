@@ -91,15 +91,11 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
         </div>
         <span className="skill-flag">{state}</span>
       </div>
-      <div className="skill-score-row">
-        <strong>{formatScore(skill.score)}</strong>
-        <span>{levelLabel(skill.level)}</span>
+      <div className="skill-card__score"><div className="skill-score-row">
+        <strong>{formatScore(skill.score)}</strong><span>{levelLabel(skill.level)}</span>
       </div>
+      {skill.evidenceStatus !== "NONE" ? <label className="skill-meter"><span>공식 점수</span><progress max="100" value={skill.score}>{skill.score}점</progress></label> : <div className="skill-meter skill-meter--empty" role="img" aria-label="공식 점수: 근거 없음. 근거를 추가하면 공식 점수를 표시합니다."><span>근거를 추가하면 공식 점수를 표시합니다.</span></div>}</div>
       <EvidenceStatus status={skill.evidenceStatus} />
-      {skill.evidenceStatus !== "NONE" ? <label className="skill-meter">
-        <span>공식 점수</span>
-        <progress max="100" value={skill.score}>{skill.score}점</progress>
-      </label> : <div className="skill-meter skill-meter--empty" role="img" aria-label="공식 점수: 근거 없음"><span>근거를 추가하면 공식 점수를 표시합니다.</span></div>}
       <dl className="skill-metadata">
         <div><dt>근거 신뢰도</dt><dd>{formatScore(skill.confidence)}%</dd></div>
         <div><dt>연결된 근거</dt><dd>{skill.evidenceIds.length}개</dd></div>

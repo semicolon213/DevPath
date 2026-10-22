@@ -18,7 +18,7 @@ export function AnalysisDetailPage() {
   const { result, repository, evaluation, evidence, matrix } = query.data;
   return (
     <PageShell>
-      <header className="workspace-header analysis-detail-header">
+      <header className="workspace-header skills-hero analysis-detail-header">
         <div>
           <p className="eyebrow">결정론적 분석 결과</p>
           <h1>{repository.fullName}</h1>
@@ -84,11 +84,13 @@ export function AnalysisDetailPage() {
         <div className="section-heading"><div><h2 id="historical-skills-title">이 분석의 역량 매트릭스</h2><p>현재 값으로 덮어쓰지 않는 당시의 공식 역량 평가입니다.</p></div></div>
         <div className="historical-skill-list">
           {matrix.skills.map(skill => (
-            <article key={skill.assessmentId}>
-              <div><strong>{skillNameLabel(skill.skillKey, skill.skillName)}</strong><span>{levelLabel(skill.level)}</span></div>
-              <EvidenceStatus status={skill.evidenceStatus} />
-              {skill.evidenceStatus !== "NONE" ? <progress max="100" value={skill.score}>{skill.score}점</progress> : null}
-              <small>공식 점수 {formatScore(skill.score)} · 신뢰도 {formatScore(skill.confidence)}%</small>
+            <article className="historical-skill-row" key={skill.assessmentId}>
+              <div className="historical-skill-row__name"><strong>{skillNameLabel(skill.skillKey, skill.skillName)}</strong><span>{levelLabel(skill.level)}</span></div>
+              <div className="historical-skill-row__score">
+                {skill.evidenceStatus !== "NONE" ? <progress max="100" value={skill.score}>{skill.score}점</progress> : <p>근거를 추가하면 공식 점수를 표시합니다.</p>}
+                <small>공식 점수 {formatScore(skill.score)} · 신뢰도 {formatScore(skill.confidence)}%</small>
+              </div>
+              <div className="historical-skill-row__status"><EvidenceStatus status={skill.evidenceStatus} /></div>
             </article>
           ))}
         </div>
@@ -115,7 +117,7 @@ function CategoryResult({ category }: { category: RuleCategoryScore }) {
   return (
     <article className="category-result-card">
       <div className="category-result-card__heading"><div><span>{categoryLabel(category.category)}</span><strong>{formatScore(category.score)}점</strong></div><small>종합 점수 반영 비중 {formatPercent(category.weight)}</small></div>
-      <progress max="100" value={category.score}>{category.score}점</progress>
+      <div className="category-result-card__bar"><progress max="100" value={category.score}>{category.score}점</progress><strong>{formatScore(category.score)} / 100</strong></div>
       <p>근거 신뢰도 {formatScore(category.confidence)}%</p>
       <div className="rule-result-list">{category.ruleResults.map(rule => <RuleResultItem key={rule.ruleId} rule={rule} />)}</div>
       {category.missingEvidence.length > 0 ? <p className="missing-evidence">부족한 근거: {category.missingEvidence.map(ruleLabel).join(", ")}</p> : null}
