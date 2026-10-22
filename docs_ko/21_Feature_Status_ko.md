@@ -45,10 +45,11 @@
 
 이후 도구 변경(위 표는 2026-10-15 기록으로 유지한다): FE-GATE(`e0bc4a7`)가 Playwright의 API 기본 주소를 고정하고
 Vite를 8.3.5로 올렸고, FE-AUDIT(`30d2cad`)가 Vitest를 4.1.12로 올려 프론트엔드 `npm audit` 권고가 0건이 되었다.
-마지막 `npm run verify:mvp` 전체 실행은 커밋 `d31852d`에서 통과했다. TEST-NOISE(`aa4e1da`)는 `AppRoutes` 테스트가
+마지막 `npm run verify:mvp` 전체 실행은 커밋 `06ca030`(CSS-SPLIT)에서 통과했다. TEST-NOISE(`aa4e1da`)는 `AppRoutes` 테스트가
 일부러 던지는 렌더 오류를 테스트 안에서 처리해, 프론트엔드 테스트 출력에 jsdom 스택 트레이스 약 80줄이 더 이상 섞이지
 않는다. 시각 개편(UI-5, `b94ff62`) 이후: 프론트엔드 53개 파일 / 232건 PASS, build PASS, Playwright 13건(axe, 동작
-줄이기, 스크롤바가 보이는 환경의 넘침 검사 포함) PASS.
+줄이기, 스크롤바가 보이는 환경의 넘침 검사 포함) PASS. CSS-SPLIT(`06ca030`) 이후: `npm run verify:mvp` PASS(백엔드
+빌드와 테스트, 프론트엔드 53개 파일 / 233건, Playwright 14건, `npm audit` 0건, 계약 lint).
 
 ## 3. 기능 현황
 
@@ -153,11 +154,19 @@ API 값을 보여 주며, 어느 묶음도 클라이언트에서 점수, 차이,
 | UI-5 | 홈, 온보딩, 목표, 지식, 설정, 공용 상태 | **해결 (2026-10-23, `b94ff62`):** 홈과 온보딩(단계를 완료, 지금, 미완료, 예정으로 표시), 커리어와 회사 타일, API의 `status`와 `sourceType`에서만 표시를 정하는 지식 화면, 설정 화면을 개편했고, 공용 `PageState`, `ConfirmDialog`, `Breadcrumbs`, 페이지 없음 화면의 스타일을 정리했다. 쓰지 않는 선택자를 지웠고, 375px에서 긴 이름을 e2e로 검사한다. 근거: 독립 리뷰 PASS (3회) |
 
 UI-5 이후 main 검증: 프론트엔드 53개 파일 / 232건 PASS, build PASS, Playwright 13건(axe, 동작 줄이기, 스크롤바가
-보이는 환경의 넘침 검사 포함) PASS. 마지막 `npm run verify:mvp` 전체 실행은 `d31852d`(UI-3)에서 통과했고, UI-4와
-UI-5 이후에는 다시 실행하지 않았다. 이 작업 중에 `CLAUDE.md`/`AGENT.md` §14에 프론트엔드 화면 수정 주기를 별도
+보이는 환경의 넘침 검사 포함) PASS. UI-4와 UI-5 이전 `d31852d`(UI-3)에서 통과했던
+`npm run verify:mvp` 전체 실행은 CSS-SPLIT 이후 main `06ca030`에서 다시 통과했다(아래 참고). 이 작업 중에 `CLAUDE.md`/`AGENT.md` §14에 프론트엔드 화면 수정 주기를 별도
 Claude 워커가 맡을 수 있다는 규칙이 추가되었다(`560ebc7`).
 
-남은 항목(Low): 지식 검색 컨트롤의 44px 크기는 별도로 대기 중인 CSS-SPLIT 작업에서 다룬다. 일부 텍스트 링크는 높이가
+CSS-SPLIT(**해결, 2026-10-23, `06ca030`**): `frontend/src/app/styles.css`는 이제 `frontend/src/app/styles/` 아래 15개
+파일을 순서대로 가져오는 `@import` 진입점만 남았다(토큰과 기본 스타일이 먼저, 공통 레이아웃, 영역별 파일,
+`responsive-shared.css`가 마지막). 적용 순서는 이전 단일 파일과 같으며(빌드된 CSS와 계산된 스타일을 비교), 의도한 변경은
+긴 저장소 이름 줄바꿈(`overflow-wrap: anywhere`)과 지식 검색 컨트롤 44px 높이 두 가지뿐이다. 색상 값 스타일 검사는 모든
+파일을 대상으로 하고 각 파일이 정확히 한 번 가져와지는지 확인하며, `PageState` 오류 패널, 375px의 AI 패널 제목, 375px의
+긴 저장소 이름을 e2e로 검사한다. 근거: 독립 리뷰 PASS(2회, 3개 관점), `06ca030`에서 `npm run verify:mvp` PASS(백엔드
+빌드와 테스트, 프론트엔드 53개 파일 / 233건, Playwright 14건, `npm audit` 0건, 계약 lint).
+
+남은 항목(Low): 일부 텍스트 링크는 높이가
 24–26px로 WCAG 2.5.8은 충족하지만 `DESIGN.md`의 44px 기준에는 못 미친다. 일부 점선 테두리는 장식용이다. 화면 낭독기와
 200% 확대 수동 점검은 수행하지 않았다.
 
