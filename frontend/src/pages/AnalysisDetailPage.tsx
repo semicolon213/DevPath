@@ -29,7 +29,7 @@ export function AnalysisDetailPage() {
         </div>
         <div className="workspace-actions">
           <Link to={`/repositories/${repository.repositoryId}`}>저장소 보기</Link>
-          <Link className="button-link" to="/analyses">분석 이력</Link>
+          <Link className="button-link button-primary" to="/analyses">분석 이력</Link>
         </div>
       </header>
 

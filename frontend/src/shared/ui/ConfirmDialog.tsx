@@ -88,7 +88,7 @@ export function ConfirmDialog({ open, title, description, confirmLabel, destruct
       {error ? <p id={errorId} className="form-error" role="alert">{error}</p> : null}
       <div className="confirm-dialog__actions">
         <button ref={cancelRef} type="button" disabled={pending} onClick={onCancel}>취소</button>
-        <button type="button" className={destructive ? "button-danger" : undefined} aria-disabled={pending} onClick={() => {
+        <button type="button" className={destructive ? "button-danger" : "button-primary"} aria-disabled={pending} onClick={() => {
           if (pending || confirmedRef.current) return;
           confirmedRef.current = true;
           onConfirm();

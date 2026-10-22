@@ -101,7 +101,7 @@ export function ProfilePanel() {
       <label htmlFor="career-stage">경력 단계</label><select id="career-stage" value={stage} onChange={event => setStage(event.target.value as CareerStage | "")}><option value="">선택 안 함</option><option value="STUDENT">학생</option><option value="ENTRY_LEVEL">신입 준비</option><option value="JUNIOR">주니어</option><option value="MID_LEVEL">미드레벨</option><option value="SENIOR">시니어</option></select>
       <label htmlFor="profile-bio">자기소개</label><textarea ref={bioRef} id="profile-bio" value={bio} maxLength={1000} aria-invalid={Boolean(errors.bio)} aria-describedby={errors.bio ? "profile-bio-error" : undefined} onChange={event => setBio(event.target.value)} />
       {errors.bio ? <p id="profile-bio-error" className="form-error">{errors.bio}</p> : null}
-      <button disabled={update.isPending}>{update.isPending ? "저장 중…" : "프로필 저장"}</button>
+      <button className="button-primary" disabled={update.isPending}>{update.isPending ? "저장 중…" : "프로필 저장"}</button>
       {update.isSuccess ? <p role="status">프로필을 저장했습니다.</p> : null}{update.isError ? <p role="alert">프로필 저장에 실패했습니다.</p> : null}
     </form>
     <div id="targets" className="target-grid">

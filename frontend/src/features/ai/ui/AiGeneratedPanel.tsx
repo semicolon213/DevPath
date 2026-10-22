@@ -30,13 +30,14 @@ type Props = {
   onCancel: () => void;
   onRefetchJob: () => void;
   onRefetchArtifact: () => void;
+  badgeLabel?: string;
   children?: ReactNode;
 };
 
 export function AiGeneratedPanel({
   title, description, actionLabel, messages, job, generatedAt, validationStatus,
   requestPending, requestError, jobError, artifactPending, artifactError, cancelPending,
-  onRequest, onReset, onCancel, onRefetchJob, onRefetchArtifact, children
+  onRequest, onReset, onCancel, onRefetchJob, onRefetchArtifact, badgeLabel = "AI 생성", children
 }: Props) {
   const id = useId();
   const badgeId = `${id}-badge`;
@@ -47,11 +48,11 @@ export function AiGeneratedPanel({
   return <section className="ai-generated-panel" aria-labelledby={`${badgeId} ${titleId}`}>
     <div className="section-heading ai-generated-panel__heading">
       <div>
-        <span id={badgeId} className="ai-generated-panel__badge">AI 생성</span>
+        <span id={badgeId} className="ai-generated-panel__badge">{badgeLabel}</span>
         <h2 id={titleId}>{title}</h2>
         <p>{description}</p>
       </div>
-      {!job && <button type="button" disabled={requestPending} onClick={onRequest}>
+      {!job && <button className="button-ai" type="button" disabled={requestPending} onClick={onRequest}>
         {requestPending ? "요청 중…" : actionLabel}
       </button>}
     </div>
@@ -68,7 +69,7 @@ export function AiGeneratedPanel({
       <button type="button" disabled={cancelPending} onClick={onCancel}>생성 취소</button>
     </div>}
     {job?.status === "CANCELED" && <div className="state-panel"><p>{messages.canceled}</p>
-      <button type="button" onClick={onReset}>다시 시작</button></div>}
+      <button className="button-ai" type="button" onClick={onReset}>다시 시작</button></div>}
     {job?.status === "FAILED" && <Failure message={job.validationStatus === "REJECTED" ? messages.rejected : messages.failed} retry={onRequest} />}
     {jobError && <Failure message={messages.failed} retry={onRefetchJob} />}
     {artifactPending && job?.status === "SUCCEEDED" && job.artifactUrl && <p role="status">{messages.loading}</p>}
@@ -78,7 +79,7 @@ export function AiGeneratedPanel({
 }
 
 function Failure({ message, retry }: { message: string; retry: () => void }) {
-  return <div className="state-panel" role="alert"><p>{message}</p><button type="button" onClick={retry}>다시 시도</button></div>;
+  return <div className="state-panel" role="alert"><p>{message}</p><button className="button-ai" type="button" onClick={retry}>다시 시도</button></div>;
 }
 
 function validationLabel(status: "PENDING" | "PASSED" | "REJECTED") {

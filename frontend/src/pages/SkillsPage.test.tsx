@@ -49,8 +49,10 @@ it("renders official scores, confidence, evidence, and Korean labels", async () 
   expect(screen.getAllByText("강점")).toHaveLength(2);
   expect(screen.getByText("점수와 등급은 AI가 아닌 Rule Engine이 계산합니다.", { exact: false })).toBeInTheDocument();
   const officialRegion = screen.getByRole("heading", { name: "역량별 결과" }).closest("section")!;
-  const aiRegion = screen.getByRole("region", { name: "AI 생성 기술 분석 설명" });
+  const aiRegion = screen.getByRole("region", { name: "AI 코치 · 설명만 제공 기술 분석 설명" });
   expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(document.querySelectorAll(".button-primary")).toHaveLength(1);
+  expect(screen.getByRole("button", { name: "설명 생성" })).toHaveClass("button-ai");
 });
 
 it("uses the API evidence status without deriving it from evidence counts", async () => {

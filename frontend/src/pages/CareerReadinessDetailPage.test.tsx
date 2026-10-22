@@ -24,6 +24,8 @@ it("connects immutable readiness gaps to skill evidence and next actions", async
   expect(screen.getByText("준비도 상세")).toHaveAttribute("aria-current", "page");
   expect(screen.getByRole("heading", { name: "커리어 준비도 상세" })).toBeInTheDocument();
   expect(screen.getByText("일부 충족")).toBeInTheDocument();
+  expect(screen.getByRole("img", { name: "테스트 실제 점수 50점, 기준 60점" }).querySelector(".readiness-gap__reference")).toHaveStyle({ left: "60%" });
   expect(screen.getByRole("link", { name: "기술 평가와 증거 보기" })).toHaveAttribute("href", "/skills/skill-1");
   expect(screen.getByRole("link", { name: "추천 이력" })).toHaveAttribute("href", "/recommendations");
+  expect(document.querySelectorAll(".button-primary")).toHaveLength(1);
 });

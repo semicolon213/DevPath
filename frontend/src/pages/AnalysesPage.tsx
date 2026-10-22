@@ -20,7 +20,7 @@ export function AnalysesPage() {
           <h1>분석 이력</h1>
           <p>저장소와 스냅샷, 규칙 버전이 고정된 Rule Engine의 공식 결과를 시간순으로 확인합니다.</p>
         </div>
-        <Link className="button-link" to="/repositories">새 분석 준비</Link>
+        <Link className="button-link button-primary" to="/repositories">새 분석 준비</Link>
       </header>
 
       <section className="analysis-history-summary" aria-label="분석 이력 요약">

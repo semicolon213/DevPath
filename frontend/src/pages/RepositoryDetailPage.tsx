@@ -209,6 +209,7 @@ export function RepositoryDetailPage() {
           </p>
           <p className="muted">공식 결과는 현재 불변 스냅샷과 버전이 고정된 Rule Engine으로만 계산됩니다.</p>
           <button
+            className="button-primary"
             type="button"
             disabled={repositoryArchived || repositoryUnavailable || repository.syncStatus !== "SYNCHRONIZED" || requestAnalysis.isPending
               || analysisJob.data?.status === "queued" || analysisJob.data?.status === "running"}

@@ -64,10 +64,10 @@ test("dashboard has no horizontal overflow with desktop scrollbars visible", asy
   const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ["--hide-scrollbars"] });
   try {
     for (const width of [1440, 1280, 1180, 900, 721]) {
-      const context = await browser.newContext({ viewport: { width, height: 900 } });
+      const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width, height: 900 } });
       const page = await context.newPage();
       await installApiFixture(page, []);
-      await page.goto("http://127.0.0.1:4173/dashboard");
+      await page.goto("/dashboard");
       await expect(page.getByRole("heading", { name: "내 DevPath 대시보드" })).toBeVisible();
       const size = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
       expect(size.scrollWidth).toBeLessThanOrEqual(size.clientWidth);
@@ -219,6 +219,8 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   const testingSkillRow = page.getByRole("row").filter({ has: page.getByRole("rowheader", { name: /테스트 역량/ }) });
   await expect(testingSkillRow).toContainText("55");
   await expect(testingSkillRow).toContainText("50");
+  await expect(testingSkillRow.getByText("5", { exact: true })).toHaveCount(0);
+  await expect(page.getByRole("columnheader", { name: "변화" })).toHaveCount(0);
   await expect(page.getByText(/차이 점수나 성장 추세를 새로 계산하지 않습니다/)).toBeVisible();
   await expectNoAccessibilityViolations(page);
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -243,7 +245,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await page.goto("/career-readiness");
   await expect(page.getByRole("heading", { name: "커리어 준비도" })).toBeVisible();
   await expect(page.getByText("67.5", { exact: true })).toBeVisible();
-  await expect(page.getByText("정책 readiness-v1")).toBeVisible();
+  await expect(page.getByText("정책 readiness-v1", { exact: true })).toBeVisible();
   await expectNoAccessibilityViolations(page);
 
   await page.getByRole("link", { name: "추천 로드맵 보기" }).click();

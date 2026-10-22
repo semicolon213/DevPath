@@ -65,6 +65,8 @@ it("explains immutable official rules and marks the repository's current result"
     const aiRegion = screen.getByRole("region", { name: `AI 생성 ${aiName}` });
     expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   }
+  expect(document.querySelectorAll(".button-primary")).toHaveLength(1);
+  expect(screen.getByRole("button", { name: "요약 생성" })).toHaveClass("button-ai");
 });
 
 it.each([

@@ -31,6 +31,8 @@ it("compares stored skill values without deriving a delta", async () => {
   expect(screen.getByRole("heading", { name: "기술 역량 비교" })).toBeInTheDocument();
   expect(row).toHaveTextContent("55");
   expect(row).toHaveTextContent("85");
+  expect(row).not.toHaveTextContent("30");
+  expect(screen.queryByRole("columnheader", { name: "변화" })).not.toBeInTheDocument();
   expect(screen.getByText(/차이 점수나 성장 추세를 새로 계산하지 않습니다/)).toBeInTheDocument();
   const region = screen.getByRole("region", { name: "역량별 저장 결과 표" });
   expect(region).toHaveAttribute("tabindex", "0");

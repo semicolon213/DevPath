@@ -46,7 +46,7 @@ export function KnowledgePage() {
       <form className="knowledge-search-form" onSubmit={submitSearch}>
         <label>검색어<input value={query} required maxLength={500} onChange={event => setQuery(event.target.value)} placeholder="예: 테스트 전략과 회귀 방지" /></label>
         <label>문서 범위<select value={documentFilter} onChange={event => setDocumentFilter(event.target.value)}><option value="">활성 Notion 문서 전체</option>{documents.data?.documents.filter(document => document.status === "ACTIVE").map(document => <option key={document.documentId} value={document.documentId}>{document.title}</option>)}</select></label>
-        <button type="submit" disabled={knowledgeSearch.isPending || !query.trim()}>{knowledgeSearch.isPending ? "검색 중…" : "지식 검색"}</button>
+        <button className="button-primary" type="submit" disabled={knowledgeSearch.isPending || !query.trim()}>{knowledgeSearch.isPending ? "검색 중…" : "지식 검색"}</button>
       </form>
       {knowledgeSearch.isError ? <p role="alert">지식 검색을 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.</p> : null}
       {knowledgeSearch.data?.results.length === 0 ? <p role="status">현재 권한과 필터 범위에서 관련 지식을 찾지 못했습니다.</p> : null}

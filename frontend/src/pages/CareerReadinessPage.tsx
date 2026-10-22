@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
 import { CareerCoachingPanel } from "../features/ai/ui/CareerCoachingPanel";
-import type { SkillGap } from "../features/readiness/api/careerReadinessApi";
 import { useCurrentCareerReadiness } from "../features/readiness/model/useCareerReadiness";
 import { ApiError } from "../shared/api/apiClient";
 import { categoryLabel, levelLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
+import { ReadinessGapList } from "../shared/ui/ReadinessGapList";
 
 export function CareerReadinessPage() {
   const query = useCurrentCareerReadiness();
@@ -16,7 +16,7 @@ export function CareerReadinessPage() {
   const incomplete = result.status === "INSUFFICIENT_EVIDENCE";
 
   return <>
-    <header className="workspace-header">
+    <header className="workspace-header readiness-header">
       <div><p className="eyebrow">공식 커리어 평가</p><h1>커리어 준비도</h1><p>AI가 아닌 승인된 정책과 현재 기술 역량표(Skill Matrix)로 계산한 공식 결과입니다.</p></div>
       <div className="analysis-version"><span>정책 {result.readinessPolicyVersion}</span><span>프로필 {result.careerProfileVersion}</span><span>규칙 {result.ruleSetVersion}</span></div>
     </header>
@@ -26,21 +26,15 @@ export function CareerReadinessPage() {
     </section>
     <section aria-labelledby="gap-list-title">
       <div className="section-heading"><div><h2 id="gap-list-title">역량 비교</h2><p>모든 필수 범주를 격차 상태, 직무 가중치, 범주 순서로 보여줍니다. 추천 우선순위는 포함하지 않습니다.</p></div></div>
-      <div className="readiness-gap-list">{result.skillGaps.map(gap => <GapCard key={gap.skillGapId} gap={gap} />)}</div>
+      <ReadinessGapList gaps={result.skillGaps} />
     </section>
-    <section className="skill-next-action"><div><h2>결정론적 다음 단계</h2><p>충분 미만의 gap은 승인된 추천 정책과 선행 순서에 따라 로드맵으로 구성됩니다.</p></div><Link className="button-link" to="/roadmap">추천 로드맵 보기</Link></section>
+    <section className="skill-next-action"><div><h2>결정론적 다음 단계</h2><p>충분 미만의 gap은 승인된 추천 정책과 선행 순서에 따라 로드맵으로 구성됩니다.</p></div><Link className="button-link button-primary" to="/roadmap">추천 로드맵 보기</Link></section>
     {!incomplete && <CareerCoachingPanel careerReadinessId={result.careerReadinessId} />}
+    <Basis result={result} />
   </>;
 }
 
-function GapCard({ gap }: { gap: SkillGap }) {
-  return <article className={`readiness-gap readiness-gap--${gap.gapState.toLowerCase()}`}>
-    <div><span>{categoryLabel(gap.category)}</span><strong>{gapStateLabel(gap.gapState)}</strong></div>
-    <p><b>{formatScore(gap.actualScore)}</b> / 기대 최소 {formatScore(gap.expectedMinimum)}</p>
-    <progress max="100" value={gap.actualScore}>{gap.actualScore}점</progress>
-    <small>직무 가중치 {formatScore(gap.careerWeight)}% · 근거 {gap.evidenceIds.length}개</small><Link to={`/skills/${gap.skillId}`}>기술 평가와 증거 보기</Link>
-  </article>;
-}
+function Basis({ result }: { result: ReturnType<typeof useCurrentCareerReadiness>["data"] }) { return result ? <footer className="readiness-basis">평가 기준 시각 <time dateTime={result.assessedAt}>{formatDate(result.assessedAt)}</time> · 정책 {result.readinessPolicyVersion} · 규칙 {result.ruleSetVersion} · 프로필 {result.careerProfileVersion}</footer> : null; }
 
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
-function gapStateLabel(value: SkillGap["gapState"]) { return { MISSING: "관찰 없음", WEAK: "약함", PARTIAL: "일부 충족", SUFFICIENT: "충족", STRONG: "강점" }[value]; }
+function formatDate(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }

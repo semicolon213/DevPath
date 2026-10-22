@@ -1,9 +1,9 @@
 import { Link, useParams } from "react-router-dom";
-import type { SkillGap } from "../features/readiness/api/careerReadinessApi";
 import { useCareerReadinessWorkspace } from "../features/readiness/model/useCareerReadiness";
 import { categoryLabel, levelLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
+import { ReadinessGapList } from "../shared/ui/ReadinessGapList";
 
 export function CareerReadinessDetailPage() {
   const { careerReadinessId } = useParams();
@@ -26,16 +26,13 @@ export function CareerReadinessDetailPage() {
       <div><strong>{needsAction.length}</strong><span>개선 대상</span></div><div><strong>{result.skillGaps.reduce((sum, gap) => sum + gap.evidenceIds.length, 0)}</strong><span>연결 근거</span></div></section>
     <section aria-labelledby="historical-gap-title"><div className="section-heading"><div><h2 id="historical-gap-title">전체 Skill Gap</h2>
       <p>저장된 실제 점수와 기대 최소값을 표시하며 추천 우선순위를 새로 계산하지 않습니다.</p></div></div>
-      <div className="readiness-gap-list">{result.skillGaps.map(gap => <GapCard key={gap.skillGapId} gap={gap} />)}</div></section>
+      <ReadinessGapList gaps={result.skillGaps} /></section>
     <section className="skill-next-action"><div><h2>결과에서 실행으로</h2><p>연결된 추천과 학습 로드맵에서 당시 격차에 대한 결정론적 다음 단계를 확인할 수 있습니다.</p></div>
-      <div className="workspace-actions"><Link to="/recommendations">추천 이력</Link><Link className="button-link" to="/roadmap">학습 로드맵</Link></div></section>
+      <div className="workspace-actions"><Link to="/recommendations">추천 이력</Link><Link className="button-link button-primary" to="/roadmap">학습 로드맵</Link></div></section>
+    <footer className="readiness-basis">평가 기준 시각 <time dateTime={result.assessedAt}>{formatDate(result.assessedAt)}</time> · 정책 {result.readinessPolicyVersion} · 규칙 {result.ruleSetVersion} · 프로필 {result.careerProfileVersion}</footer>
   </Shell>;
 }
 
-function GapCard({ gap }: { gap: SkillGap }) { return <article className={`readiness-gap readiness-gap--${gap.gapState.toLowerCase()}`}>
-  <div><span>{categoryLabel(gap.category)}</span><strong>{gapStateLabel(gap.gapState)}</strong></div><p><b>{format(gap.actualScore)}</b> / 기대 최소 {format(gap.expectedMinimum)}</p>
-  <progress max="100" value={gap.actualScore}>{gap.actualScore}점</progress><small>직무 가중치 {format(gap.careerWeight)}% · 근거 {gap.evidenceIds.length}개</small>
-  <Link to={`/skills/${gap.skillId}`}>기술 평가와 증거 보기</Link></article>; }
 function Shell({ children }: { children: React.ReactNode }) { return <><Breadcrumbs items={[{ label: "커리어 준비도", to: "/career-readiness" }, { label: "준비도 상세" }]} />{children}</>; }
 function format(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }
-function gapStateLabel(value: SkillGap["gapState"]) { return { MISSING: "관찰 없음", WEAK: "약함", PARTIAL: "일부 충족", SUFFICIENT: "충족", STRONG: "강점" }[value]; }
+function formatDate(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }

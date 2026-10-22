@@ -17,11 +17,11 @@ export function DashboardPage() {
       <header className="dashboard-hero">
         <div className="dashboard-hero__content">
           <div className="dashboard-hero__intro">
-            <p className="dashboard-hero__eyebrow">{view.targets.status === "UNAVAILABLE" ? "목표 · 목표 정보를 불러오지 못했습니다." : <>목표 · {targetName(view.targets.career, "목표 직무를 선택하지 않았습니다.")} · {targetName(view.targets.company, "선택한 회사가 없습니다.")}</>}</p>
+            <p className="dashboard-hero__eyebrow">{view.targets.status === "UNAVAILABLE" ? "목표 · 확인 실패" : <>목표 · {targetName(view.targets.career, "목표 직무를 선택하지 않았습니다.")} · {targetName(view.targets.company, "선택한 회사가 없습니다.")}</>}</p>
             <h1>내 DevPath 대시보드</h1>
             <p>선택한 목표와 GitHub 근거에서 계산된 최신 공식 결과와 다음 행동을 확인하세요.</p>
             <div className="dashboard-hero__actions">
-              <Link className="button-link" to={topRecommendation ? `/recommendations/${topRecommendation.recommendationId}` : "/career-readiness"} aria-label={topRecommendation ? `지금 할 일 보기: ${topRecommendation.title}` : undefined}>{topRecommendation ? "지금 할 일 보기" : "준비도 확인"}</Link>
+              <Link className="button-link button-primary" to={topRecommendation ? `/recommendations/${topRecommendation.recommendationId}` : "/career-readiness"} aria-label={topRecommendation ? `지금 할 일 보기: ${topRecommendation.title}` : undefined}>{topRecommendation ? "지금 할 일 보기" : "준비도 확인"}</Link>
               <Link className="button-link button-secondary" to="/analyses">분석 이력</Link>
             </div>
             <p className="dashboard-hero__basis">기준 시각 <time dateTime={view.generatedAt}>{formatDate(view.generatedAt)}</time> · <Link to="/careers">목표 변경</Link> · <Link to="/repositories">저장소</Link></p>
@@ -73,7 +73,7 @@ export function DashboardPage() {
         {view.analyses.status === "UNAVAILABLE" ? <Unavailable /> : view.analyses.currentByRepository.length ? <ul className="dashboard-analysis-list">{view.analyses.currentByRepository.map(item => <li key={item.analysisId}><div><strong>{item.repositoryFullName}</strong><time dateTime={item.completedAt}>{formatDate(item.completedAt)}</time></div><span>{formatScore(item.overallScore)}점</span><Link to={`/analyses/${item.analysisId}`}>상세</Link></li>)}</ul> : <Empty text="저장소별 최신 분석 결과가 아직 없습니다." action="분석 준비" to="/repositories" />}
       </section>
 
-      <footer className="dashboard-basis">기준 시각 <time dateTime={view.generatedAt}>{formatDate(view.generatedAt)}</time> · 커리어 프로필 {view.targets.career?.profileVersion ?? "없음"} · Skill Matrix 정책 {view.skillOverview.policyVersion ?? "없음"} · 규칙 {view.skillOverview.ruleSetVersion ?? "없음"} · 추천 정책 {view.recommendations.policyVersion ?? "없음"} · 로드맵 정책 {view.roadmap.policyVersion ?? "없음"}</footer>
+      <footer className="dashboard-basis">기준 시각 <time dateTime={view.generatedAt}>{formatDate(view.generatedAt)}</time> · 커리어 프로필 {view.targets.status === "UNAVAILABLE" ? "확인 실패" : view.targets.career?.profileVersion ?? "없음"} · 회사 프로필 {view.targets.status === "UNAVAILABLE" ? "확인 실패" : view.targets.company?.profileVersion ?? "없음"} · Skill Matrix 정책 {view.skillOverview.policyVersion ?? "없음"} · 규칙 {view.skillOverview.ruleSetVersion ?? "없음"} · 추천 정책 {view.recommendations.policyVersion ?? "없음"} · 로드맵 정책 {view.roadmap.policyVersion ?? "없음"}</footer>
     </>
   );
 }

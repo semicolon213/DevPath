@@ -34,7 +34,7 @@ export function PageState(props: PageStateProps) {
     </>;
   }
 
-  if (props.state === "empty") return <section className="state-panel"><h1>{props.title}</h1>{props.description ? <p>{props.description}</p> : null}<Link className="button-link" to={props.actionTo}>{props.actionLabel}</Link></section>;
+  if (props.state === "empty") return <section className="state-panel"><h1>{props.title}</h1>{props.description ? <p>{props.description}</p> : null}<Link className="button-link button-primary" to={props.actionTo}>{props.actionLabel}</Link></section>;
 
   const unauthorized = props.error instanceof ApiError && props.error.status === 401;
   const hidden = props.error instanceof ApiError && (props.error.status === 403 || props.error.status === 404);
@@ -54,8 +54,8 @@ export function PageState(props: PageStateProps) {
     <h1>{title}</h1>
     {description ? <p>{description}</p> : null}
     {!unauthorized && !hidden && requestId ? <p>오류 참조 <code className="page-state-reference">{requestId}</code></p> : null}
-    {unauthorized ? <Link className="button-link" to="/">홈으로 이동</Link>
-      : hidden || !props.retry ? <Link className="button-link" to={props.backTo ?? "/"}>{props.backLabel ?? "돌아가기"}</Link>
-        : <button type="button" onClick={props.retry}>다시 시도</button>}
+    {unauthorized ? <Link className="button-link button-primary" to="/">홈으로 이동</Link>
+      : hidden || !props.retry ? <Link className="button-link button-primary" to={props.backTo ?? "/"}>{props.backLabel ?? "돌아가기"}</Link>
+        : <button className="button-primary" type="button" onClick={props.retry}>다시 시도</button>}
   </section>;
 }

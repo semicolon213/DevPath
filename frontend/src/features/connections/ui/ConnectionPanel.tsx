@@ -65,14 +65,14 @@ export function ConnectionPanel() {
         </span>
       </div>
       {!githubActive ? (
-        <button type="button" disabled={authorize.isPending} onClick={connect}>
+        <button className="button-primary" type="button" disabled={authorize.isPending} onClick={connect}>
           {authorize.isPending
             ? "GitHub로 이동하는 중…"
             : github ? "GitHub 다시 연결" : "GitHub 저장소 연결"}
         </button>
       ) : (
         <div className="connection-actions">
-          <button type="button" disabled={authorize.isPending || disconnect.isPending} onClick={reconnect}>
+          <button className="button-primary" type="button" disabled={authorize.isPending || disconnect.isPending} onClick={reconnect}>
             {authorize.isPending ? "GitHub로 이동하는 중…" : "권한 다시 승인"}
           </button>
           <button

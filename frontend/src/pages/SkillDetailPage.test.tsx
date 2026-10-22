@@ -86,7 +86,7 @@ it("keeps current detail available when only historical matrices fail", async ()
   expect(await screen.findByRole("heading", { name: "테스트 역량" })).toBeInTheDocument();
   expect(screen.queryByRole("note", { name: /근거 상태:/ })).not.toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "기술 평가 이력만 불러오지 못했습니다." })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "이력 다시 시도" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "이력 다시 시도" })).not.toHaveClass("button-primary");
 });
 
 it.each([

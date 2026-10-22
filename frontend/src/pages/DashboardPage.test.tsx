@@ -9,7 +9,9 @@ describe("DashboardPage", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("renders the canonical owner-scoped dashboard summary and uses the top recommendation as the primary action", async () => {
-    const fetchMock = vi.fn((_input: string | URL | Request) => Promise.resolve(envelope(summary())));
+    const data = summary();
+    data.targets.company = { id: "toss", localizedName: "토스", profileVersion: "company-v3" };
+    const fetchMock = vi.fn((_input: string | URL | Request) => Promise.resolve(envelope(data)));
     vi.stubGlobal("fetch", fetchMock);
 
     renderWithProviders(undefined, ["/dashboard"]);
@@ -32,6 +34,7 @@ describe("DashboardPage", () => {
     expect(hero).not.toBeNull();
     expect(within(hero as HTMLElement).getByRole("link", { name: "저장소" })).toHaveAttribute("href", "/repositories");
     expect(screen.getByText(/커리어 프로필 career-v2/)).toBeInTheDocument();
+    expect(screen.getByText(/회사 프로필 company-v3/)).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "학습 로드맵 진행률" })).toHaveAttribute("value", "25");
     ["COMPETENT", "TESTING", "HIGH", "SUCCEEDED"].forEach(value => expect(screen.queryByText(value)).not.toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -84,7 +87,8 @@ describe("DashboardPage", () => {
 
     expect(await screen.findByText("등록 저장소 · 확인 실패")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "내 DevPath 대시보드" })).toBeInTheDocument();
-    expect(screen.getByText(/목표 정보를 불러오지 못했습니다/)).toBeInTheDocument();
+    expect(screen.getByText("목표 · 확인 실패")).toBeInTheDocument();
+    expect(screen.getByText(/커리어 프로필 확인 실패 · 회사 프로필 확인 실패/)).toBeInTheDocument();
     expect(screen.getByText("커리어 준비도 정보를 불러오지 못했습니다.")).toBeInTheDocument();
     expect(screen.getAllByText(/일부 정보를 불러오지 못했습니다/)).toHaveLength(6);
     expect(screen.queryByRole("link", { name: "지금 할 일 보기: 테스트 보강" })).not.toBeInTheDocument();

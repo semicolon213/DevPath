@@ -14,7 +14,9 @@ describe("CareerReadinessPage", () => {
         unavailableCategories: [], assessedAt: "2026-08-24T00:00:00Z",
         skillGaps: [{ skillGapId: "g1", skillId: "s1", skillKey: "testing-discipline", category: "TESTING",
           actualScore: 50, actualLevel: "DEVELOPING", expectedMinimum: 60, gapState: "PARTIAL", careerWeight: 20,
-          evidenceIds: ["e1"] }]
+          evidenceIds: ["e1"] }, { skillGapId: "g2", skillId: "s2", skillKey: "devops", category: "DEVOPS",
+          actualScore: 0, actualLevel: "NONE", expectedMinimum: 55, gapState: "MISSING", careerWeight: 10,
+          evidenceIds: [] }]
       }, metadata: { requestId: "r1", apiVersion: "v1", timestamp: "2026-08-24T00:00:00Z" }
     })));
 
@@ -24,6 +26,13 @@ describe("CareerReadinessPage", () => {
     expect(screen.getByRole("heading", { name: "커리어 준비도" })).toBeInTheDocument();
     expect(screen.getByText("일부 충족")).toBeInTheDocument();
     expect(screen.getByText("정책 readiness-v1")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "테스트 실제 점수 50점, 기준 60점" }).querySelector(".readiness-gap__reference")).toHaveStyle({ left: "60%" });
+    expect(screen.getByRole("img", { name: "테스트 실제 점수 50점, 기준 60점" }).closest("article")).toHaveTextContent("50 / 기준 60 · 일부 충족");
+    const missing = screen.getByRole("img", { name: "DevOps: 근거 없음" }).closest("article")!;
+    expect(missing.querySelector(".readiness-gap__track--empty")).toBeInTheDocument();
+    expect(missing).not.toHaveTextContent("0 / 기준");
+    expect(screen.getByText("관련 근거를 연결하면 평가됩니다.")).toBeInTheDocument();
+    expect(document.querySelectorAll(".button-primary")).toHaveLength(1);
     const officialRegion = screen.getByRole("heading", { name: "역량 비교" }).closest("section")!;
     const aiRegion = screen.getByRole("region", { name: "AI 생성 커리어 코칭" });
     expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

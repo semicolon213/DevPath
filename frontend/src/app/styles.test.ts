@@ -24,6 +24,12 @@ it("keeps raw colour literals inside the root token block", async () => {
   const outsideRoot = css.slice(0, rootStart) + css.slice(rootEnd + 1);
   expect(outsideRoot).not.toMatch(/#[0-9a-f]{3,8}\b/i);
   expect(outsideRoot).not.toMatch(/\b(?:rgba?|hsla?)\s*\(/i);
+  const defaultButtonRule = css.match(/^button\s*\{[^}]*\}/m)?.[0];
+  const defaultButtonLinkRule = css.match(/^\.button-link\s*\{[^}]*\}/m)?.[0];
+  expect(defaultButtonRule).toBeDefined();
+  expect(defaultButtonLinkRule).toBeDefined();
+  expect(defaultButtonRule).not.toContain("var(--action-primary)");
+  expect(defaultButtonLinkRule).not.toContain("var(--action-primary)");
 });
 
 function closingBraceIndex(css: string, openIndex: number) {

@@ -22,7 +22,7 @@ export function SkillMatrixComparisonPage() {
     <header className="workspace-header">
       <div><p className="eyebrow">공식 기술 역량 비교</p><h1>기술 역량 비교</h1>
         <p>불변 Skill Matrix 두 개의 공식 점수와 등급을 나란히 표시합니다. 이 화면은 차이 점수나 성장 추세를 새로 계산하지 않습니다.</p></div>
-      <Link className="button-link" to="/analyses">다른 결과 선택</Link>
+      <Link className="button-link button-primary" to="/analyses">다른 결과 선택</Link>
     </header>
     <section className="comparison-hero" aria-label="Skill Matrix 비교 대상">
       <MatrixSummary label="Matrix A" matrix={left} /><div aria-hidden="true">VS</div><MatrixSummary label="Matrix B" matrix={right} />

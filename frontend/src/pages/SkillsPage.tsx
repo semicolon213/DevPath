@@ -25,15 +25,19 @@ export function SkillsPage() {
 
   return (
     <>
-      <header className="workspace-header skill-header">
+      <header className="workspace-header skill-header skills-hero">
         <div>
           <p className="eyebrow">공식 기술 역량 결과</p>
           <h1>기술 역량 분석</h1>
           <p>저장소에서 확인된 근거를 버전이 고정된 평가 규칙으로 계산한 공식 결과입니다.</p>
         </div>
-        <div className="analysis-version" aria-label="분석 버전 정보">
-          <span>정책 {matrix.policyVersion}</span>
-          <span>규칙 {matrix.ruleSetVersion}</span>
+        <div className="skills-hero__aside">
+          <div className="analysis-version" aria-label="분석 버전 정보">
+            <span>정책 {matrix.policyVersion}</span>
+            <span>규칙 {matrix.ruleSetVersion}</span>
+            <span>{formatDateTime(matrix.generatedAt)} 분석</span>
+          </div>
+          <Link className="button-link button-primary" to="/repositories">저장소 확인</Link>
         </div>
       </header>
 
@@ -58,7 +62,7 @@ export function SkillsPage() {
             <p>각 항목에서 점수, 신뢰도, 연결된 근거를 함께 확인할 수 있습니다.</p>
           </div>
         </div>
-        <div className="skill-grid">
+        <div className="skill-list">
           {matrix.skills.map(skill => <SkillCard key={skill.assessmentId} skill={skill} />)}
         </div>
       </section>
@@ -68,7 +72,7 @@ export function SkillsPage() {
           <h2 id="next-action-title">다음 분석을 준비하세요</h2>
           <p>저장소를 다시 동기화하면 새로운 불변 스냅샷과 평가 결과를 기준으로 분석할 수 있습니다.</p>
         </div>
-        <div className="workspace-actions"><Link to="/analyses">분석 이력</Link><Link className="button-link" to="/repositories">저장소 확인</Link></div>
+        <div className="workspace-actions"><Link to="/analyses">분석 이력</Link></div>
       </section>
 
       <SkillExplanationPanel skillMatrixId={matrix.skillMatrixId} />
@@ -85,7 +89,7 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
           <span className="skill-category">{categoryLabel(skill.category)}</span>
           <h3><Link to={`/skills/${skill.skillId}`}>{skillNameLabel(skill.skillKey, skill.skillName)}</Link></h3>
         </div>
-        <span className="status-badge">{state}</span>
+        <span className="skill-flag">{state}</span>
       </div>
       <div className="skill-score-row">
         <strong>{formatScore(skill.score)}</strong>
@@ -95,7 +99,7 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
       {skill.evidenceStatus !== "NONE" ? <label className="skill-meter">
         <span>공식 점수</span>
         <progress max="100" value={skill.score}>{skill.score}점</progress>
-      </label> : null}
+      </label> : <div className="skill-meter skill-meter--empty" role="img" aria-label="공식 점수: 근거 없음"><span>근거를 추가하면 공식 점수를 표시합니다.</span></div>}
       <dl className="skill-metadata">
         <div><dt>근거 신뢰도</dt><dd>{formatScore(skill.confidence)}%</dd></div>
         <div><dt>연결된 근거</dt><dd>{skill.evidenceIds.length}개</dd></div>

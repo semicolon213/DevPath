@@ -37,7 +37,7 @@ export function RepositoriesPage() {
         </div>
         <div className="workspace-actions">
           <Link className="button-link button-secondary" to="/skills">기술 분석 보기</Link>
-          <Link className="button-link" to="/settings/integrations#github">저장소 추가</Link>
+          <Link className="button-link button-primary" to="/settings/integrations#github">저장소 추가</Link>
         </div>
       </header>
 
