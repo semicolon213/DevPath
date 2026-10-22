@@ -1,0 +1,5 @@
+/* Cross-area responsive overrides kept last: they must win over same-specificity area rules
+   such as .ai-generated-panel__heading and .onboarding-header. */
+@media (max-width: 720px) {
+  .workspace-header, .repository-detail-header, .section-heading { align-items: stretch; flex-direction: column; }
+}

@@ -1,0 +1,49 @@
+.readiness-hero { align-items: center; background: var(--background-inverse); border-radius: var(--radius-xl); color: var(--text-inverse); display: grid; gap: 28px; grid-template-columns: 1fr 1fr; margin: 28px 0; padding: 28px; }
+
+.readiness-hero > div { display: grid; gap: 8px; }
+
+.readiness-hero strong { font-size: 3.5rem; }
+
+.readiness-hero small, .readiness-hero p { color: var(--text-inverse-secondary); }
+
+.readiness-hero progress { border-color: var(--border-inverse); width: 100%; }
+
+.readiness-legend { color: var(--text-muted); display: flex; flex-wrap: wrap; gap: 12px 22px; margin: 0 0 16px; }
+
+.readiness-legend span { align-items: center; display: inline-flex; gap: 7px; }
+
+.readiness-legend i { display: inline-block; flex: 0 0 auto; }
+
+.readiness-legend__fill { background: var(--brand-default); border-radius: var(--radius-pill); height: 8px; width: 16px; }
+
+.readiness-legend__reference { background: var(--warning-border); height: 16px; width: 2px; }
+
+.readiness-legend__empty { border: 1px dashed var(--border-strong); border-radius: var(--radius-pill); height: 10px; width: 18px; }
+
+.readiness-gap-list { display: grid; gap: 0; }
+
+.readiness-gap { border-top: 1px solid var(--border-default); display: grid; gap: 10px; padding: 20px 0; }
+
+.readiness-gap:first-child { border-top: 0; }
+
+.readiness-gap > div { align-items: center; display: flex; justify-content: space-between; }
+
+.readiness-gap p { margin: 0; }
+
+.readiness-gap__track { background: var(--track); border: 1px solid var(--border-strong); border-radius: var(--radius-pill); height: 16px; position: relative; }
+
+.readiness-gap__fill { background: var(--brand-default); border-radius: var(--radius-pill); display: block; height: 100%; }
+
+.readiness-gap__reference { background: var(--warning-border); display: block; height: 24px; position: absolute; top: -5px; transform: translateX(-50%); width: 3px; }
+
+.readiness-gap__reference--end { right: 0; transform: none; }
+
+.readiness-gap__track--empty { align-items: center; background: transparent; border-style: dashed; color: var(--text-muted); display: flex; height: auto; min-height: 34px; padding: 4px 10px; }
+
+.readiness-gap__guidance { color: var(--text-muted); font-size: .875rem; }
+
+.readiness-basis { border-top: 1px solid var(--border-subtle); color: var(--text-muted); font-size: .8125rem; margin-top: 32px; padding-top: 16px; }
+
+@media (max-width: 720px) {
+  .readiness-hero { grid-template-columns: 1fr; }
+}

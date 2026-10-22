@@ -96,10 +96,21 @@ test("changed result pages have no horizontal overflow and keep single-column mo
           expect(slots[0][0]).toBeLessThan(slots[0][1]);
           expect(slots[0][1]).toBeLessThan(slots[0][2]);
         }
+        if (path === "/analyses/analysis-id" && width === 375) {
+          await expect(page.locator(".ai-generated-panel__heading").first(), "AI panel heading stacks at 375px").toHaveCSS("align-items", "stretch");
+        }
         if (path === "/skills" && width === 375) {
           const columns = await page.locator(".skill-card").first().evaluate(element => getComputedStyle(element).gridTemplateColumns.split(" ").length);
           expect(columns).toBe(1);
         }
+      }
+      if (width === 375) {
+        const longName = `owner/${"a".repeat(120)}`;
+        await page.route(url => url.pathname === "/api/v1/repositories", route => fulfill(route, { repositories: [{ ...repository, fullName: longName }], limit: 20, nextCursor: null, totalCount: 1 }));
+        await page.goto("/repositories");
+        await expect(page.getByText(longName)).toBeVisible();
+        const size = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+        expect(size.scrollWidth, "/repositories with a long name at 375px").toBeLessThanOrEqual(size.clientWidth);
       }
       await context.close();
     }
@@ -383,6 +394,16 @@ test("anonymous readiness failure is actionable and accessible", async ({ page }
   await expect(page.getByRole("alert")).toContainText("로그인이 필요합니다");
   await expect(page.getByRole("link", { name: "홈으로 이동" })).toHaveAttribute("href", "/");
   await expectNoAccessibilityViolations(page);
+});
+
+test("page state error panel keeps its accent border and padding", async ({ page }) => {
+  await installApiFixture(page, []);
+  await page.route(url => url.pathname === "/api/v1/careers", route => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ code: "INTERNAL_ERROR" }) }));
+  await page.goto("/careers");
+  const panel = page.locator(".page-state--error");
+  await expect(panel).toBeVisible();
+  await expect(panel).toHaveCSS("border-left-width", "5px");
+  await expect(panel).toHaveCSS("padding-left", "56px");
 });
 
 test("reduced-motion users keep the keyboard journey without nonessential transitions", async ({ page }) => {
