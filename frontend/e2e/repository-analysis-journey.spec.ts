@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Route } from "@playwright/test";
+import { chromium, expect, test, type Page, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
 const timestamp = "2026-08-25T00:00:00Z";
@@ -39,6 +39,8 @@ test("mobile app navigation is keyboard operable and accessible", async ({ page 
   await installApiFixture(page, []);
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto("/dashboard");
+  await expect(page.getByRole("heading", { name: "내 DevPath 대시보드" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 
   const menu = page.getByRole("button", { name: "메뉴" });
   await menu.focus();
@@ -56,6 +58,24 @@ test("mobile app navigation is keyboard operable and accessible", async ({ page 
   await expect(menu).toHaveAttribute("aria-expanded", "false");
   await expectNoAccessibilityViolations(page);
   await expectNoShellLandmarkViolations(page);
+});
+
+test("dashboard has no horizontal overflow with desktop scrollbars visible", async () => {
+  const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ["--hide-scrollbars"] });
+  try {
+    for (const width of [1440, 1280, 1180, 900, 721]) {
+      const context = await browser.newContext({ viewport: { width, height: 900 } });
+      const page = await context.newPage();
+      await installApiFixture(page, []);
+      await page.goto("http://127.0.0.1:4173/dashboard");
+      await expect(page.getByRole("heading", { name: "내 DevPath 대시보드" })).toBeVisible();
+      const size = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+      expect(size.scrollWidth).toBeLessThanOrEqual(size.clientWidth);
+      await context.close();
+    }
+  } finally {
+    await browser.close();
+  }
 });
 
 test("profile and GitHub integration settings remain separate and accessible", async ({ page }) => {
