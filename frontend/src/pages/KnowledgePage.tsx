@@ -4,7 +4,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { useConnections, useNotionWorkspaces } from "../features/connections/model/useConnections";
 import { useImportNotionKnowledge, useKnowledgeDocuments, useKnowledgeJob, useKnowledgeSearch, knowledgeDocumentsKey } from "../features/knowledge/model/useKnowledge";
 import type { KnowledgeIngestionJob } from "../features/knowledge/api/knowledgeApi";
-import { knowledgeFreshnessLabel, safeJobErrorMessage } from "../shared/ui/labels";
+import { knowledgeFreshnessLabel, knowledgeSourceTypeLabel, safeJobErrorMessage } from "../shared/ui/labels";
 import { mutationErrorMessage } from "../shared/api/apiClient";
 
 export function KnowledgePage() {
@@ -67,7 +67,7 @@ export function KnowledgePage() {
       {documents.isPending ? <p role="status">지식 문서를 불러오는 중입니다.</p> : null}
       {documents.isError ? <Retry message="지식 문서를 불러오지 못했습니다." retry={() => documents.refetch()} /> : null}
       {documents.data?.documents.length === 0 ? <p>아직 수집된 지식 문서가 없습니다.</p> : null}
-      {documents.data ? <div className="knowledge-document-grid">{documents.data.documents.map(document => <article key={document.documentId}><span className={document.status === "ACTIVE" ? "status-badge status-badge--info" : "status-badge"}>{document.status === "ACTIVE" ? "활성" : "보관됨"}</span><h3>{document.title}</h3><p>청크 {document.chunkCount}개 · {new Date(document.updatedAt).toLocaleString("ko-KR")}</p><Link to={`/knowledge/${document.documentId}`}>문서 메타데이터 보기</Link></article>)}</div> : null}
+      {documents.data ? <div className="knowledge-document-list" role="list">{documents.data.documents.map(document => <article role="listitem" key={document.documentId}><div className="knowledge-document-list__body"><div className="knowledge-document-list__chips"><span className="status-badge status-badge--info">{knowledgeSourceTypeLabel(document.sourceType)}</span></div><h3>{document.title}</h3><p>마지막 갱신 {new Date(document.updatedAt).toLocaleString("ko-KR")} · 청크 {document.chunkCount}개</p></div><div className="knowledge-document-list__status"><strong>{document.status === "ACTIVE" ? "활성" : "보관됨"}</strong><Link to={`/knowledge/${document.documentId}`}>문서 메타데이터 보기</Link></div></article>)}</div> : null}
     </section>
   </>;
 }
@@ -76,7 +76,7 @@ function JobPanel({ job, clear }: { job: ReturnType<typeof useKnowledgeJob>; cle
   if (job.isPending) return <section className="state-panel" aria-live="polite"><p role="status">수집 작업 상태를 복구하는 중입니다.</p></section>;
   if (job.isError) return <section className="state-panel" role="alert"><p>수집 작업 상태를 불러오지 못했습니다.</p><button type="button" onClick={() => job.refetch()}>다시 시도</button></section>;
   const value = job.data!;
-  return <section className="knowledge-job" aria-live="polite"><div><strong>{jobLabel(value)}</strong><span>{value.progressPercent}% · 시도 {value.attemptCount}/{value.maxAttempts}</span></div><progress max={100} value={value.progressPercent}>{value.progressPercent}%</progress>
+  return <section className="knowledge-job" aria-live="polite"><div><strong>{jobLabel(value)}</strong><span>{value.progressPercent}% · 시도 {value.attemptCount}/{value.maxAttempts}</span></div><progress aria-label="지식 문서 수집 진행률" max={100} value={value.progressPercent}>{value.progressPercent}%</progress>
     {value.status === "succeeded" && value.resultResourceUrl ? <Link className="button-link" to={value.resultResourceUrl.replace("/api/v1/knowledge-documents/", "/knowledge/")}>수집된 문서 보기</Link> : null}
     {value.status === "failed" ? <p role="alert">{safeJobErrorMessage(value.errorCode, value.retryable)}</p> : null}
     {(value.status === "succeeded" || value.status === "failed") ? <button className="button-secondary" type="button" onClick={clear}>작업 알림 닫기</button> : null}</section>;

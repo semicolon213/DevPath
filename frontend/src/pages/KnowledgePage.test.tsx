@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../test/renderWithProviders";
 
@@ -92,6 +92,32 @@ it("does not promise automatic retry or expose the server error for a failed ing
   expect(await screen.findByRole("alert")).toHaveTextContent("외부 서비스 요청 한도에 도달했습니다. 잠시 후 다시 시도해 주세요.");
   expect(screen.queryByText(/자동으로 다시 시도/)).not.toBeInTheDocument();
   expect(screen.queryByText("raw provider failure")).not.toBeInTheDocument();
+});
+
+it("labels collected documents by lifecycle status and source type without claiming sync state", async () => {
+  const document = { sourceType: "NOTION", sourceObjectId: "page-1", currentVersionId: "version-1", chunkCount: 2, createdAt: "2026-08-30T00:00:00Z", updatedAt: "2026-08-30T00:00:00Z" };
+  vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/users/me/connections")) return Promise.resolve(json({ connections: [] }));
+    if (url.endsWith("/knowledge-documents")) return Promise.resolve(json({ documents: [
+      { ...document, documentId: "document-1", title: "활성 문서", status: "ACTIVE" },
+      { ...document, documentId: "document-2", title: "보관 문서", status: "ARCHIVED" }
+    ] }));
+    return Promise.reject(new Error(url));
+  }));
+  renderWithProviders(undefined, ["/knowledge"]);
+
+  const active = (await screen.findByRole("heading", { name: "활성 문서" })).closest("[role=listitem]") as HTMLElement;
+  const archived = screen.getByRole("heading", { name: "보관 문서" }).closest("[role=listitem]") as HTMLElement;
+  expect(within(active).getByText("활성")).toBeInTheDocument();
+  expect(within(archived).getByText("보관됨")).toBeInTheDocument();
+  [active, archived].forEach(item => {
+    expect(within(item).getByText("Notion")).toBeInTheDocument();
+    expect(within(item).getByText(/^마지막 갱신/)).toBeInTheDocument();
+    expect(within(item).queryByText("문서")).not.toBeInTheDocument();
+  });
+  expect(screen.queryByText("동기화됨")).not.toBeInTheDocument();
+  expect(screen.queryByText(/마지막 동기화/)).not.toBeInTheDocument();
 });
 
 function json(data: unknown) { return Response.json({ data, metadata: { requestId: "r", apiVersion: "v1", timestamp: "2026-08-30T00:00:00Z" } }); }

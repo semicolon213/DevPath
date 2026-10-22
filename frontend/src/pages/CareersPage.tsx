@@ -17,9 +17,9 @@ export function CareersPage() {
     <section className="career-catalog-notice" aria-label="커리어 카탈로그 정보">
       <strong>{careers.data.careers.length}개 지원 직무</strong><span>프로필 버전 {careers.data.catalogVersion}</span>
     </section>
-    <div className="career-grid">
-      {careers.data.careers.map(career => <article className={preferences.data?.careerId === career.careerId ? "career-card career-card--selected" : "career-card"} key={career.careerId}>
-        <div><span className="status-badge status-badge--info">{preferences.data?.careerId === career.careerId ? "현재 목표" : "지원됨"}</span><small>{career.profileVersion}</small></div>
+    <div className="catalog-list" role="list">
+      {careers.data.careers.map(career => <article role="listitem" aria-current={preferences.data?.careerId === career.careerId ? "true" : undefined} className={preferences.data?.careerId === career.careerId ? "catalog-tile catalog-tile--selected" : "catalog-tile"} key={career.careerId}>
+        <div><span className="status-badge status-badge--info">{preferences.data?.careerId === career.careerId ? "현재 목표" : "지원됨"}</span><small>프로필 버전 {career.profileVersion}</small></div>
         <h2>{career.localizedName}</h2><p>{career.purpose}</p>
         <Link to={`/careers/${career.careerId}`}>프로필 자세히 보기 →</Link>
       </article>)}

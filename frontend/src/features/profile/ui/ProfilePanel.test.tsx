@@ -67,6 +67,8 @@ it("shows field errors and focuses the error summary", async () => {
   expect(screen.getAllByText("표시 이름을 입력해 주세요.")).toHaveLength(2);
   expect(screen.getAllByText("자기소개는 1,000자 이하로 입력해 주세요.")).toHaveLength(2);
   await waitFor(() => expect(summary.closest("[role='alert']")).toHaveFocus());
+  expect(screen.getByRole("textbox", { name: "표시 이름" })).toHaveAttribute("aria-describedby", "display-name-help display-name-error");
+  expect(screen.getByRole("textbox", { name: "자기소개" })).toHaveAttribute("aria-describedby", "profile-bio-help profile-bio-error");
   fireEvent.click(screen.getByRole("link", { name: "표시 이름을 입력해 주세요." }));
   expect(screen.getByRole("textbox", { name: "표시 이름" })).toHaveFocus();
 });

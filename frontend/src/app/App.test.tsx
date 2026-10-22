@@ -8,7 +8,7 @@ describe("DevPath frontend scaffold", () => {
 
   it("renders the Korean application shell", () => {
     renderWithProviders();
-    expect(screen.getByRole("heading", { name: "DevPath" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "근거로 확인하는 나의 성장 경로" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "본문으로 건너뛰기" })).toHaveAttribute("href", "#main-content");
     expect(screen.getByRole("main")).toHaveAttribute("id", "main-content");
     expect(screen.getByRole("status")).toHaveTextContent("DevPath 로그인 상태를 확인하는 중입니다.");
@@ -23,7 +23,7 @@ describe("DevPath frontend scaffold", () => {
   it("moves focus to the new route heading", async () => {
     renderWithProviders(undefined, ["/missing"]);
     fireEvent.click(screen.getByRole("link", { name: "DevPath 홈으로 돌아가기" }));
-    await waitFor(() => expect(screen.getByRole("heading", { name: "DevPath" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("heading", { name: "근거로 확인하는 나의 성장 경로" })).toHaveFocus());
   });
 
   it("provides React Query", () => {

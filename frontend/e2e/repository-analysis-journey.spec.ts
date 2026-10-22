@@ -108,6 +108,27 @@ test("changed result pages have no horizontal overflow and keep single-column mo
   }
 });
 
+test("profile target selects with a long career name do not overflow at 375px with scrollbars visible", async () => {
+  const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ["--hide-scrollbars"] });
+  try {
+    const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width: 375, height: 900 } });
+    const page = await context.newPage();
+    await installApiFixture(page, []);
+    const longName = "클라우드 네이티브 대규모 분산 시스템 백엔드 플랫폼 엔지니어링 전문 개발자";
+    await page.route(url => url.pathname === "/api/v1/careers", route => fulfill(route, { careers: [{ careerId: "backend", localizedName: longName, profileVersion: "career-v2" }] }));
+    await page.route(url => url.pathname === "/api/v1/users/me/onboarding-progress", route => fulfill(route, { ...(responses["GET /api/v1/users/me/onboarding-progress"] as object), status: "IN_PROGRESS", nextStep: "COMPANY_TARGET" }));
+    for (const path of ["/settings/profile", "/onboarding"]) {
+      await page.goto(path);
+      await expect(page.locator("#career-target option", { hasText: longName })).toHaveCount(1);
+      const size = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
+      expect(size.scrollWidth, `${path} at 375px`).toBeLessThanOrEqual(size.clientWidth);
+    }
+    await context.close();
+  } finally {
+    await browser.close();
+  }
+});
+
 test("archived and externally deleted repository rows keep actions in the action column", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await installApiFixture(page, []);

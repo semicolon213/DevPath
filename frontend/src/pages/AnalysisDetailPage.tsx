@@ -87,7 +87,7 @@ export function AnalysisDetailPage() {
             <article className="historical-skill-row" key={skill.assessmentId}>
               <div className="historical-skill-row__name"><strong>{skillNameLabel(skill.skillKey, skill.skillName)}</strong><span>{levelLabel(skill.level)}</span></div>
               <div className="historical-skill-row__score">
-                {skill.evidenceStatus !== "NONE" ? <progress max="100" value={skill.score}>{skill.score}점</progress> : <p>근거를 추가하면 공식 점수를 표시합니다.</p>}
+                {skill.evidenceStatus !== "NONE" ? <progress aria-label={`${skillNameLabel(skill.skillKey, skill.skillName)} 공식 점수`} max="100" value={skill.score}>{skill.score}점</progress> : <p>근거를 추가하면 공식 점수를 표시합니다.</p>}
                 <small>공식 점수 {formatScore(skill.score)} · 신뢰도 {formatScore(skill.confidence)}%</small>
               </div>
               <div className="historical-skill-row__status"><EvidenceStatus status={skill.evidenceStatus} /></div>
@@ -117,7 +117,7 @@ function CategoryResult({ category }: { category: RuleCategoryScore }) {
   return (
     <article className="category-result-card">
       <div className="category-result-card__heading"><div><span>{categoryLabel(category.category)}</span><strong>{formatScore(category.score)}점</strong></div><small>종합 점수 반영 비중 {formatPercent(category.weight)}</small></div>
-      <div className="category-result-card__bar"><progress max="100" value={category.score}>{category.score}점</progress><strong>{formatScore(category.score)} / 100</strong></div>
+      <div className="category-result-card__bar"><progress aria-label={`${categoryLabel(category.category)} 공식 점수`} max="100" value={category.score}>{category.score}점</progress><strong>{formatScore(category.score)} / 100</strong></div>
       <p>근거 신뢰도 {formatScore(category.confidence)}%</p>
       <div className="rule-result-list">{category.ruleResults.map(rule => <RuleResultItem key={rule.ruleId} rule={rule} />)}</div>
       {category.missingEvidence.length > 0 ? <p className="missing-evidence">부족한 근거: {category.missingEvidence.map(ruleLabel).join(", ")}</p> : null}

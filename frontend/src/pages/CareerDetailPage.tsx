@@ -17,12 +17,12 @@ export function CareerDetailPage() {
 
   return <PageShell>
     <header className="workspace-header">
-      <div><p className="eyebrow">{value.profileVersion} · {statusLabel(value.status)}</p><h1>{value.localizedName}</h1><p>{value.purpose}</p></div>
+      <div><p className="eyebrow">프로필 버전 {value.profileVersion} · {statusLabel(value.status)}</p><h1>{value.localizedName}</h1><p>{value.purpose}</p></div>
       <button className="button-primary" disabled={selected || selection.isPending} onClick={() => selection.mutate(value.careerId)}>{selected ? "현재 목표 직무" : selection.isPending ? "설정 중…" : "이 직무를 목표로 설정"}</button>
     </header>
     {selection.isSuccess ? <p className="analysis-notice" role="status">목표 직무를 변경했습니다. 다음 커리어 평가는 새 프로필 기준을 사용합니다.</p> : null}
     {selection.isError ? <p className="analysis-warning" role="alert">목표 직무를 변경하지 못했습니다.</p> : null}
-    <section className="career-profile-grid">
+    <section className="profile-section-list">
       <ProfileList title="핵심 기술" values={value.coreTechnologies} />
       <ProfileList title="필수 역량" values={value.requiredCompetencies} />
       <ProfileList title="우대 역량" values={value.preferredCompetencies} />

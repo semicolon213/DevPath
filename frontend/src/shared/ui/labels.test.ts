@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  categoryLabel, chunkStatusLabel, evidenceTypeLabel, jobStatusLabel, knowledgeFreshnessLabel,
+  categoryLabel, chunkStatusLabel, evidenceTypeLabel, jobStatusLabel, knowledgeFreshnessLabel, knowledgeSourceTypeLabel,
   evidenceStatusLabel, levelLabel, priorityLabel, recommendationStatusLabel, recommendationTypeLabel,
   repositoryLifecycleLabel, repositorySyncStatusLabel, safeJobErrorMessage, skillNameLabel
 } from "./labels";
@@ -16,6 +16,7 @@ describe("shared Korean labels", () => {
     [jobStatusLabel, ["queued", "running", "succeeded", "failed", "cancelled", "expired"]],
     [evidenceTypeLabel, ["REPOSITORY_PATH", "LANGUAGE_STATISTIC", "SNAPSHOT_SIGNAL", "PROVIDER_LANGUAGE_STATISTICS", "DEPENDENCY_DECLARATION"]],
     [knowledgeFreshnessLabel, ["FRESH"]],
+    [knowledgeSourceTypeLabel, ["NOTION"]],
     [chunkStatusLabel, ["INDEXED", "STALE", "DELETED"]],
     [repositoryLifecycleLabel, ["DISCOVERED", "ACTIVE", "ARCHIVED", "DELETED_EXTERNALLY"]],
     [repositorySyncStatusLabel, ["NOT_SYNCED", "SYNCHRONIZED", "FAILED"]],
@@ -40,6 +41,11 @@ describe("shared Korean labels", () => {
     expect(evidenceStatusLabel("SUFFICIENT")).toBe("근거 충분");
     expect(evidenceStatusLabel("NEW_STATUS")).toBe("알 수 없음");
     expect(evidenceStatusLabel(null)).toBe("알 수 없음");
+  });
+
+  it("labels knowledge source types with a neutral fallback", () => {
+    expect(knowledgeSourceTypeLabel("NOTION")).toBe("Notion");
+    expect(knowledgeSourceTypeLabel("NEW_SOURCE")).toBe("알 수 없음");
   });
 
   it("uses an API skill name only when the local skill label is unknown", () => {

@@ -13,7 +13,7 @@ import { rateLimitMessage } from "../../../shared/api/apiClient";
 import { useRef, useState } from "react";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
 
-export function ConnectionPanel() {
+export function ConnectionPanel({ embedded = false }: { embedded?: boolean }) {
   const connections = useConnections();
   const authorize = useAuthorizeGitHub();
   const disconnect = useDisconnectGitHub();
@@ -65,18 +65,18 @@ export function ConnectionPanel() {
         </span>
       </div>
       {!githubActive ? (
-        <button className="button-primary" type="button" disabled={authorize.isPending} onClick={connect}>
+        <button className={embedded ? "button-secondary" : "button-primary"} type="button" disabled={authorize.isPending} onClick={connect}>
           {authorize.isPending
             ? "GitHub로 이동하는 중…"
             : github ? "GitHub 다시 연결" : "GitHub 저장소 연결"}
         </button>
       ) : (
         <div className="connection-actions">
-          <button className="button-primary" type="button" disabled={authorize.isPending || disconnect.isPending} onClick={reconnect}>
+          <button className={embedded ? "button-secondary" : "button-primary"} type="button" disabled={authorize.isPending || disconnect.isPending} onClick={reconnect}>
             {authorize.isPending ? "GitHub로 이동하는 중…" : "권한 다시 승인"}
           </button>
           <button
-            className="button-secondary"
+            className="button-danger-secondary"
             type="button"
             disabled={authorize.isPending || disconnect.isPending}
             onClick={() => { disconnect.reset(); setDisconnectMessage(""); setConfirmingDisconnect(true); }}
@@ -147,7 +147,7 @@ function NotionConnectionPanel({ connections }: { connections: ReturnType<typeof
           <button type="button" disabled={authorize.isPending || disconnect.isPending} onClick={connect}>
             {authorize.isPending ? "Notion으로 이동하는 중…" : "Notion 권한 다시 승인"}
           </button>
-          <button className="button-secondary" type="button" disabled={authorize.isPending || disconnect.isPending} onClick={() => { disconnect.reset(); setDisconnectMessage(""); setConfirmingDisconnect(true); }}>
+          <button className="button-danger-secondary" type="button" disabled={authorize.isPending || disconnect.isPending} onClick={() => { disconnect.reset(); setDisconnectMessage(""); setConfirmingDisconnect(true); }}>
             {disconnect.isPending ? "Notion 연결 해제 중…" : "Notion 연결 해제"}
           </button>
         </div>

@@ -1,7 +1,7 @@
 import type { RuleCategory, ReadinessLevel } from "../../features/readiness/api/careerReadinessApi";
 import type { Recommendation } from "../../features/recommendations/api/recommendationApi";
 import type { DetectedTechnology, EvidenceCategory, ImportedRepository, RepositorySyncJob } from "../../features/repositories/api/repositoryApi";
-import type { KnowledgeChunkSummary, KnowledgeIngestionJob, KnowledgeSearchResult } from "../../features/knowledge/api/knowledgeApi";
+import type { KnowledgeChunkSummary, KnowledgeDocument, KnowledgeIngestionJob, KnowledgeSearchResult } from "../../features/knowledge/api/knowledgeApi";
 import type { RuleEvidence } from "../../features/analysis/api/analysisApi";
 import type { SkillAssessment } from "../../features/skills/api/skillMatrixApi";
 
@@ -43,6 +43,7 @@ const evidenceTypeLabels = {
 } as const satisfies Record<RuleEvidence["evidenceType"] | DetectedTechnology["evidenceType"], string>;
 
 const freshnessLabels = { FRESH: "최신 인덱스" } as const satisfies Record<KnowledgeSearchResult["freshness"], string>;
+const knowledgeSourceTypeLabels = { NOTION: "Notion" } as const satisfies Record<KnowledgeDocument["sourceType"], string>;
 const chunkStatusLabels = { INDEXED: "색인됨", STALE: "갱신 필요", DELETED: "삭제됨" } as const satisfies Record<KnowledgeChunkSummary["status"], string>;
 const repositoryLifecycleLabels = {
   DISCOVERED: "등록됨", ACTIVE: "사용 중", ARCHIVED: "보관됨", DELETED_EXTERNALLY: "GitHub에서 삭제됨"
@@ -71,6 +72,7 @@ export const recommendationStatusLabel = (value: string | null | undefined) => l
 export const jobStatusLabel = (value: string | null | undefined) => label(jobStatusLabels, value?.toLowerCase());
 export const evidenceTypeLabel = (value: string | null | undefined) => label(evidenceTypeLabels, value);
 export const knowledgeFreshnessLabel = (value: string | null | undefined) => label(freshnessLabels, value);
+export const knowledgeSourceTypeLabel = (value: string | null | undefined) => label(knowledgeSourceTypeLabels, value);
 export const chunkStatusLabel = (value: string | null | undefined) => label(chunkStatusLabels, value);
 export const repositoryLifecycleLabel = (value: string | null | undefined) => label(repositoryLifecycleLabels, value);
 export const repositorySyncStatusLabel = (value: string | null | undefined) => label(repositorySyncStatusLabels, value);

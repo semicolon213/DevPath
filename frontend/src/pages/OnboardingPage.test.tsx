@@ -1,9 +1,9 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { renderWithProviders } from "../test/renderWithProviders";
 
-vi.mock("../features/profile/ui/ProfilePanel", () => ({ ProfilePanel: () => <div>설정 도구</div> }));
-vi.mock("../features/connections/ui/ConnectionPanel", () => ({ ConnectionPanel: () => <div>연결 도구</div> }));
+vi.mock("../features/profile/ui/ProfilePanel", () => ({ ProfilePanel: ({ embedded }: { embedded?: boolean }) => <div>설정 도구<button className={embedded ? "button-secondary" : "button-primary"}>프로필 저장</button></div> }));
+vi.mock("../features/connections/ui/ConnectionPanel", () => ({ ConnectionPanel: ({ embedded }: { embedded?: boolean }) => <div>연결 도구<button className={embedded ? "button-secondary" : "button-primary"}>GitHub 저장소 연결</button></div> }));
 const metadata = { requestId: "request-1", apiVersion: "v1", timestamp: "2026-08-25T06:00:00Z" };
 const step = (name: string, status: "COMPLETE" | "INCOMPLETE", requirement = "REQUIRED") => ({ step: name, status, requirement, resourceId: null, actionPath: "/repositories" });
 
@@ -24,6 +24,14 @@ describe("OnboardingPage", () => {
     expect(screen.getByLabelText("전체 8단계 중 5단계 완료")).toBeInTheDocument();
     expect(screen.getByText("설정 도구")).toBeInTheDocument();
     expect(screen.getByText("선택")).toBeInTheDocument();
+    expect(screen.getByText("지금")).toBeInTheDocument();
+    const steps = within(screen.getByRole("list", { name: "온보딩 단계" })).getAllByRole("listitem");
+    expect(within(steps[3]).getByText("미완료")).toBeInTheDocument();
+    expect(within(steps[7]).getByText("예정")).toBeInTheDocument();
+    expect(steps[3]).toHaveClass("onboarding-step--incomplete");
+    expect(steps[7]).toHaveClass("onboarding-step--upcoming");
+    expect(screen.getAllByText("미완료")).toHaveLength(1);
+    expect(document.querySelectorAll(".button-primary")).toHaveLength(1);
   });
 
   it("links a completed first analysis to the result workspaces", async () => {

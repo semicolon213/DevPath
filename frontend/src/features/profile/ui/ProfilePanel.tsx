@@ -10,7 +10,7 @@ import { useUnsavedChanges } from "../../../app/UnsavedChangesContext";
 type ProfileErrors = { displayName?: string; bio?: string };
 type TargetKind = "career" | "company";
 
-export function ProfilePanel() {
+export function ProfilePanel({ embedded = false }: { embedded?: boolean }) {
   const profile = useProfile();
   const preferences = usePreferences();
   const careers = useCareers();
@@ -96,12 +96,12 @@ export function ProfilePanel() {
         <strong>입력 내용을 확인해 주세요.</strong>
         <ul>{errors.displayName ? <li><a href="#display-name" onClick={event => { event.preventDefault(); displayNameRef.current?.focus(); }}>{errors.displayName}</a></li> : null}{errors.bio ? <li><a href="#profile-bio" onClick={event => { event.preventDefault(); bioRef.current?.focus(); }}>{errors.bio}</a></li> : null}</ul>
       </div> : null}
-      <label htmlFor="display-name">표시 이름</label><input ref={displayNameRef} id="display-name" value={displayName} maxLength={120} required aria-invalid={Boolean(errors.displayName)} aria-describedby={errors.displayName ? "display-name-error" : undefined} onChange={event => setDisplayName(event.target.value)} />
+      <label htmlFor="display-name">표시 이름</label><p className="field-help" id="display-name-help">DevPath 화면에 표시할 이름입니다.</p><input ref={displayNameRef} id="display-name" value={displayName} maxLength={120} required aria-invalid={Boolean(errors.displayName)} aria-describedby={errors.displayName ? "display-name-help display-name-error" : "display-name-help"} onChange={event => setDisplayName(event.target.value)} />
       {errors.displayName ? <p id="display-name-error" className="form-error">{errors.displayName}</p> : null}
       <label htmlFor="career-stage">경력 단계</label><select id="career-stage" value={stage} onChange={event => setStage(event.target.value as CareerStage | "")}><option value="">선택 안 함</option><option value="STUDENT">학생</option><option value="ENTRY_LEVEL">신입 준비</option><option value="JUNIOR">주니어</option><option value="MID_LEVEL">미드레벨</option><option value="SENIOR">시니어</option></select>
-      <label htmlFor="profile-bio">자기소개</label><textarea ref={bioRef} id="profile-bio" value={bio} maxLength={1000} aria-invalid={Boolean(errors.bio)} aria-describedby={errors.bio ? "profile-bio-error" : undefined} onChange={event => setBio(event.target.value)} />
+      <label htmlFor="profile-bio">자기소개</label><p className="field-help" id="profile-bio-help">경험과 관심사를 1,000자 이내로 적어 주세요.</p><textarea ref={bioRef} id="profile-bio" value={bio} maxLength={1000} aria-invalid={Boolean(errors.bio)} aria-describedby={errors.bio ? "profile-bio-help profile-bio-error" : "profile-bio-help"} onChange={event => setBio(event.target.value)} />
       {errors.bio ? <p id="profile-bio-error" className="form-error">{errors.bio}</p> : null}
-      <button className="button-primary" disabled={update.isPending}>{update.isPending ? "저장 중…" : "프로필 저장"}</button>
+      <button className={embedded ? "button-secondary" : "button-primary"} disabled={update.isPending}>{update.isPending ? "저장 중…" : "프로필 저장"}</button>
       {update.isSuccess ? <p role="status">프로필을 저장했습니다.</p> : null}{update.isError ? <p role="alert">프로필 저장에 실패했습니다.</p> : null}
     </form>
     <div id="targets" className="target-grid">

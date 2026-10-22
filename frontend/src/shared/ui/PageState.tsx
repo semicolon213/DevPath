@@ -28,13 +28,13 @@ export function PageState(props: PageStateProps) {
   if (props.state === "loading") {
     return <>
       <header className="workspace-header" onFocusCapture={() => { loadingFocused.current = true; }} onBlurCapture={() => { loadingFocused.current = false; }}><div><h1>{props.title}</h1>{props.description ? <p>{props.description}</p> : null}</div></header>
-      <section className="page-state-skeleton" role="status">
+      <section className="page-state page-state--loading page-state-skeleton" role="status">
         <span>{props.message}</span><i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" />
       </section>
     </>;
   }
 
-  if (props.state === "empty") return <section className="state-panel"><h1>{props.title}</h1>{props.description ? <p>{props.description}</p> : null}<Link className="button-link button-primary" to={props.actionTo}>{props.actionLabel}</Link></section>;
+  if (props.state === "empty") return <section className="state-panel page-state page-state--empty"><p className="eyebrow">다음 단계</p><h1>{props.title}</h1>{props.description ? <p>{props.description}</p> : null}<Link className="button-link button-primary" to={props.actionTo}>{props.actionLabel}</Link></section>;
 
   const unauthorized = props.error instanceof ApiError && props.error.status === 401;
   const hidden = props.error instanceof ApiError && (props.error.status === 403 || props.error.status === 404);
@@ -50,7 +50,8 @@ export function PageState(props: PageStateProps) {
         : props.description;
   const requestId = props.error instanceof ApiError ? props.error.requestId : null;
 
-  return <section className="state-panel" role="alert">
+  return <section className={`state-panel page-state page-state--${unauthorized || hidden ? "forbidden" : "error"}`} role="alert">
+    <p className="eyebrow">{unauthorized || hidden ? "접근 안내" : "문제가 발생했습니다"}</p>
     <h1>{title}</h1>
     {description ? <p>{description}</p> : null}
     {!unauthorized && !hidden && requestId ? <p>오류 참조 <code className="page-state-reference">{requestId}</code></p> : null}
