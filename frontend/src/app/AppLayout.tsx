@@ -55,20 +55,22 @@ export function AppLayout({ children }: { children?: ReactNode }) {
 
   return <UnsavedChangesContext.Provider value={{ hasUnsavedChanges, ignoreUnsavedChanges, setHasUnsavedChanges }}><div className="app-shell">
     <header className="app-header">
-      <Link className="app-brand" to="/dashboard">DevPath</Link>
-      <button ref={menuButton} className="app-menu-button button-secondary" type="button" aria-expanded={menuOpen} aria-controls="app-navigation" onClick={() => setMenuOpen(value => !value)}>메뉴</button>
-      <nav id="app-navigation" className={`app-navigation${menuOpen ? " app-navigation--open" : ""}`} aria-label="주요 메뉴">
-        {appNavigation.map(([label, to]) => {
-          const isActive = location.pathname === to || (to !== "/dashboard" && location.pathname.startsWith(`${to}/`));
-          return <NavLink key={to} to={to} aria-current={isActive ? location.pathname === to ? "page" : "true" : undefined} className={`app-navigation__link${isActive ? " app-navigation__link--active" : ""}`} onClick={() => {
-            if (menuOpen && location.pathname === to) {
-              setMenuOpen(false);
-              requestAnimationFrame(() => { main.current?.focus(); });
-            }
-          }}>{label}</NavLink>;
-        })}
-      </nav>
-      <button className="button-secondary app-logout" type="button" disabled={logout.isPending} onClick={requestLogout}>{logout.isPending ? "로그아웃 중…" : "로그아웃"}</button>
+      <div className="app-header__inner">
+        <Link className="app-brand" to="/dashboard">DevPath</Link>
+        <button ref={menuButton} className="app-menu-button button-secondary" type="button" aria-expanded={menuOpen} aria-controls="app-navigation" onClick={() => setMenuOpen(value => !value)}>메뉴</button>
+        <nav id="app-navigation" className={`app-navigation${menuOpen ? " app-navigation--open" : ""}`} aria-label="주요 메뉴">
+          {appNavigation.map(([label, to]) => {
+            const isActive = location.pathname === to || (to !== "/dashboard" && location.pathname.startsWith(`${to}/`));
+            return <NavLink key={to} to={to} aria-current={isActive ? location.pathname === to ? "page" : "true" : undefined} className={`app-navigation__link${isActive ? " app-navigation__link--active" : ""}`} onClick={() => {
+              if (menuOpen && location.pathname === to) {
+                setMenuOpen(false);
+                requestAnimationFrame(() => { main.current?.focus(); });
+              }
+            }}>{label}</NavLink>;
+          })}
+        </nav>
+        <button className="button-secondary app-logout" type="button" disabled={logout.isPending} onClick={requestLogout}>{logout.isPending ? "로그아웃 중…" : "로그아웃"}</button>
+      </div>
     </header>
     {logout.isError && !confirmingLogout ? <p className="app-logout-error" role="alert">로그아웃에 실패했습니다. 다시 시도해 주세요.</p> : null}
     <main ref={main} className="shell workspace" tabIndex={-1}>{children ?? <Outlet />}</main>
