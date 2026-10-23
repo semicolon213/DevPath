@@ -106,6 +106,18 @@ describe("DashboardPage", () => {
     expect(screen.queryByText("0", { exact: true })).not.toBeInTheDocument();
   });
 
+  it("does not invent zeroes when an available readiness result omits values", async () => {
+    const data = summary();
+    data.readiness = { ...data.readiness, score: null, confidence: null };
+    vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(envelope(data))));
+
+    renderWithProviders(undefined, ["/dashboard"]);
+
+    expect(await screen.findByText("—")).toBeInTheDocument();
+    expect(screen.getByText("공식 점수 또는 신뢰도를 표시할 수 없습니다.")).toBeInTheDocument();
+    expect(screen.queryByText("0", { exact: true })).not.toBeInTheDocument();
+  });
+
   it("preserves loading and request error states", async () => {
     vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(() => undefined)));
     const loading = renderWithProviders(undefined, ["/dashboard"]);

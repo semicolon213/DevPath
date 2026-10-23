@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useCompany } from "../features/companies/model/useCompanies";
 import { usePreferences, useSetCompany } from "../features/profile/model/useProfile";
@@ -5,11 +6,14 @@ import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 import { PageHero } from "../shared/ui/PageHero";
 import { StatusChip } from "../shared/ui/StatusChip";
+import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 export function CompanyDetailPage() {
   const { id } = useParams();
   const company = useCompany(id),
     prefs = usePreferences(),
     setCompany = useSetCompany();
+  const [confirming, setConfirming] = useState(false);
+  const selectedStatus = useRef<HTMLSpanElement>(null);
   if (company.isPending || prefs.isPending)
     return (
       <Shell>
@@ -43,13 +47,14 @@ export function CompanyDetailPage() {
           <p>{v.engineeringCulture}</p>
         </div>
         {selected ? (
-          <StatusChip variant="info">현재 목표 회사</StatusChip>
+          <span ref={selectedStatus} tabIndex={-1}><StatusChip variant="info">현재 목표 회사</StatusChip></span>
         ) : (
-          <button className="button-primary" disabled={setCompany.isPending} onClick={() => setCompany.mutate(v.companyId)}>
+          <button className="button-primary" onClick={() => { setCompany.reset(); setConfirming(true); }}>
             이 회사를 목표로 설정
           </button>
         )}
       </PageHero>
+      {setCompany.isSuccess ? <p className="analysis-notice" role="status">목표 회사를 변경했습니다. 선택한 회사가 목표로 저장되었습니다.</p> : null}
       <p className="analysis-notice">이 프로필은 일반적 역량 강조 정책이며 비공개 채용 정보나 합격 예측이 아닙니다.</p>
       <section className="profile-section-list">
         <List title="기술 관심사" values={v.technologyFocus} />
@@ -69,6 +74,7 @@ export function CompanyDetailPage() {
           ))}
         </ol>
       </section>
+      <ConfirmDialog open={confirming} title="목표 회사를 변경할까요?" description="선택한 회사가 목표로 저장됩니다. 현재 회사별 준비도와 추천 정책은 적용되지 않으며, 이 화면에서는 재평가를 시작하지 않습니다." confirmLabel="목표 회사 변경" pending={setCompany.isPending} error={setCompany.isError ? "목표 회사를 변경하지 못했습니다. 다시 시도해 주세요." : undefined} returnFocusFallback={selectedStatus} onCancel={() => setConfirming(false)} onConfirm={() => setCompany.mutate(v.companyId, { onSuccess: () => setConfirming(false) })} />
     </Shell>
   );
 }

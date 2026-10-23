@@ -47,6 +47,9 @@ describe("OnboardingPage", () => {
     expect(screen.getAllByRole("link", { name: "대시보드" })).not.toHaveLength(0);
     expect(within(screen.getByRole("region", { name: "분석 결과에서 이어가기" })).getByRole("link", { name: "기술 역량" })).toHaveAttribute("href", "/skills");
     expect(screen.queryByText("설정 도구")).not.toBeInTheDocument();
+    const steps = within(screen.getByRole("list", { name: "온보딩 단계" })).getAllByRole("listitem");
+    expect(within(steps[3]).getByText("미완료")).toBeInTheDocument();
+    expect(steps[3]).toHaveClass("onboarding-step--incomplete");
   });
 
   it("distinguishes an anonymous session from a transport failure", async () => {

@@ -6,7 +6,12 @@ describe("CareerReadinessPage", () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it("shows the official result, version basis, and ordered category gaps", async () => {
-    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(Response.json({
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/users/me/preferences")) return Promise.resolve(Response.json({ data: { careerId: "frontend", companyId: "toss", updatedAt: null }, metadata: { requestId: "r1", apiVersion: "v1", timestamp: "2026-08-24T00:00:00Z" } }));
+      if (url.endsWith("/careers")) return Promise.resolve(Response.json({ data: { catalogVersion: "career-v2", careers: [{ careerId: "backend", localizedName: "백엔드 개발자" }] }, metadata: { requestId: "r1", apiVersion: "v1", timestamp: "2026-08-24T00:00:00Z" } }));
+      if (url.endsWith("/companies")) return Promise.resolve(Response.json({ data: { catalogVersion: "company-v1", companies: [{ companyId: "toss", localizedName: "토스" }] }, metadata: { requestId: "r1", apiVersion: "v1", timestamp: "2026-08-24T00:00:00Z" } }));
+      return Promise.resolve(Response.json({
       data: {
         careerReadinessId: "cr1", skillMatrixId: "m1", careerId: "backend", careerProfileVersionId: "cp1",
         careerProfileVersion: "career-v2", readinessPolicyVersion: "readiness-v1", ruleSetVersion: "baseline-v2",
@@ -18,12 +23,14 @@ describe("CareerReadinessPage", () => {
           actualScore: 0, actualLevel: "NONE", expectedMinimum: 55, gapState: "MISSING", careerWeight: 10,
           evidenceIds: [] }]
       }, metadata: { requestId: "r1", apiVersion: "v1", timestamp: "2026-08-24T00:00:00Z" }
-    })));
+      }));
+    }));
 
     renderWithProviders(undefined, ["/career-readiness"]);
 
     expect(await screen.findByText("67.5")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "커리어 준비도" })).toBeInTheDocument();
+    expect(await screen.findByText("목표 · 백엔드 개발자 · 토스")).toBeInTheDocument();
     expect(screen.getByText("일부 충족")).toBeInTheDocument();
     expect(document.querySelector(".result-basis")).toHaveTextContent("준비도 정책 readiness-v1");
     expect(document.querySelector(".page-hero .analysis-version")).not.toBeInTheDocument();
@@ -44,6 +51,23 @@ describe("CareerReadinessPage", () => {
     renderWithProviders(undefined, ["/career-readiness"]);
     expect(await screen.findByRole("heading", { name: "아직 준비도 결과가 없습니다" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "저장소 확인" })).toHaveAttribute("href", "/repositories");
+  });
+
+  it("falls back to the stored profile version when target names are unavailable", async () => {
+    vi.stubGlobal("fetch", vi.fn((input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/users/me/preferences") || url.endsWith("/careers") || url.endsWith("/companies")) {
+        return Promise.resolve(Response.json({ error: { code: "FAILED" } }, { status: 500 }));
+      }
+      return Promise.resolve(Response.json({ data: {
+        careerReadinessId: "cr1", skillMatrixId: "m1", careerId: "backend", careerProfileVersionId: "cp1",
+        careerProfileVersion: "career-v2", readinessPolicyVersion: "readiness-v1", ruleSetVersion: "baseline-v2",
+        status: "INSUFFICIENT_EVIDENCE", readinessScore: null, readinessLevel: null, confidence: 0,
+        unavailableCategories: ["TESTING"], assessedAt: "2026-08-24T00:00:00Z", skillGaps: []
+      }, metadata: { requestId: "r1", apiVersion: "v1", timestamp: "2026-08-24T00:00:00Z" } }));
+    }));
+    renderWithProviders(undefined, ["/career-readiness"]);
+    expect(await screen.findByText("프로필 career-v2")).toBeInTheDocument();
   });
 
   it("shows the request reference for an internal readiness failure", async () => {

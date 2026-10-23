@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiRequest, mutationErrorMessage } from "./apiClient";
+import { ApiError, NetworkError, apiRequest, mutationErrorMessage } from "./apiClient";
 
 describe("apiRequest correlation", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -51,6 +51,25 @@ describe("apiRequest correlation", () => {
       retryAfter: "120",
       rateLimitReset: "1786406400"
     });
+  });
+
+  it("marks only fetch rejections as network failures", async () => {
+    const cause = new TypeError("offline");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(cause));
+
+    await expect(apiRequest("/api/v1/test")).rejects.toEqual(expect.objectContaining<Partial<NetworkError>>({
+      name: "NetworkError",
+      cause
+    }));
+  });
+
+  it("does not classify invalid successful JSON as a network failure", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("not-json", {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    })));
+
+    await expect(apiRequest("/api/v1/test")).rejects.not.toBeInstanceOf(NetworkError);
   });
 });
 

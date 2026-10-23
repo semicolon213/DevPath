@@ -1,6 +1,10 @@
 import { Link } from "react-router-dom";
 import { CareerCoachingPanel } from "../features/ai/ui/CareerCoachingPanel";
+import { useCareers } from "../features/careers/model/useCareers";
+import { useCompanies } from "../features/companies/model/useCompanies";
+import { usePreferences } from "../features/profile/model/useProfile";
 import { useCurrentCareerReadiness } from "../features/readiness/model/useCareerReadiness";
+import { readinessTargetLabel } from "../features/readiness/model/readinessTargetLabel";
 import { ApiError } from "../shared/api/apiClient";
 import { categoryLabel, levelLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
@@ -10,16 +14,28 @@ import { ResultBasis } from "../shared/ui/ResultBasis";
 
 export function CareerReadinessPage() {
   const query = useCurrentCareerReadiness();
+  const preferences = usePreferences();
+  const careers = useCareers();
+  const companies = useCompanies();
   if (query.isPending) return <PageState state="loading" title="커리어 준비도" message="커리어 준비도 결과를 불러오는 중입니다." />;
   if (query.isError) return query.error instanceof ApiError && query.error.status === 404
     ? <PageState state="empty" title="아직 준비도 결과가 없습니다" description="지원 직무를 선택하고 새 분석을 완료하면 결과가 생성됩니다." actionTo="/repositories" actionLabel="저장소 확인" />
     : <PageState state="error" title="준비도 결과를 표시할 수 없습니다" errorTitle="준비도를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} />;
   const result = query.data;
   const incomplete = result.status === "INSUFFICIENT_EVIDENCE";
+  const companyName = companies.data?.companies.find(company => company.companyId === preferences.data?.companyId)?.localizedName;
+  const target = readinessTargetLabel({
+    careers: careers.data,
+    careerId: result.careerId,
+    profileVersion: result.careerProfileVersion,
+    pending: preferences.isPending || careers.isPending || companies.isPending,
+    prefix: "목표",
+    companyName
+  });
 
   return <>
     <PageHero>
-      <div><p className="eyebrow">공식 커리어 평가</p><h1>커리어 준비도</h1><p>AI가 아닌 승인된 정책과 현재 기술 역량(Skill Matrix)으로 계산한 공식 결과입니다.</p></div>
+      <div><p className="eyebrow">{target}</p><h1>커리어 준비도</h1><p>AI가 아닌 승인된 정책과 현재 기술 역량(Skill Matrix)으로 계산한 공식 결과입니다.</p></div>
     </PageHero>
     <section className="readiness-hero" aria-labelledby="readiness-result-title">
       <div><span id="readiness-result-title">현재 준비도</span><strong>{incomplete ? "근거 부족" : formatScore(result.readinessScore!)}</strong><small>{incomplete ? "필수 범주가 모두 평가된 뒤 점수와 등급을 표시합니다." : `${levelLabel(result.readinessLevel!)} · 신뢰도 ${formatScore(result.confidence)}%`}</small></div>

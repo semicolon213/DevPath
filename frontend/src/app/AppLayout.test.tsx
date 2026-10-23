@@ -19,6 +19,16 @@ it("marks ancestor navigation without calling it the exact page", () => {
   expect(screen.getByRole("link", { name: "설정" })).toHaveAttribute("aria-current", "true");
 });
 
+it.each(["/careers", "/careers/backend", "/companies", "/companies/toss"])("maps %s to the settings section", (path) => {
+  renderWithProviders(<AppLayout />, [path]);
+  expect(screen.getByRole("link", { name: "설정" })).toHaveAttribute("aria-current", "true");
+});
+
+it("does not highlight global navigation during onboarding", () => {
+  renderWithProviders(<AppLayout />, ["/onboarding"]);
+  expect(screen.getByRole("navigation", { name: "주요 메뉴" }).querySelector("[aria-current]")).not.toBeInTheDocument();
+});
+
 it("toggles the mobile menu with its native button and returns focus after Escape", () => {
   renderWithProviders(<AppLayout />, ["/dashboard"]);
   const button = screen.getByRole("button", { name: "메뉴" });

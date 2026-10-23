@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import { ApiError } from "../api/apiClient";
+import { ApiError, NetworkError } from "../api/apiClient";
 import { PageHero } from "./PageHero";
 
 type BaseProps = {
@@ -42,8 +42,7 @@ export function PageState(props: PageStateProps) {
 
   const unauthorized = props.error instanceof ApiError && props.error.status === 401;
   const hidden = props.error instanceof ApiError && (props.error.status === 403 || props.error.status === 404);
-  // fetch rejects with TypeError before an HTTP response exists, so treat it as a network failure.
-  const network = props.error instanceof TypeError;
+  const network = props.error instanceof NetworkError;
   const title = unauthorized ? "로그인이 필요합니다." : hidden ? props.title : network ? "서버에 연결할 수 없습니다." : props.errorTitle ?? props.title;
   const description = unauthorized
     ? "DevPath에 로그인한 뒤 다시 확인해 주세요."

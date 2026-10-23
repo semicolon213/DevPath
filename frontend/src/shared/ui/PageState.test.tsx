@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react";
 import { expect, it, vi } from "vitest";
 import { renderWithProviders } from "../../test/renderWithProviders";
-import { ApiError } from "../api/apiClient";
+import { ApiError, NetworkError } from "../api/apiClient";
 import { PageState } from "./PageState";
 
 it("renders loading with its page heading and bounded status skeleton", () => {
@@ -39,10 +39,16 @@ it("uses existence-safe wording and a back action for a 404", () => {
 
 it("distinguishes a network failure and retries", () => {
   const retry = vi.fn();
-  renderWithProviders(<PageState state="error" title="불러오지 못했습니다." error={new TypeError("offline")} retry={retry} />);
+  renderWithProviders(<PageState state="error" title="불러오지 못했습니다." error={new NetworkError(new TypeError("offline"))} retry={retry} />);
   expect(screen.getByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
   expect(retry).toHaveBeenCalledOnce();
+});
+
+it("does not misclassify a programming TypeError as a network failure", () => {
+  renderWithProviders(<PageState state="error" title="정보를 표시할 수 없습니다." errorTitle="화면 오류" error={new TypeError("bug")} retry={() => undefined} />);
+  expect(screen.getByRole("heading", { name: "화면 오류" })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "서버에 연결할 수 없습니다." })).not.toBeInTheDocument();
 });
 
 it("shows an internal error request reference and retries", () => {

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useLogout } from "../features/session/model/useSession";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { UnsavedChangesContext } from "./UnsavedChangesContext";
@@ -60,13 +60,14 @@ export function AppLayout({ children }: { children?: ReactNode }) {
         <button ref={menuButton} className="app-menu-button button-secondary" type="button" aria-expanded={menuOpen} aria-controls="app-navigation" onClick={() => setMenuOpen(value => !value)}>메뉴</button>
         <nav id="app-navigation" className={`app-navigation${menuOpen ? " app-navigation--open" : ""}`} aria-label="주요 메뉴">
           {appNavigation.map(([label, to]) => {
-            const isActive = location.pathname === to || (to !== "/dashboard" && location.pathname.startsWith(`${to}/`));
-            return <NavLink key={to} to={to} aria-current={isActive ? location.pathname === to ? "page" : "true" : undefined} className={`app-navigation__link${isActive ? " app-navigation__link--active" : ""}`} onClick={() => {
+            const settingsCatalog = to === "/settings" && ["/careers", "/companies"].some(path => location.pathname === path || location.pathname.startsWith(`${path}/`));
+            const isActive = settingsCatalog || location.pathname === to || (to !== "/dashboard" && location.pathname.startsWith(`${to}/`));
+            return <Link key={to} to={to} aria-current={isActive ? location.pathname === to ? "page" : "true" : undefined} className={`app-navigation__link${isActive ? " app-navigation__link--active" : ""}`} onClick={() => {
               if (menuOpen && location.pathname === to) {
                 setMenuOpen(false);
                 requestAnimationFrame(() => { main.current?.focus(); });
               }
-            }}>{label}</NavLink>;
+            }}>{label}</Link>;
           })}
         </nav>
         <button className="button-secondary app-logout" type="button" disabled={logout.isPending} onClick={requestLogout}>{logout.isPending ? "로그아웃 중…" : "로그아웃"}</button>

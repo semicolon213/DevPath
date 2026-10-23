@@ -83,7 +83,8 @@ function Readiness({ status, resultStatus, score, level, confidence, unavailable
   if (status === "UNAVAILABLE") return <Unavailable text="커리어 준비도 정보를 불러오지 못했습니다." />;
   if (status === "EMPTY") return <Empty text="아직 준비도 결과가 없습니다." action="저장소 확인" to="/repositories" />;
   if (resultStatus === "INSUFFICIENT_EVIDENCE") return <div className="dashboard-readiness__insufficient"><span className="status-badge">근거 부족</span><p>평가 불가 범주: {unavailableCategories.map(categoryLabel).join(", ")}</p></div>;
-  return <><div className="dashboard-score"><strong>{formatScore(score ?? 0)}</strong><span>/ 100</span></div><p>{levelLabel(level)} · 신뢰도 {formatScore(confidence ?? 0)}%</p></>;
+  if (score === null || confidence === null) return <><div className="dashboard-score"><strong>—</strong><span>/ 100</span></div><p>공식 점수 또는 신뢰도를 표시할 수 없습니다.</p></>;
+  return <><div className="dashboard-score"><strong>{formatScore(score)}</strong><span>/ 100</span></div><p>{levelLabel(level)} · 신뢰도 {formatScore(confidence)}%</p></>;
 }
 function targetName(target: DashboardTarget | null, fallback: string) { return target?.localizedName ?? fallback; }
 function Metric({ value, label, status }: { value: number | string; label: string; status: DashboardSourceStatus }) { return <div><strong>{value}</strong><span>{status === "UNAVAILABLE" ? `${label} · 확인 실패` : label}</span></div>; }

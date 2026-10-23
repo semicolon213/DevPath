@@ -20,13 +20,21 @@ export class ApiError extends Error {
   }
 }
 
+export class NetworkError extends Error {
+  constructor(cause: unknown) {
+    super("DevPath API network request failed", { cause });
+    this.name = "NetworkError";
+  }
+}
+
 type CsrfToken = { headerName: string; token: string };
 
 export async function apiRequest<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const response = await fetch(`${getApiBaseUrl()}${path}`, {
+  const url = `${getApiBaseUrl()}${path}`;
+  const requestInit: RequestInit = {
     ...init,
     credentials: "include",
     headers: {
@@ -34,7 +42,13 @@ export async function apiRequest<T>(
       ...requestContextHeaders(),
       ...init.headers
     }
-  });
+  };
+  let response: Response;
+  try {
+    response = await fetch(url, requestInit);
+  } catch (error) {
+    throw new NetworkError(error);
+  }
 
   if (!response.ok) {
     const body = await safeErrorBody(response);

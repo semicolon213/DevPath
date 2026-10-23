@@ -1,5 +1,8 @@
 import { Link, useParams } from "react-router-dom";
+import { useCareers } from "../features/careers/model/useCareers";
+import { usePreferences } from "../features/profile/model/useProfile";
 import { useCareerReadinessWorkspace } from "../features/readiness/model/useCareerReadiness";
+import { readinessTargetLabel } from "../features/readiness/model/readinessTargetLabel";
 import { categoryLabel, levelLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
@@ -10,16 +13,21 @@ import { ResultBasis } from "../shared/ui/ResultBasis";
 export function CareerReadinessDetailPage() {
   const { careerReadinessId } = useParams();
   const query = useCareerReadinessWorkspace(careerReadinessId);
+  const preferences = usePreferences();
+  const careers = useCareers();
   if (query.isPending) return <Shell><PageState state="loading" title="커리어 준비도 상세" message="과거 준비도와 전체 역량 격차를 불러오는 중입니다." /></Shell>;
   if (query.isError) return <Shell><PageState state="error" title="준비도 결과를 표시할 수 없습니다" errorTitle="준비도 상세를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} backTo="/recommendations" /></Shell>;
   const result = query.data.readiness;
   const incomplete = result.status === "INSUFFICIENT_EVIDENCE";
   const needsAction = result.skillGaps.filter(gap => !["SUFFICIENT", "STRONG"].includes(gap.gapState));
+  const target = readinessTargetLabel({ careers: careers.data, careerId: result.careerId, profileVersion: result.careerProfileVersion, pending: careers.isPending, prefix: "평가 직무" });
+  const targetChanged = preferences.data?.careerId != null && preferences.data.careerId !== result.careerId;
 
   return <Shell>
-    <PageHero><div><p className="eyebrow">저장된 커리어 평가</p><h1>커리어 준비도 상세</h1>
+    <PageHero><div><p className="eyebrow">{target}</p><h1>커리어 준비도 상세</h1>
       <p>평가 당시 기술 역량(Skill Matrix)과 커리어 정책으로 생성된 불변 결과입니다.</p></div>
     </PageHero>
+    {targetChanged ? <p className="analysis-notice">현재 목표 직무가 이 저장된 결과의 평가 직무와 다릅니다.</p> : null}
     <section className="readiness-hero" aria-labelledby="historical-readiness-title"><div><span id="historical-readiness-title">저장된 준비도</span>
       <strong>{incomplete ? "근거 부족" : format(result.readinessScore!)}</strong><small>{incomplete ? "필수 범주 근거가 부족한 결과입니다." : `${levelLabel(result.readinessLevel!)} · 신뢰도 ${format(result.confidence)}%`}</small></div>
       {incomplete ? <p>평가 불가 범주: {result.unavailableCategories.map(categoryLabel).join(", ")}</p> : <progress aria-label="저장된 커리어 준비도 점수" max="100" value={result.readinessScore!}>{result.readinessScore}점</progress>}</section>

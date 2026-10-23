@@ -92,7 +92,7 @@ export function OnboardingPage() {
       ) : null}
       <ol className="onboarding-steps" aria-label="온보딩 단계">
         {progress.data.steps.map((step, index) => (
-          <StepCard key={step.step} step={step} position={index + 1} current={step.step === progress.data.nextStep} beforeCurrent={index < nextIndex} />
+          <StepCard key={step.step} step={step} position={index + 1} current={step.step === progress.data.nextStep} beforeCurrent={ready || index < nextIndex} />
         ))}
       </ol>
       {!ready ? (
