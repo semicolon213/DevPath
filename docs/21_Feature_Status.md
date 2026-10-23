@@ -40,11 +40,11 @@ excluded from executable lookup, in which case it falls back to the cached Gradl
 
 Later tooling changes (the table above is kept as the 2026-10-15 record): FE-GATE (`e0bc4a7`) pinned the Playwright
 API base URL and updated Vite to 8.3.5, and FE-AUDIT (`30d2cad`) updated Vitest to 4.1.12, which brought the frontend
-`npm audit` to 0 advisories. The last full `npm run verify:mvp` run passed at commit `06ca030` (CSS-SPLIT). TEST-NOISE (`aa4e1da`)
+`npm audit` to 0 advisories. The last full `npm run verify:mvp` run passed at commit `1860f10` (CSS-SPLIT). TEST-NOISE (`2a279dd`)
 handles the intentional render errors inside the `AppRoutes` tests, so the frontend test output no longer contains about
-80 lines of jsdom stack traces. After the visual redesign (UI-5, `b94ff62`): frontend 53 files / 232 tests PASS; build
+80 lines of jsdom stack traces. After the visual redesign (UI-5, `14076b5`): frontend 53 files / 232 tests PASS; build
 PASS; Playwright 13 tests (including axe, reduced motion and scrollbar-visible overflow checks) PASS. After CSS-SPLIT
-(`06ca030`): `npm run verify:mvp` PASS (backend build and tests, frontend 53 files / 233 tests, Playwright 14 tests,
+(`1860f10`): `npm run verify:mvp` PASS (backend build and tests, frontend 53 files / 233 tests, Playwright 14 tests,
 `npm audit` 0 advisories, contract lint).
 
 ## 3. Capability Status
@@ -162,23 +162,23 @@ still show stored Rule Engine results and API values, and no slice calculates sc
 | Slice | Scope | Status |
 |---|---|---|
 | UI-1 | Tokens, font and app shell | **Resolved (2026-10-22, `7682ee0`):** design token values follow the new direction (token names unchanged), a self-hosted Noto Sans KR variable font (`@fontsource-variable/noto-sans-kr` 5.3.1), an indigo app band with pill navigation, amber for the primary action, and tinted surfaces instead of bordered white cards. Evidence: independent reviews PASS (1 cycle) |
-| UI-2 | Dashboard | **Resolved (2026-10-22, `50688a5`):** a hero band with the official readiness and one primary action, metric tiles, roadmap progress and recommendation step tiles; an e2e check covers overflow with always-visible scrollbars. Evidence: independent reviews PASS (2 cycles) |
-| UI-3 | Skills and career readiness | **Resolved (2026-10-22, `d31852d`):** skill score rows with the `EvidenceStatus` indicator; readiness gap bars drawn from `actualScore` and `expectedMinimum` through a shared `ReadinessGapList`; a global button hierarchy (the default button is secondary, one primary action per view); the Skill Matrix comparison shows stored values only, without client-side deltas. Evidence: independent reviews PASS (2 cycles) |
-| UI-4 | Repositories, analyses, recommendations and roadmap | **Resolved (2026-10-23, `0a04506`):** the repository list as a desktop table and stacked rows on small screens; repository and snapshot detail; analyses with fixed-slot skill rows and category bars; analysis comparison showing stored results side by side without deltas; recommendations as tiles in server order; learning roadmap step tiles labelled from `RoadmapStep.status` (완료, 진행 중, 예정, 건너뜀); hero-band button contrast and overflow e2e checks. Evidence: independent reviews PASS (3 cycles) |
-| UI-5 | Home, onboarding, targets, knowledge, settings and shared states | **Resolved (2026-10-23, `b94ff62`):** home and onboarding (steps shown as 완료, 지금, 미완료, 예정); career and company tiles; knowledge pages whose labels come only from the API `status` and `sourceType`; settings; the shared `PageState`, `ConfirmDialog`, `Breadcrumbs` and not-found page restyled; unused selectors removed; an e2e check for long names at 375px. Evidence: independent reviews PASS (3 cycles) |
+| UI-2 | Dashboard | **Resolved (2026-10-22, `6a38bd1`):** a hero band with the official readiness and one primary action, metric tiles, roadmap progress and recommendation step tiles; an e2e check covers overflow with always-visible scrollbars. Evidence: independent reviews PASS (2 cycles) |
+| UI-3 | Skills and career readiness | **Resolved (2026-10-22, `83dcc01`):** skill score rows with the `EvidenceStatus` indicator; readiness gap bars drawn from `actualScore` and `expectedMinimum` through a shared `ReadinessGapList`; a global button hierarchy (the default button is secondary, one primary action per view); the Skill Matrix comparison shows stored values only, without client-side deltas. Evidence: independent reviews PASS (2 cycles) |
+| UI-4 | Repositories, analyses, recommendations and roadmap | **Resolved (2026-10-23, `28d2523`):** the repository list as a desktop table and stacked rows on small screens; repository and snapshot detail; analyses with fixed-slot skill rows and category bars; analysis comparison showing stored results side by side without deltas; recommendations as tiles in server order; learning roadmap step tiles labelled from `RoadmapStep.status` (완료, 진행 중, 예정, 건너뜀); hero-band button contrast and overflow e2e checks. Evidence: independent reviews PASS (3 cycles) |
+| UI-5 | Home, onboarding, targets, knowledge, settings and shared states | **Resolved (2026-10-23, `14076b5`):** home and onboarding (steps shown as 완료, 지금, 미완료, 예정); career and company tiles; knowledge pages whose labels come only from the API `status` and `sourceType`; settings; the shared `PageState`, `ConfirmDialog`, `Breadcrumbs` and not-found page restyled; unused selectors removed; an e2e check for long names at 375px. Evidence: independent reviews PASS (3 cycles) |
 
 Verification on main after UI-5: frontend 53 files / 232 tests PASS; build PASS; Playwright 13 tests (including axe,
-reduced motion and scrollbar-visible overflow) PASS. The full `npm run verify:mvp` run, last passed at `d31852d` (UI-3)
-before UI-4 and UI-5, passed again on main at `06ca030` after CSS-SPLIT (see below). During this work, `CLAUDE.md`/`AGENT.md` §14 added a rule that lets a
-separate Claude worker handle frontend presentation fix cycles (`560ebc7`).
+reduced motion and scrollbar-visible overflow) PASS. The full `npm run verify:mvp` run, last passed at `83dcc01` (UI-3)
+before UI-4 and UI-5, passed again on main at `1860f10` after CSS-SPLIT (see below). During this work, `CLAUDE.md`/`AGENT.md` §14 added a rule that lets a
+separate Claude worker handle frontend presentation fix cycles (`75c7c82`).
 
-CSS-SPLIT (**resolved, 2026-10-23, `06ca030`**): `frontend/src/app/styles.css` is now only an ordered `@import` entry
+CSS-SPLIT (**resolved, 2026-10-23, `1860f10`**): `frontend/src/app/styles.css` is now only an ordered `@import` entry
 for 15 part files under `frontend/src/app/styles/` (tokens and base first, shell, the area files, `responsive-shared.css`
 last). The cascade order is the same as the previous single file (built CSS and computed styles were compared); the only
 intended changes are that long repository names wrap (`overflow-wrap: anywhere`) and the knowledge search controls are
 44px tall. The raw-colour style guard now scans every part file and checks that each part is imported exactly once, and
 e2e checks were added for the `PageState` error panel, the AI panel heading at 375px and long repository names at 375px.
-Evidence: independent reviews PASS (2 cycles, 3 lenses); `npm run verify:mvp` PASS at `06ca030` (backend build and
+Evidence: independent reviews PASS (2 cycles, 3 lenses); `npm run verify:mvp` PASS at `1860f10` (backend build and
 tests, frontend 53 files / 233 tests, Playwright 14 tests, `npm audit` 0 advisories, contract lint).
 
 Open (Low): some text links are 24–26px tall, which meets WCAG 2.5.8 but not the `DESIGN.md` 44px guidance; some dashed borders are
