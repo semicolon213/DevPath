@@ -5,6 +5,8 @@ import { useArchiveRepository, useRepositories, useRestoreRepository } from "../
 import { repositoryLifecycleLabel, repositorySyncStatusLabel } from "../shared/ui/labels";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageState } from "../shared/ui/PageState";
+import { PageHero } from "../shared/ui/PageHero";
+import { StatusChip, repositorySyncStatusVariant } from "../shared/ui/StatusChip";
 
 export function RepositoriesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -29,17 +31,15 @@ export function RepositoriesPage() {
 
   return (
     <>
-      <header className="workspace-header skills-hero repository-hero">
-        <div>
-          <p className="eyebrow">저장소 작업 공간</p>
-          <h1>내 GitHub 저장소</h1>
-          <p>DevPath에 등록한 저장소와 분석 준비 상태를 한곳에서 확인하세요.</p>
-        </div>
-        <div className="workspace-actions">
+      <PageHero
+        eyebrow="저장소 작업 공간"
+        title="내 GitHub 저장소"
+        description="DevPath에 등록한 저장소와 분석 준비 상태를 한곳에서 확인하세요."
+        actions={<>
           <Link className="button-link button-secondary" to="/skills">기술 분석 보기</Link>
           <Link className="button-link button-primary" to="/settings/integrations#github">저장소 추가</Link>
-        </div>
-      </header>
+        </>}
+      />
 
       <section className="repository-stats" aria-label="저장소 요약">
         <Summary label="등록된 저장소" value={totalCount} />
@@ -107,7 +107,7 @@ function RepositoryCard({ repository, returnFocusFallback, onArchiveMessage }: {
     <article role="listitem" className={`repository-card${repository.lifecycle === "ARCHIVED" ? " repository-card--archived" : ""}`}>
       <div className="repository-card__identity"><h3><Link to={`/repositories/${repository.repositoryId}`}>{repository.fullName}</Link></h3><span>{repositoryLifecycleLabel(repository.lifecycle)} · 기본 {repository.defaultBranch} · 등록 <time dateTime={repository.discoveredAt}>{formatDate(repository.discoveredAt)}</time></span></div>
       <span data-label="공개 범위">{repository.visibility === "PRIVATE" ? "비공개" : "공개"}</span>
-      <span data-label="동기화"><span className="status-badge">{repositorySyncStatusLabel(repository.syncStatus)}</span></span>
+      <span data-label="동기화"><StatusChip variant={repositorySyncStatusVariant(repository.syncStatus)}>{repositorySyncStatusLabel(repository.syncStatus)}</StatusChip></span>
       <time data-label="최근 동기화" dateTime={repository.lastSyncedAt ?? undefined}>{repository.lastSyncedAt ? formatDate(repository.lastSyncedAt) : "아직 없음"}</time>
       {repository.lifecycle === "ARCHIVED" && repository.providerArchived ? (
         <p className="muted">GitHub에서 먼저 저장소 보관을 해제해야 DevPath에서도 복원할 수 있습니다.</p>

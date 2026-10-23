@@ -20,6 +20,9 @@ import { dashboardKey } from "../features/dashboard/model/useDashboard";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
+import { PageHero } from "../shared/ui/PageHero";
+import { ResultBasis } from "../shared/ui/ResultBasis";
+import { StatusChip, repositorySyncStatusVariant } from "../shared/ui/StatusChip";
 
 export function RepositoryDetailPage() {
   const { repositoryId } = useParams();
@@ -85,11 +88,14 @@ export function RepositoryDetailPage() {
   return (
     <>
       <Breadcrumbs items={[{ label: "저장소", to: "/repositories" }, { label: repository.fullName }]} />
-      <header className="repository-detail-header skills-hero repository-hero">
+      <PageHero className="repository-detail-header">
         <div>
           <p className="eyebrow">GitHub 저장소</p>
           <h1>{repository.fullName}</h1>
-          <span className="status-badge">{repositoryLifecycleLabel(repository.lifecycle)} · {repositorySyncStatusLabel(repository.syncStatus)}</span>
+          <div className="page-hero__status">
+            <StatusChip>{repositoryLifecycleLabel(repository.lifecycle)}</StatusChip>
+            <StatusChip variant={repositorySyncStatusVariant(repository.syncStatus)}>{repositorySyncStatusLabel(repository.syncStatus)}</StatusChip>
+          </div>
           <p>GitHub 동기화 상태와 재현 가능한 저장소 스냅샷을 관리합니다.</p>
         </div>
         <div className="repository-detail-actions">
@@ -117,14 +123,8 @@ export function RepositoryDetailPage() {
             </button> : null}
           <a className="button-link" href={repository.htmlUrl} target="_blank" rel="noreferrer">GitHub에서 보기</a>
         </div>
-      </header>
+      </PageHero>
 
-      {!repositoryArchived && !repositoryUnavailable ? <section className="danger-zone" aria-labelledby="repository-danger-title">
-        <div><h2 id="repository-danger-title">위험 영역</h2><p>저장소를 보관하면 새 동기화와 분석을 시작할 수 없습니다.</p></div>
-        <button type="button" className="button-danger" disabled={actionDisabled} onClick={() => { archive.reset(); setLifecycleMessage(""); setConfirmingArchive(true); }}>
-          {lifecycleMutation.isPending ? "처리 중…" : actionLabel}
-        </button>
-      </section> : null}
       <p ref={lifecycleMessageRef} role="status" tabIndex={-1}>{lifecycleMessage}</p>
       <ConfirmDialog open={confirmingArchive} title="이 저장소를 DevPath에서 보관할까요?" description="활성 목록에서 숨겨지고 새 동기화와 분석을 시작할 수 없습니다. 기존 메타데이터, 불변 스냅샷과 공식 분석 결과는 유지됩니다." confirmLabel="저장소 보관" destructive pending={archive.isPending} error={archive.isError ? "저장소를 보관하지 못했습니다. 잠시 후 다시 시도해 주세요." : undefined} returnFocusFallback={lifecycleMessageRef} onCancel={() => setConfirmingArchive(false)} onConfirm={changeLifecycle} />
 
@@ -134,7 +134,7 @@ export function RepositoryDetailPage() {
             <strong>{jobLabel(job.data.status, job.data.phase)}</strong>
             <span>시도 {job.data.attemptCount}/{job.data.maxAttempts}</span>
           </div>
-          <progress max="100" value={job.data.progressPercent}>{job.data.progressPercent}%</progress>
+          <progress aria-label="저장소 동기화 진행률" max="100" value={job.data.progressPercent}>{job.data.progressPercent}%</progress>
           {job.data.status === "failed" && job.data.errorCode === "COLLECTION_LIMIT_EXCEEDED" ? (
             <p role="alert">
               저장소가 현재 안전 수집 범위를 초과했습니다. 부분 스냅샷은 생성되지 않았고 서버는 자동으로 재시도하지 않습니다.
@@ -166,7 +166,7 @@ export function RepositoryDetailPage() {
             <strong>{analysisJobLabel(analysisJob.data.status, analysisJob.data.phase)}</strong>
             <span>시도 {analysisJob.data.attemptCount}/{analysisJob.data.maxAttempts}</span>
           </div>
-          <progress max="100" value={analysisJob.data.progressPercent}>{analysisJob.data.progressPercent}%</progress>
+          <progress aria-label="저장소 분석 진행률" max="100" value={analysisJob.data.progressPercent}>{analysisJob.data.progressPercent}%</progress>
           {analysisJob.data.status === "succeeded" ? (
             <p>분석이 완료되었습니다. {analysisRouteFromResult(analysisJob.data.resultResourceUrl) ? <><Link to={analysisRouteFromResult(analysisJob.data.resultResourceUrl)!}>완료된 공식 분석 보기</Link> · </> : null}<Link to="/skills">스킬 분석 결과 보기</Link> · <Link to="/analyses">분석 이력 보기</Link></p>
           ) : null}
@@ -258,7 +258,7 @@ export function RepositoryDetailPage() {
                 <strong>{technology.name}</strong>
                 <span>{categoryLabel(technology.category)}</span>
               </div>
-              {technology.percentage !== null ? <div className="technology-card__score"><progress max="100" value={technology.percentage}>{technology.percentage}%</progress><strong>{technology.percentage.toFixed(1)}%</strong></div> : null}
+              {technology.percentage !== null ? <div className="technology-card__score"><progress aria-label={`${technology.name} 사용 비율`} max="100" value={technology.percentage}>{technology.percentage}%</progress><strong>{technology.percentage.toFixed(1)}%</strong></div> : null}
               <small>
                 {technology.byteCount !== null
                   ? `${technology.byteCount.toLocaleString("ko-KR")}바이트`
@@ -373,6 +373,17 @@ export function RepositoryDetailPage() {
           </article>
         ))}
       </section>
+      {(repository.currentSnapshotId || technologies.data || evidence.data) ? <ResultBasis items={[
+        ...(repository.currentSnapshotId ? [{ label: "현재 스냅샷", value: repository.currentSnapshotId }] : []),
+        ...(technologies.data ? [{ label: "기술 추출기", value: technologies.data.extractorVersion }, { label: "분류 정책", value: technologies.data.taxonomyVersion }] : []),
+        ...(evidence.data ? [{ label: "근거 추출기", value: evidence.data.extractorVersion }] : [])
+      ]} /> : null}
+      {!repositoryArchived && !repositoryUnavailable ? <section className="danger-zone" aria-labelledby="repository-danger-title">
+        <div><h2 id="repository-danger-title">위험 영역</h2><p>저장소를 보관하면 새 동기화와 분석을 시작할 수 없습니다.</p></div>
+        <button type="button" className="button-danger-secondary" disabled={actionDisabled} onClick={() => { archive.reset(); setLifecycleMessage(""); setConfirmingArchive(true); }}>
+          {lifecycleMutation.isPending ? "처리 중…" : actionLabel}
+        </button>
+      </section> : null}
     </>
   );
 }

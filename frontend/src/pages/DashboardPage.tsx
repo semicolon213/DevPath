@@ -3,6 +3,7 @@ import type { DashboardSourceStatus, DashboardTarget } from "../features/dashboa
 import { useDashboard } from "../features/dashboard/model/useDashboard";
 import { categoryLabel, jobStatusLabel, levelLabel, priorityLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
+import { ResultBasis } from "../shared/ui/ResultBasis";
 
 export function DashboardPage() {
   const query = useDashboard();
@@ -65,7 +66,7 @@ export function DashboardPage() {
 
       <section className="dashboard-section dashboard-section--list" aria-labelledby="recent-jobs-title">
         <CardHeading eyebrow="백그라운드 작업" title="최근 작업" id="recent-jobs-title" />
-        {view.recentJobs.status === "UNAVAILABLE" ? <Unavailable /> : view.recentJobs.items.length ? <ul className="dashboard-analysis-list">{view.recentJobs.items.map(job => <li key={job.jobId}><div><strong>{job.jobType === "REPOSITORY_SYNC" ? "저장소 동기화" : "분석"}</strong><time dateTime={job.submittedAt}>{formatDate(job.submittedAt)}</time></div><span>{job.progressPercent}%</span><small>{jobStatusLabel(job.status)}</small></li>)}</ul> : <Empty text="최근 실행된 작업이 없습니다." action="저장소 확인" to="/repositories" />}
+        {view.recentJobs.status === "UNAVAILABLE" ? <Unavailable /> : view.recentJobs.items.length ? <ul className="dashboard-analysis-list">{view.recentJobs.items.map(job => <li key={job.jobId}><div><strong>{job.jobType === "REPOSITORY_SYNC" ? "저장소 동기화" : "분석"}</strong><time dateTime={job.submittedAt}>{formatDate(job.submittedAt)}</time></div><span className="dashboard-job-progress">{job.progressPercent}%</span><small>{jobStatusLabel(job.status)}</small></li>)}</ul> : <Empty text="최근 실행된 작업이 없습니다." action="저장소 확인" to="/repositories" />}
       </section>
 
       <section className="dashboard-section dashboard-section--list" aria-labelledby="repository-analysis-title">
@@ -73,7 +74,7 @@ export function DashboardPage() {
         {view.analyses.status === "UNAVAILABLE" ? <Unavailable /> : view.analyses.currentByRepository.length ? <ul className="dashboard-analysis-list">{view.analyses.currentByRepository.map(item => <li key={item.analysisId}><div><strong>{item.repositoryFullName}</strong><time dateTime={item.completedAt}>{formatDate(item.completedAt)}</time></div><span>{formatScore(item.overallScore)}점</span><Link to={`/analyses/${item.analysisId}`}>상세</Link></li>)}</ul> : <Empty text="저장소별 최신 분석 결과가 아직 없습니다." action="분석 준비" to="/repositories" />}
       </section>
 
-      <footer className="dashboard-basis">기준 시각 <time dateTime={view.generatedAt}>{formatDate(view.generatedAt)}</time> · 커리어 프로필 {view.targets.status === "UNAVAILABLE" ? "확인 실패" : view.targets.career?.profileVersion ?? "없음"} · 회사 프로필 {view.targets.status === "UNAVAILABLE" ? "확인 실패" : view.targets.company?.profileVersion ?? "없음"} · Skill Matrix 정책 {view.skillOverview.policyVersion ?? "없음"} · 규칙 {view.skillOverview.ruleSetVersion ?? "없음"} · 추천 정책 {view.recommendations.policyVersion ?? "없음"} · 로드맵 정책 {view.roadmap.policyVersion ?? "없음"}</footer>
+      <ResultBasis items={[{ label: "기준 시각", value: <time dateTime={view.generatedAt}>{formatDate(view.generatedAt)}</time> }, { label: "커리어 프로필", value: view.targets.status === "UNAVAILABLE" ? "확인 실패" : view.targets.career?.profileVersion ?? "없음" }, { label: "회사 프로필", value: view.targets.status === "UNAVAILABLE" ? "확인 실패" : view.targets.company?.profileVersion ?? "없음" }, { label: "Skill Matrix 정책", value: view.skillOverview.policyVersion ?? "없음" }, { label: "규칙", value: view.skillOverview.ruleSetVersion ?? "없음" }, { label: "추천 정책", value: view.recommendations.policyVersion ?? "없음" }, { label: "로드맵 정책", value: view.roadmap.policyVersion ?? "없음" }]} />
     </>
   );
 }

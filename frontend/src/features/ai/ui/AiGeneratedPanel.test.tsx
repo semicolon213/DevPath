@@ -19,8 +19,8 @@ describe("AiGeneratedPanel", () => {
   });
 
   it.each([
-    ["QUEUED", "생성을 기다리고 있습니다."],
-    ["RUNNING", "근거로 생성하고 있습니다."],
+    ["QUEUED", "생성 요청이 대기 중입니다."],
+    ["RUNNING", "AI 결과를 생성하고 있습니다."],
     ["CANCELED", "생성을 취소했습니다."],
     ["FAILED", "생성하지 못했습니다."]
   ] as const)("renders the %s job frame", (status, message) => {

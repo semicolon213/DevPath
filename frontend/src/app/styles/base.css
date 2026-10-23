@@ -97,11 +97,18 @@ button:disabled {
 
 .button-danger-secondary { background: transparent; border-color: var(--danger-border); color: var(--danger-text); }
 
-.status-badge { background: var(--evidence-surface); border-radius: var(--radius-pill); color: var(--text-secondary); flex: 0 0 auto; font-weight: 700; padding: 6px 10px; }
+.visually-hidden { border: 0; clip: rect(0 0 0 0); clip-path: inset(50%); height: 1px; margin: -1px; overflow: hidden; padding: 0; position: absolute; white-space: nowrap; width: 1px; }
 
-.status-badge--active { background: var(--success-surface); color: var(--success-text); }
+/* One status chip (StatusChip) for every status; the text always carries the state. */
+.status-badge { align-items: center; align-self: center; background: var(--status-neutral-surface); border-radius: var(--radius-pill); color: var(--text-secondary); display: inline-flex; flex: 0 0 auto; font-size: .8125rem; font-weight: 700; line-height: 1.4; padding: 3px 10px; width: fit-content; }
+
+.status-badge--success, .status-badge--active { background: var(--success-surface); color: var(--success-text); }
 
 .status-badge--info { background: var(--info-surface-soft); color: var(--brand-strong); }
+
+.status-badge--warning { background: var(--warning-surface); color: var(--warning-text); }
+
+.status-badge--danger { background: var(--danger-surface); color: var(--danger-text); }
 
 .status-badge--current { background: var(--action-primary); color: var(--action-primary-text); }
 
@@ -109,9 +116,13 @@ h1, h2, h3, h4 { line-height: 1.3; }
 
 h1, h2 { font-weight: 900; letter-spacing: -.02em; }
 
+h3, h4 { font-weight: 700; }
+
 h2 { font-size: 1.75rem; }
 
 button, input, select, textarea { font-family: inherit; }
+
+summary { cursor: pointer; min-height: 44px; padding-block: 10px; }
 
 strong, [class*="score"], [class*="metric"], progress { font-variant-numeric: tabular-nums; }
 

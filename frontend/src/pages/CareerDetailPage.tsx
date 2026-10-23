@@ -4,6 +4,8 @@ import { usePreferences, useSetCareer } from "../features/profile/model/useProfi
 import { categoryLabel, priorityLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
+import { PageHero } from "../shared/ui/PageHero";
+import { StatusChip } from "../shared/ui/StatusChip";
 
 export function CareerDetailPage() {
   const { careerId } = useParams();
@@ -16,10 +18,10 @@ export function CareerDetailPage() {
   const selected = preferences.data.careerId === value.careerId;
 
   return <PageShell>
-    <header className="workspace-header">
+    <PageHero>
       <div><p className="eyebrow">프로필 버전 {value.profileVersion} · {statusLabel(value.status)}</p><h1>{value.localizedName}</h1><p>{value.purpose}</p></div>
-      <button className="button-primary" disabled={selected || selection.isPending} onClick={() => selection.mutate(value.careerId)}>{selected ? "현재 목표 직무" : selection.isPending ? "설정 중…" : "이 직무를 목표로 설정"}</button>
-    </header>
+      {selected ? <StatusChip variant="info">현재 목표 직무</StatusChip> : <button className="button-primary" disabled={selection.isPending} onClick={() => selection.mutate(value.careerId)}>{selection.isPending ? "설정 중…" : "이 직무를 목표로 설정"}</button>}
+    </PageHero>
     {selection.isSuccess ? <p className="analysis-notice" role="status">목표 직무를 변경했습니다. 다음 커리어 평가는 새 프로필 기준을 사용합니다.</p> : null}
     {selection.isError ? <p className="analysis-warning" role="alert">목표 직무를 변경하지 못했습니다.</p> : null}
     <section className="profile-section-list">

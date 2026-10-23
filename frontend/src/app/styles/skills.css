@@ -1,30 +1,14 @@
 .skill-summary { display: grid; gap: 14px; grid-template-columns: repeat(3, 1fr); margin: 28px 0; }
 
-.skill-summary > div { background: var(--background-inverse); border-radius: var(--radius-lg); color: var(--text-inverse); display: grid; gap: 4px; padding: 22px; }
+.skill-summary > div { background: var(--background-subtle); border-radius: var(--radius-lg); display: grid; gap: 4px; padding: 20px 22px; }
 
-.skill-summary strong { font-size: 2rem; }
+.skill-summary > div:nth-child(even) { background: var(--background-surface); }
 
-.skill-summary span { color: var(--text-inverse-secondary); }
+.skill-summary strong { color: var(--brand-strong); font-size: 2rem; }
 
-.skills-hero { background: var(--brand-band); border-radius: var(--radius-xl); color: var(--text-inverse); padding: 28px; }
+.skill-summary span { color: var(--text-secondary); }
 
-.skills-hero p, .skills-hero .analysis-version { color: var(--text-inverse-secondary); }
-
-.workspace-header.skills-hero, .repository-detail-header.skills-hero { margin-bottom: 32px; }
-
-.skills-hero .eyebrow { color: var(--text-inverse-secondary); }
-
-.skills-hero a:not(.button-primary) { color: var(--text-inverse); }
-
-.skills-hero__aside { align-items: flex-end; display: grid; gap: 18px; }
-
-.skills-hero button:not(.button-primary), .skills-hero .button-link:not(.button-primary) { border-color: var(--border-inverse); color: var(--text-inverse); }
-
-.skills-hero button:not(.button-primary):hover:not(:disabled), .skills-hero .button-link:not(.button-primary):hover { border-color: var(--text-inverse); }
-
-.skills-hero button:not(.button-primary):disabled { border-style: dashed; color: var(--text-inverse-secondary); opacity: 1; }
-
-.analysis-notice, .skill-next-action { align-items: center; background: var(--info-surface); border: 1px solid var(--info-border); border-radius: var(--radius-lg); display: flex; gap: 24px; justify-content: space-between; margin: 0 0 32px; padding: 20px 22px; }
+.analysis-notice, .skill-next-action { align-items: center; background: var(--info-surface); border: 0; border-radius: var(--radius-lg); display: flex; gap: 24px; justify-content: space-between; margin: 0 0 32px; padding: 20px 22px; }
 
 .analysis-notice h2, .analysis-notice p, .skill-next-action h2, .skill-next-action p { margin: 0; }
 
@@ -82,23 +66,29 @@
 
 .skill-evidence-reference code { display: block; max-width: 100%; overflow-wrap: anywhere; }
 
-.skill-detail-score { align-items: center; background: var(--background-inverse); border-radius: var(--radius-xl); color: var(--text-inverse); display: grid; gap: 24px; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); margin: 28px 0; padding: 28px; }
+.skill-detail-score { align-items: center; background: var(--background-subtle); border-radius: var(--radius-xl); display: grid; gap: 24px; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); margin: 28px 0; padding: 28px; }
 
 .skill-detail-score > div:first-child { align-items: baseline; display: flex; gap: 8px; }
 
-.skill-detail-score > div:first-child span { align-self: center; color: var(--text-inverse-secondary); }
+.skill-detail-score > div:first-child span { align-self: center; color: var(--text-secondary); }
 
-.skill-detail-score > div:first-child strong { font-size: 3.5rem; line-height: 1; }
+.skill-detail-score > div:first-child strong { color: var(--brand-strong); font-size: 3.5rem; line-height: 1; }
 
-.skill-detail-score > div:first-child small { color: var(--text-inverse-secondary); }
+.skill-detail-score > div:first-child small { color: var(--text-secondary); }
 
-.skill-detail-score dl { display: grid; gap: 10px; margin: 0; }
+.skill-detail-score dl { display: flex; flex-wrap: wrap; gap: 12px 32px; margin: 0; }
 
-.skill-detail-score dl div { display: flex; gap: 16px; justify-content: space-between; }
+.skill-detail-score dl div { display: grid; gap: 2px; }
 
-.skill-detail-score dd { font-weight: 700; margin: 0; }
+.skill-detail-score dt { color: var(--text-secondary); font-size: .875rem; }
 
-.skill-detail-score .evidence-status { color: var(--text-primary); }
+.skill-detail-score dd { font-size: 1.25rem; font-weight: 700; margin: 0; }
+
+dl.detail-grid > div { background: var(--background-surface); border-radius: var(--radius-card); display: grid; gap: 4px; padding: 14px 16px; }
+
+dl.detail-grid dt { color: var(--text-muted); font-size: .82rem; }
+
+dl.detail-grid dd { font-weight: 700; margin: 0; overflow-wrap: anywhere; }
 
 .skill-evidence-list article { border-top: 1px solid var(--border-default); display: grid; gap: 12px; padding: 20px 0; }
 
@@ -108,17 +98,18 @@
 
 .skill-next-action { margin: 32px 0 0; }
 
-.analysis-history-summary { background: var(--background-inverse); border-radius: var(--radius-lg); color: var(--text-inverse); display: inline-grid; gap: 3px; margin: 0 0 30px; min-width: 210px; padding: 20px 24px; }
+.analysis-history-summary { background: var(--background-subtle); border-radius: var(--radius-lg); display: inline-grid; gap: 3px; margin: 0 0 30px; min-width: 210px; padding: 20px 24px; }
 
-.evidence-status { align-items: flex-start; background: var(--warning-surface); border: 1px solid var(--warning-border); border-radius: var(--radius-card); display: flex; flex-wrap: wrap; gap: 8px 12px; padding: 12px; }
+/* Inline status pill (amber chip for 근거 부족), with guidance text only for 근거 없음. */
+.evidence-status { align-items: center; display: flex; flex-wrap: wrap; gap: 6px 12px; }
 
-.evidence-status p { flex-basis: 100%; margin: 0; }
+.evidence-status p { color: var(--text-secondary); flex-basis: 100%; font-size: .875rem; margin: 0; }
 
 .skill-history { border-bottom: 1px solid var(--border-default); margin: 32px 0; padding-bottom: 32px; }
 
 .skill-history-list { display: grid; gap: 14px; list-style: none; margin: 0 0 18px; padding: 0; }
 
-.skill-history-list article { background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); display: grid; gap: 16px; padding: 20px; }
+.skill-history-list article { background: var(--background-surface); border-radius: var(--radius-lg); display: grid; gap: 16px; padding: 20px; }
 
 .skill-history-item__summary { align-items: center; display: flex; gap: 20px; justify-content: space-between; }
 
@@ -138,7 +129,6 @@
 
 @media (max-width: 720px) {
   .skill-summary { grid-template-columns: 1fr; }
-  .skills-hero__aside { align-items: flex-start; }
   .skill-card { grid-template-columns: 1fr; }
   .skill-card__heading, .skill-card__score, .skill-card .evidence-status, .skill-card .skill-metadata, .skill-card details { grid-column: 1; }
   .skill-detail-score { align-items: stretch; grid-template-columns: 1fr; }

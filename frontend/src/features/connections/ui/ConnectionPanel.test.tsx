@@ -126,6 +126,7 @@ it("shows an active repository-access connection reported by the server", async 
   expect(screen.getByText(/저장소를 불러올 수 있도록/)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "권한 다시 승인" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "연결 해제" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "연결 해제" }).closest(".connection-danger")).not.toBeNull();
   expect(await screen.findByRole("link", { name: "devpath-user/devpath" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "DevPath에 추가" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "내 저장소 보기" })).toBeInTheDocument();

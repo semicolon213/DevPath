@@ -5,6 +5,8 @@ import type { AnalysisHistoryItem } from "../features/analysis/api/analysisApi";
 import { useRepositoryAnalysisHistory } from "../features/analysis/model/useAnalysis";
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
+import { PageHero } from "../shared/ui/PageHero";
+import { ResultBasis } from "../shared/ui/ResultBasis";
 
 export function RepositorySnapshotDetailPage() {
   const { repositoryId, snapshotId } = useParams();
@@ -17,10 +19,10 @@ export function RepositorySnapshotDetailPage() {
   const value = snapshot.data;
   const current = repository.data.currentSnapshotId === value.snapshotId;
   return <Shell repositoryId={repositoryId}>
-    <header className="workspace-header skills-hero snapshot-detail-header"><div><p className="eyebrow">불변 저장소 스냅샷</p>
+    <PageHero><div><p className="eyebrow">불변 저장소 스냅샷</p>
       <h1>{repository.data.fullName} 스냅샷</h1><p>한 번 완료된 동기화 결과의 출처와 수집 범위를 변경 없이 확인합니다.</p></div>
-      <div className="analysis-version" aria-label="스냅샷 적용 상태"><span>{current ? "현재 분석 기준" : "과거 기록"}</span><span>{snapshotStatusLabel(value.status)}</span></div>
-    </header>
+      <div className="analysis-version" role="group" aria-label="스냅샷 적용 상태"><span>{current ? "현재 분석 기준" : "과거 기록"}</span><span>{snapshotStatusLabel(value.status)}</span></div>
+    </PageHero>
 
     <section className="analysis-notice"><div><h2>불변성 보장</h2><p>이 화면은 서버에 저장된 스냅샷 메타데이터만 표시합니다. 과거 스냅샷을 현재 결과로 바꾸지 않습니다.</p></div>
       <span className={`status-badge${value.immutable ? " status-badge--info" : ""}`}>{value.immutable ? "불변" : "검증 필요"}</span></section>
@@ -46,6 +48,7 @@ export function RepositorySnapshotDetailPage() {
     {!current ? <section className="state-panel state-panel--compact"><h2>과거 스냅샷입니다.</h2>
       <p>기술·엔지니어링 증거 화면은 현재 스냅샷만 제공합니다. 이 기록의 공식 결과는 분석 이력에서 확인해 주세요.</p></section> : null}
     <div className="workspace-actions"><Link to={`/repositories/${repositoryId}`}>저장소 상세</Link><Link to="/analyses">분석 이력</Link></div>
+    <ResultBasis items={[{ label: "수집 기준 시각", value: <time dateTime={value.capturedAt}>{formatDate(value.capturedAt)}</time> }, { label: "스냅샷", value: value.snapshotId }]} />
   </Shell>;
 }
 
@@ -75,7 +78,7 @@ function SnapshotAnalysisCard({ item }: { item: AnalysisHistoryItem }) { return 
   <div><div><span className={`status-badge${item.currentForRepository ? " status-badge--info" : ""}`}>
     {item.currentForRepository ? "현재 분석" : "과거 분석"}</span><h3>{item.repositoryFullName}</h3>
     <time dateTime={item.completedAt}>{formatDate(item.completedAt)}</time></div>
-    <div className="official-score" aria-label={`저장된 공식 점수 ${formatNumber(item.overallScore)}점`}><strong>{formatNumber(item.overallScore)}</strong><span>/ 100</span></div></div>
+    <div className="official-score" role="group" aria-label={`저장된 공식 점수 ${formatNumber(item.overallScore)}점`}><strong>{formatNumber(item.overallScore)}</strong><span>/ 100</span></div></div>
   <dl><Fact label="신뢰도" value={`${formatNumber(item.confidence)}%`} /><Fact label="규칙 버전" value={item.ruleSetVersion} />
     <Fact label="Skill Matrix 정책" value={item.policyVersion} /></dl>
   <Link to={`/analyses/${item.analysisId}`}>공식 분석과 근거 보기</Link>

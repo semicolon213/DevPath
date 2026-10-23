@@ -1,0 +1,53 @@
+/* Shared page primitives (PageHero band, breadcrumb band, ResultBasis line, list link targets).
+   Imported right after shell.css so area parts can still refine them. Full bleed relies on .shell padding. */
+
+.breadcrumbs { background: var(--brand-band); border-bottom: 0; box-shadow: 0 0 0 100vmax var(--brand-band); clip-path: inset(0 -100vmax); margin: -48px 0 0; padding: 12px 0; }
+
+.breadcrumbs a, .breadcrumbs [aria-current="page"] { color: var(--text-inverse); }
+
+.breadcrumbs a { justify-content: center; min-width: 44px; }
+
+.breadcrumbs li + li::before { color: var(--text-inverse-secondary); }
+
+.page-hero { align-items: flex-end; background: var(--brand-band); box-shadow: 0 0 0 100vmax var(--brand-band); clip-path: inset(0 -100vmax); color: var(--text-inverse); display: flex; flex-wrap: wrap; gap: 20px 32px; justify-content: space-between; margin: -48px 0 36px; padding: 36px 0 40px; }
+
+.breadcrumbs + .page-hero { margin-top: 0; padding-top: 8px; }
+
+.page-hero__intro, .page-hero > div:first-child { flex: 1 1 480px; min-width: 0; }
+
+.page-hero__eyebrow, .page-hero .eyebrow { color: var(--text-inverse-secondary); font-size: .875rem; font-weight: 700; margin: 0; }
+
+.page-hero h1 { font-size: clamp(2.25rem, 5vw, 2.75rem); letter-spacing: -.03em; line-height: 1.2; margin: 6px 0 10px; overflow-wrap: anywhere; }
+
+.page-hero__intro > p:not(.page-hero__eyebrow), .page-hero > div:first-child > p:not(.eyebrow) { color: var(--text-inverse-secondary); margin: 0; max-width: 650px; }
+
+.page-hero__status { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+.page-hero .analysis-version { color: var(--text-inverse-secondary); }
+
+.page-hero__actions, .page-hero .workspace-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }
+
+.page-hero a { align-items: center; display: inline-flex; min-height: 44px; }
+
+.page-hero a:not(.button-link) { color: var(--text-inverse); }
+
+.page-hero button:not(.button-primary), .page-hero .button-link:not(.button-primary) { border-color: var(--border-inverse); color: var(--text-inverse); }
+
+.page-hero button:not(.button-primary):hover:not(:disabled), .page-hero .button-link:not(.button-primary):hover { border-color: var(--text-inverse); }
+
+.page-hero button:not(.button-primary):disabled { border-style: dashed; color: var(--text-inverse-secondary); opacity: 1; }
+
+.result-basis { border-top: 1px solid var(--border-subtle); color: var(--text-muted); font-size: .8125rem; margin-top: 40px; padding-top: 16px; }
+
+.workspace > section:has(> .section-heading:first-child):not(:first-child) { margin-top: 40px; }
+
+/* Stand-alone text links in lists and cards reach a 44px target without changing their look. */
+.readiness-gap > a, .analysis-history-card__actions a, .recommendation-set a, .catalog-tile > a, .knowledge-document-list__status a, .knowledge-search-results .connection-actions a, .snapshot-analysis-list article > a, .snapshot-card > a, .comparison-hero a, .dashboard-empty a, .ai-evidence-links a { align-items: center; display: inline-flex; justify-self: start; min-height: 44px; }
+
+@media (max-width: 720px) {
+  .breadcrumbs { margin-top: -24px; }
+  .page-hero { align-items: stretch; flex-direction: column; margin-top: -24px; padding: 28px 0 32px; }
+  .breadcrumbs + .page-hero { margin-top: 0; padding-top: 8px; }
+  .page-hero__intro { flex-basis: auto; }
+  .page-hero > div:first-child { flex-basis: auto; }
+}

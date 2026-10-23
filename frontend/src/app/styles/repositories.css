@@ -1,10 +1,12 @@
 .repository-stats { display: grid; gap: 14px; grid-template-columns: repeat(3, 1fr); margin: 28px 0 36px; }
 
-.repository-stats > div { background: var(--background-inverse); border-radius: var(--radius-lg); color: var(--text-inverse); display: grid; gap: 4px; padding: 22px; }
+.repository-stats > div { background: var(--background-subtle); border-radius: var(--radius-lg); display: grid; gap: 4px; padding: 20px 22px; }
 
-.repository-stats strong { font-size: 2rem; }
+.repository-stats > div:nth-child(even) { background: var(--background-surface); }
 
-.repository-stats span { color: var(--text-inverse-secondary); }
+.repository-stats strong { color: var(--brand-strong); font-size: 2rem; }
+
+.repository-stats span { color: var(--text-secondary); }
 
 .section-heading { align-items: flex-end; display: flex; gap: 16px; justify-content: space-between; margin-bottom: 16px; }
 
@@ -22,7 +24,7 @@
 
 .repository-card__actions .button-quiet:disabled { color: var(--text-disabled); }
 
-.archive-filter { align-items: center; display: inline-flex; font-weight: 700; gap: 8px; white-space: nowrap; }
+.archive-filter { align-items: center; display: inline-flex; font-weight: 700; gap: 8px; min-height: 44px; white-space: nowrap; }
 
 .archive-filter input { height: 18px; width: 18px; }
 
@@ -48,19 +50,17 @@
 
 .repository-table .repository-card > p { grid-column: 1 / -1; margin: 0; }
 
-.repository-hero, .analysis-list-hero { border-bottom: 1px solid var(--border-default); padding-bottom: 24px; }
-
 .repository-stats .repository-stats__date { font-size: 1.25rem; }
 
 .repository-detail-actions { align-items: center; display: flex; flex-wrap: wrap; gap: 10px; }
 
-.danger-zone { align-items: center; background: var(--background-surface); border: 1px solid var(--danger-border); border-radius: var(--radius-lg); display: flex; gap: 24px; justify-content: space-between; margin-bottom: 22px; padding: 18px 22px; }
+.danger-zone { align-items: center; background: var(--background-surface); border: 1px solid var(--danger-border); border-radius: var(--radius-lg); display: flex; gap: 24px; justify-content: space-between; margin-top: 48px; padding: 18px 22px; }
 
 .danger-zone h2, .danger-zone p { margin: 0; }
 
 .danger-zone p { color: var(--text-secondary); margin-top: 5px; }
 
-.dialog-backdrop { align-items: center; background: color-mix(in srgb, var(--background-inverse) 55%, transparent); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 1000; }
+.dialog-backdrop { align-items: center; background: var(--overlay-backdrop); display: flex; inset: 0; justify-content: center; padding: 20px; position: fixed; z-index: 1000; }
 
 .confirm-dialog { background: var(--background-subtle); border: 0; border-top: 5px solid var(--brand-default); border-radius: var(--radius-panel); box-shadow: 0 18px 48px var(--shadow-floating); max-height: calc(100vh - 40px); max-width: 520px; overflow-y: auto; padding: 28px; width: 100%; }
 
@@ -68,7 +68,7 @@
 
 .confirm-dialog__actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 22px; }
 
-.sync-panel { background: var(--info-surface); border: 1px solid var(--info-border); border-radius: var(--radius-lg); display: grid; gap: 12px; margin-bottom: 22px; padding: 18px 22px; }
+.sync-panel { background: var(--info-surface); border: 0; border-radius: var(--radius-lg); display: grid; gap: 12px; margin-bottom: 22px; padding: 18px 22px; }
 
 .sync-panel > div { display: flex; justify-content: space-between; gap: 16px; }
 
@@ -76,7 +76,7 @@
 
 .sync-panel p { margin: 0; }
 
-.analysis-panel { background: var(--ai-surface); border-color: var(--ai-border); }
+.analysis-panel { background: var(--ai-surface); }
 
 .detail-card--accent button { margin-top: 10px; }
 
@@ -84,7 +84,7 @@
 
 .technology-list { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
 
-.technology-card { background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-card); display: grid; gap: 10px; padding: 16px; }
+.technology-card { background: var(--background-surface); border-radius: var(--radius-card); display: grid; gap: 10px; padding: 16px; }
 
 .technology-card > div { display: flex; gap: 16px; justify-content: space-between; }
 
@@ -120,7 +120,7 @@
 
 .activity-timeline code { overflow-wrap: anywhere; text-align: right; }
 
-.snapshot-card { background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-card); display: grid; gap: 16px; margin-bottom: 12px; padding: 18px 20px; }
+.snapshot-card { background: var(--background-surface); border-radius: var(--radius-card); display: grid; gap: 16px; margin-bottom: 12px; padding: 18px 20px; }
 
 .snapshot-card > div { align-items: center; display: flex; gap: 12px; justify-content: space-between; }
 
@@ -136,7 +136,7 @@
 
 .detail-grid { display: grid; gap: 18px; grid-template-columns: minmax(0, 1.15fr) minmax(0, .85fr); }
 
-.detail-card--accent { background: var(--info-surface); border: 1px solid var(--info-border); }
+.detail-card--accent { background: var(--info-surface); }
 
 .large-status { color: var(--brand-strong); font-size: 1.5rem; font-weight: 800; }
 
@@ -148,7 +148,7 @@
 
 .snapshot-provenance { display: grid; gap: 14px; grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 0 0 30px; }
 
-.snapshot-provenance div { background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-card); display: grid; gap: 8px; padding: 18px; }
+.snapshot-provenance div { background: var(--background-surface); border-radius: var(--radius-card); display: grid; gap: 8px; padding: 18px; }
 
 .snapshot-provenance dt { color: var(--text-muted); font-size: .82rem; font-weight: 700; }
 
@@ -156,17 +156,19 @@
 
 .snapshot-count-grid { display: grid; gap: 12px; grid-template-columns: repeat(5, minmax(0, 1fr)); margin-bottom: 30px; }
 
-.snapshot-count-grid div { background: var(--background-inverse); border-radius: var(--radius-card); color: var(--text-inverse); display: grid; gap: 4px; padding: 18px; }
+.snapshot-count-grid div { background: var(--background-subtle); border-radius: var(--radius-card); display: grid; gap: 4px; padding: 18px; }
 
-.snapshot-count-grid strong { font-size: 1.8rem; }
+.snapshot-count-grid div:nth-child(even) { background: var(--background-surface); }
 
-.snapshot-count-grid span { color: var(--text-inverse-secondary); }
+.snapshot-count-grid strong { color: var(--brand-strong); font-size: 1.8rem; }
+
+.snapshot-count-grid span { color: var(--text-secondary); }
 
 .snapshot-analysis-history { border-top: 1px solid var(--border-default); margin-top: 34px; padding: 30px 0; }
 
 .snapshot-analysis-list { display: grid; gap: 14px; margin-bottom: 18px; }
 
-.snapshot-analysis-list article { background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); display: grid; gap: 16px; padding: 20px; }
+.snapshot-analysis-list article { background: var(--background-surface); border-radius: var(--radius-lg); display: grid; gap: 16px; padding: 20px; }
 
 .snapshot-analysis-list article > div { align-items: center; display: flex; gap: 20px; justify-content: space-between; }
 
@@ -186,13 +188,15 @@
 
 .repository-list ul { display: grid; gap: 8px; list-style: none; padding: 0; }
 
-.repository-list li { align-items: center; border: 1px solid var(--border-default); border-radius: var(--radius-xs); display: flex; gap: 12px; justify-content: space-between; padding: 12px; }
+.repository-list li { align-items: center; background: var(--background-surface); border-radius: var(--radius-card); display: flex; gap: 12px; justify-content: space-between; padding: 12px; }
 
 .repository-list li div { display: grid; gap: 4px; min-width: 0; }
 
 .repository-list li span { color: var(--text-secondary); font-size: 0.875rem; }
 
 .repository-list li button { flex: 0 0 auto; padding: 9px 12px; }
+
+.repository-list li a, .repository-list .section-heading a { align-items: center; display: inline-flex; justify-self: start; min-height: 44px; }
 
 @media (max-width: 960px) {
   .repository-table__head { display: none; }

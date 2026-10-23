@@ -221,7 +221,8 @@ it("restores a completed synchronization from the URL and links its immutable re
   renderWithProviders(<Routes><Route path="/repositories/:repositoryId" element={<RepositoryDetailPage />} /></Routes>,
     [`/repositories/${repositoryId}?syncJobId=${jobId}`]);
 
-  expect(await screen.findAllByText("동기화 완료")).toHaveLength(2);
+  expect(await screen.findAllByText("동기화 완료")).toHaveLength(3);
+  expect(screen.getAllByText("동기화 완료")[0]).toHaveClass("status-badge--success");
   expect(screen.getByRole("link", { name: "생성된 불변 스냅샷 보기" })).toHaveAttribute("href", `/repositories/${repositoryId}/snapshots/${snapshotId}`);
   expect(screen.getByRole("link", { name: "스냅샷 상세 보기" })).toHaveAttribute("href", `/repositories/${repositoryId}/snapshots/${snapshotId}`);
   expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining(`/repository-sync-jobs/${jobId}`), expect.anything());

@@ -8,7 +8,7 @@ export function SkillExplanationPanel({ skillMatrixId }: { skillMatrixId: string
   return <AiGeneratedPanel title="기술 분석 설명"
     badgeLabel="AI 코치 · 설명만 제공"
     description="공식 점수는 공식 분석 결과(Rule Engine) 그대로 유지하며, AI는 근거가 확인된 강점과 개선 영역만 설명합니다."
-    actionLabel="설명 생성" messages={{ queued: "설명 생성을 기다리고 있습니다.", running: "근거를 바탕으로 설명을 생성하고 있습니다.", canceled: "설명 생성을 취소했습니다.", failed: "설명을 생성하지 못했습니다.", rejected: "생성된 설명이 근거·안전성 검증을 통과하지 못했습니다.", loading: "검증된 설명을 불러오는 중입니다." }}
+    actionLabel="설명 생성" messages={{ canceled: "설명 생성을 취소했습니다.", failed: "설명을 생성하지 못했습니다.", rejected: "생성된 설명이 근거·안전성 검증을 통과하지 못했습니다.", loading: "검증된 설명을 불러오는 중입니다." }}
     job={generation.job.data} generatedAt={artifact?.provenance.generatedAt} validationStatus={artifact?.validation.status}
     requestPending={generation.request.isPending} requestError={generation.request.error} jobError={generation.job.isError}
     artifactPending={generation.artifact.isPending} artifactError={generation.artifact.isError} cancelPending={generation.cancel.isPending}

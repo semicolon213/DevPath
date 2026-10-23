@@ -3,8 +3,8 @@ import type { GenerationJob } from "../api/generationApi";
 import { mutationErrorMessage } from "../../../shared/api/apiClient";
 
 type Messages = {
-  queued: string;
-  running: string;
+  queued?: string;
+  running?: string;
   canceled: string;
   failed: string;
   rejected: string;
@@ -61,11 +61,11 @@ export function AiGeneratedPanel({
       <div><dt>검증 상태</dt><dd>{validationLabel(status)}</dd></div>
     </dl> : status === "REJECTED" ? <dl className="ai-generated-panel__metadata">
       <div><dt>검증 상태</dt><dd>{validationLabel(status)}</dd></div>
-    </dl> : !jobError && !artifactError ? <p className="ai-generated-panel__metadata">{generationStateLabel(job?.status)}</p> : null}
+    </dl> : !jobError && !artifactError && job?.status !== "QUEUED" && job?.status !== "RUNNING" ? <p className="ai-generated-panel__metadata">{generationStateLabel(job?.status)}</p> : null}
 
     {Boolean(requestError) && <Failure message={mutationErrorMessage(requestError, messages.failed)} retry={onRequest} />}
     {job && (job.status === "QUEUED" || job.status === "RUNNING") && <div className="state-panel" role="status">
-      <p>{job.status === "QUEUED" ? messages.queued : messages.running}</p>
+      <p>{generationStateLabel(job.status)}</p>
       <button type="button" disabled={cancelPending} onClick={onCancel}>생성 취소</button>
     </div>}
     {job?.status === "CANCELED" && <div className="state-panel"><p>{messages.canceled}</p>

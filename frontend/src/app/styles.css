@@ -1,6 +1,7 @@
 @import "./styles/tokens.css";
 @import "./styles/base.css";
 @import "./styles/shell.css";
+@import "./styles/page.css";
 @import "./styles/home.css";
 @import "./styles/repositories.css";
 @import "./styles/analyses.css";

@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { useState } from "react";
 import { useAnalysisHistory } from "../features/analysis/model/useAnalysis";
 import { PageState } from "../shared/ui/PageState";
+import { PageHero } from "../shared/ui/PageHero";
+import { ResultBasis } from "../shared/ui/ResultBasis";
 
 export function AnalysesPage() {
   const query = useAnalysisHistory();
@@ -14,14 +16,14 @@ export function AnalysesPage() {
   const totalCount = query.data.pages[0]?.totalCount ?? 0;
   return (
     <>
-      <header className="workspace-header skills-hero analysis-list-hero">
+      <PageHero>
         <div>
           <p className="eyebrow">재현 가능한 분석 기록</p>
           <h1>분석 이력</h1>
           <p>저장소와 스냅샷, 규칙 버전이 고정된 Rule Engine의 공식 결과를 시간순으로 확인합니다.</p>
         </div>
         <Link className="button-link button-primary" to="/repositories">새 분석 준비</Link>
-      </header>
+      </PageHero>
 
       <section className="analysis-history-summary" aria-label="분석 이력 요약">
         <strong>{totalCount.toLocaleString("ko-KR")}</strong>
@@ -56,7 +58,7 @@ export function AnalysesPage() {
                     <h3>{analysis.repositoryFullName}</h3>
                     <time dateTime={analysis.completedAt}>{formatDateTime(analysis.completedAt)}</time>
                   </div>
-                  <div className="official-score" aria-label={`공식 점수 ${formatScore(analysis.overallScore)}점`}>
+                  <div className="official-score" role="group" aria-label={`공식 점수 ${formatScore(analysis.overallScore)}점`}>
                     <strong>{formatScore(analysis.overallScore)}</strong><span>/ 100</span>
                   </div>
                 </div>
@@ -80,6 +82,11 @@ export function AnalysesPage() {
           ) : null}
         </section>
       )}
+      {analyses.length ? <ResultBasis items={[
+        { label: "표시된 분석", value: `${analyses.length}개` },
+        { label: "규칙 버전", value: Array.from(new Set(analyses.map(analysis => analysis.ruleSetVersion))).join(", ") },
+        { label: "역량 정책", value: Array.from(new Set(analyses.map(analysis => analysis.policyVersion))).join(", ") }
+      ]} /> : null}
     </>
   );
 }

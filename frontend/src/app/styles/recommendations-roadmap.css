@@ -1,18 +1,16 @@
 .roadmap-summary { display:grid;gap:14px;grid-template-columns:repeat(3,1fr);margin:28px 0; }
 
-.roadmap-summary div { background: var(--background-inverse);border-radius: var(--radius-lg);color: var(--text-inverse);display:grid;gap:5px;padding:22px; }
+.roadmap-summary div { background: var(--background-subtle);border-radius: var(--radius-lg);display:grid;gap:5px;padding:20px 22px; }
 
-.roadmap-summary strong { font-size:2rem; }
+.roadmap-summary div:nth-child(even) { background: var(--background-surface); }
 
-.roadmap-summary span { color:var(--text-inverse-secondary); }
+.roadmap-summary strong { color:var(--brand-strong);font-size:2rem; }
 
-.roadmap-summary progress { appearance: none; background: var(--background-page); border-color: var(--border-inverse); height: 12px; width: 100%; }
+.roadmap-summary span { color:var(--text-secondary); }
+
+.roadmap-summary progress { appearance: none; background: var(--background-page); height: 12px; width: 100%; }
 
 .roadmap-summary progress::-webkit-progress-bar { background: var(--background-page); }
-
-.roadmap-summary progress::-webkit-progress-value { background: var(--action-primary); }
-
-.roadmap-summary progress::-moz-progress-bar { background: var(--action-primary); }
 
 .roadmap-recommendation-list { border-top:1px solid var(--border-default); display:grid; gap:0; list-style:none; margin:0 0 40px; padding:0; }
 
@@ -30,7 +28,7 @@
 
 .roadmap-step-list>li>.roadmap-step__index { align-items:center;background:var(--brand-default);border-radius:50%;color: var(--text-inverse);display:flex;font-weight:800;height:34px;justify-content:center;width:34px; }
 
-.roadmap-step-list article { background: var(--background-surface);border:1px solid var(--border-default);border-radius: var(--radius-lg);padding:18px; }
+.roadmap-step-list article { background: var(--background-surface);border-radius: var(--radius-lg);padding:18px; }
 
 .roadmap-step-list article>div{display:flex;justify-content:space-between;}
 
@@ -44,7 +42,7 @@
 
 .roadmap-step--in_progress .roadmap-step__status { color: var(--accent-amber-text); }
 
-.roadmap-step--skipped article { background: var(--background-muted); border-style: dashed; border-color: var(--border-strong); }
+.roadmap-step--skipped article { background: var(--background-muted); border: 1px dashed var(--border-strong); }
 
 .roadmap-step--skipped .roadmap-step__status { color: var(--text-muted); }
 
@@ -56,7 +54,7 @@
 
 .roadmap-history ul { display:grid; gap:12px; list-style:none; padding:0; }
 
-.roadmap-history li { background: var(--background-surface); border:1px solid var(--border-default); border-radius: var(--radius-card); display:grid; gap:8px; padding:18px; }
+.roadmap-history li { background: var(--background-surface); border-radius: var(--radius-card); display:grid; gap:8px; padding:18px; }
 
 .roadmap-history li div { display:flex; justify-content:space-between; }
 
@@ -64,17 +62,19 @@
 
 .roadmap-history time { color:var(--text-muted); font-size:.875rem; }
 
-.recommendation-history-summary { background: var(--background-inverse);border-radius: var(--radius-panel);color: var(--text-inverse);display:grid;gap:1px;grid-template-columns:repeat(3,1fr);margin:28px 0;overflow:hidden; }
+.recommendation-history-summary { display:grid;gap:14px;grid-template-columns:repeat(3,1fr);margin:28px 0; }
 
-.recommendation-history-summary div { display:grid;gap:4px;padding:22px; }
+.recommendation-history-summary div { background: var(--background-subtle);border-radius: var(--radius-lg);display:grid;gap:4px;padding:20px 22px; }
 
-.recommendation-history-summary strong { font-size:2rem; }
+.recommendation-history-summary div:nth-child(even) { background: var(--background-surface); }
 
-.recommendation-history-summary span { color:var(--text-inverse-secondary); }
+.recommendation-history-summary strong { color:var(--brand-strong);font-size:2rem; }
+
+.recommendation-history-summary span { color:var(--text-secondary); }
 
 .recommendation-set-list { display:grid;gap:22px; }
 
-.recommendation-set { background: var(--background-surface);border:1px solid var(--border-default);border-radius: var(--radius-panel);padding:22px; }
+.recommendation-set { background: var(--background-surface);border-radius: var(--radius-panel);padding:22px; }
 
 .recommendation-set>header { align-items:flex-start;display:flex;justify-content:space-between; }
 
@@ -100,7 +100,7 @@
 
 .recommendation-detail-grid { display:grid;gap:18px;grid-template-columns:1.2fr 1fr;margin:28px 0; }
 
-.recommendation-detail-grid article { background: var(--background-surface);border:1px solid var(--border-default);border-radius: var(--radius-panel);padding:22px; }
+.recommendation-detail-grid article { background: var(--background-surface);border-radius: var(--radius-panel);padding:22px; }
 
 .recommendation-detail-grid h2 { margin-top:0; }
 
@@ -116,7 +116,7 @@
 
 .recommendation-evidence-list { display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
 
-.recommendation-evidence-list article { background: var(--background-surface);border:1px solid var(--border-default);border-radius: var(--radius-lg);display:grid;gap:10px;padding:18px; }
+.recommendation-evidence-list article { background: var(--background-surface);border-radius: var(--radius-lg);display:grid;gap:10px;padding:18px; }
 
 .recommendation-evidence-list header { display:flex;justify-content:space-between; }
 

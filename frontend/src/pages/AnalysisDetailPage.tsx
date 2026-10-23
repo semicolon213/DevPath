@@ -7,6 +7,8 @@ import { categoryLabel, evidenceTypeLabel, levelLabel, skillNameLabel } from "..
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 import { EvidenceStatus } from "../shared/ui/EvidenceStatus";
+import { PageHero } from "../shared/ui/PageHero";
+import { ResultBasis } from "../shared/ui/ResultBasis";
 
 export function AnalysisDetailPage() {
   const { analysisId } = useParams();
@@ -18,7 +20,7 @@ export function AnalysisDetailPage() {
   const { result, repository, evaluation, evidence, matrix } = query.data;
   return (
     <PageShell>
-      <header className="workspace-header skills-hero analysis-detail-header">
+      <PageHero>
         <div>
           <p className="eyebrow">결정론적 분석 결과</p>
           <h1>{repository.fullName}</h1>
@@ -29,9 +31,9 @@ export function AnalysisDetailPage() {
         </div>
         <div className="workspace-actions">
           <Link to={`/repositories/${repository.repositoryId}`}>저장소 보기</Link>
-          <Link className="button-link button-primary" to="/analyses">분석 이력</Link>
+          <Link className="button-link button-secondary" to="/analyses">분석 이력</Link>
         </div>
-      </header>
+      </PageHero>
 
       <section className="analysis-result-hero" aria-label="공식 분석 요약">
         <div className="analysis-result-score">
@@ -109,6 +111,7 @@ export function AnalysisDetailPage() {
 
       <RepositorySummaryPanel analysisId={result.analysisId} />
       <RepositoryReviewPanel analysisId={result.analysisId} />
+      <ResultBasis items={[{ label: "분석 기준 시각", value: <time dateTime={result.completedAt}>{formatDateTime(result.completedAt)}</time> }, { label: "규칙", value: evaluation.ruleSetVersion }, { label: "공식 계산식", value: evaluation.formulaLibraryVersion }, { label: "역량 정책", value: matrix.policyVersion }]} />
     </PageShell>
   );
 }

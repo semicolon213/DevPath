@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { ApiError } from "../api/apiClient";
+import { PageHero } from "./PageHero";
 
 type BaseProps = {
   title: string;
@@ -27,14 +28,17 @@ export function PageState(props: PageStateProps) {
 
   if (props.state === "loading") {
     return <>
-      <header className="workspace-header" onFocusCapture={() => { loadingFocused.current = true; }} onBlurCapture={() => { loadingFocused.current = false; }}><div><h1>{props.title}</h1>{props.description ? <p>{props.description}</p> : null}</div></header>
+      <PageHero title={props.title} description={props.description} onFocusCapture={() => { loadingFocused.current = true; }} onBlurCapture={() => { loadingFocused.current = false; }} />
       <section className="page-state page-state--loading page-state-skeleton" role="status">
         <span>{props.message}</span><i aria-hidden="true" /><i aria-hidden="true" /><i aria-hidden="true" />
       </section>
     </>;
   }
 
-  if (props.state === "empty") return <section className="state-panel page-state page-state--empty"><p className="eyebrow">다음 단계</p><h1>{props.title}</h1>{props.description ? <p>{props.description}</p> : null}<Link className="button-link button-primary" to={props.actionTo}>{props.actionLabel}</Link></section>;
+  if (props.state === "empty") return <>
+    <PageHero eyebrow="다음 단계" title={props.title} description={props.description} />
+    <section className="state-panel page-state page-state--empty"><Link className="button-link button-primary" to={props.actionTo}>{props.actionLabel}</Link></section>
+  </>;
 
   const unauthorized = props.error instanceof ApiError && props.error.status === 401;
   const hidden = props.error instanceof ApiError && (props.error.status === 403 || props.error.status === 404);
@@ -47,16 +51,17 @@ export function PageState(props: PageStateProps) {
       ? "요청한 정보가 없거나 현재 계정으로 접근할 수 없습니다."
       : network
         ? "네트워크 연결을 확인한 뒤 다시 시도해 주세요."
-        : props.description;
+        : props.description ?? "일시적인 문제로 정보를 표시하지 못했습니다. 잠시 후 다시 시도해 주세요.";
   const requestId = props.error instanceof ApiError ? props.error.requestId : null;
 
-  return <section className={`state-panel page-state page-state--${unauthorized || hidden ? "forbidden" : "error"}`} role="alert">
-    <p className="eyebrow">{unauthorized || hidden ? "접근 안내" : "문제가 발생했습니다"}</p>
-    <h1>{title}</h1>
-    {description ? <p>{description}</p> : null}
-    {!unauthorized && !hidden && requestId ? <p>오류 참조 <code className="page-state-reference">{requestId}</code></p> : null}
-    {unauthorized ? <Link className="button-link button-primary" to="/">홈으로 이동</Link>
-      : hidden || !props.retry ? <Link className="button-link button-primary" to={props.backTo ?? "/"}>{props.backLabel ?? "돌아가기"}</Link>
-        : <button className="button-primary" type="button" onClick={props.retry}>다시 시도</button>}
-  </section>;
+  return <>
+    <PageHero eyebrow={unauthorized || hidden ? "접근 안내" : "문제가 발생했습니다"} title={title} description={description} />
+    <section className={`state-panel page-state page-state--${unauthorized || hidden ? "forbidden" : "error"}`} role="alert">
+      <p className="visually-hidden">{title}. {description}</p>
+      {!unauthorized && !hidden && requestId ? <p>오류 참조 <code className="page-state-reference">{requestId}</code></p> : null}
+      {unauthorized ? <Link className="button-link button-primary" to="/">홈으로 이동</Link>
+        : hidden || !props.retry ? <Link className="button-link button-primary" to={props.backTo ?? "/"}>{props.backLabel ?? "돌아가기"}</Link>
+          : <button className="button-primary" type="button" onClick={props.retry}>다시 시도</button>}
+    </section>
+  </>;
 }

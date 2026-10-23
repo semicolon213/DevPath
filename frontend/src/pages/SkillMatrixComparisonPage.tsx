@@ -4,6 +4,8 @@ import { useSkillMatrixComparison } from "../features/skills/model/useSkillMatri
 import { categoryLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
 import { EvidenceStatus } from "../shared/ui/EvidenceStatus";
+import { PageHero } from "../shared/ui/PageHero";
+import { ResultBasis } from "../shared/ui/ResultBasis";
 
 export function SkillMatrixComparisonPage() {
   const [params] = useSearchParams();
@@ -19,11 +21,11 @@ export function SkillMatrixComparisonPage() {
   const skillKeys = Array.from(new Set([...left.skills, ...right.skills].map(skill => skill.skillKey)));
 
   return <>
-    <header className="workspace-header">
+    <PageHero>
       <div><p className="eyebrow">공식 기술 역량 비교</p><h1>기술 역량 비교</h1>
         <p>불변 Skill Matrix 두 개의 공식 점수와 등급을 나란히 표시합니다. 이 화면은 차이 점수나 성장 추세를 새로 계산하지 않습니다.</p></div>
-      <Link className="button-link button-primary" to="/analyses">다른 결과 선택</Link>
-    </header>
+      <Link className="button-link button-secondary" to="/analyses">다른 결과 선택</Link>
+    </PageHero>
     <section className="comparison-hero" aria-label="Skill Matrix 비교 대상">
       <MatrixSummary label="Matrix A" matrix={left} /><div aria-hidden="true">VS</div><MatrixSummary label="Matrix B" matrix={right} />
     </section>
@@ -36,6 +38,7 @@ export function SkillMatrixComparisonPage() {
       </table></div>
     </section>
     <section className="comparison-rule-grid" aria-label="비교 재현 정보"><MatrixFacts label="Matrix A" matrix={left} /><MatrixFacts label="Matrix B" matrix={right} /></section>
+    <ResultBasis items={[{ label: "Matrix A 정책·규칙", value: `${left.policyVersion} · ${left.ruleSetVersion}` }, { label: "Matrix B 정책·규칙", value: `${right.policyVersion} · ${right.ruleSetVersion}` }]} />
   </>;
 }
 

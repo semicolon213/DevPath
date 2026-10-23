@@ -55,6 +55,7 @@ it("requires archive confirmation and sends the confirmed request through the CS
   renderPage(fetchMock);
 
   const archiveButton = await screen.findByRole("button", { name: "문서 보관" });
+  expect(archiveButton.closest(".danger-zone")).not.toBeNull();
   fireEvent.click(archiveButton);
   expect(screen.getByRole("dialog", { name: "이 문서를 보관할까요?" })).toHaveTextContent("활성 지식 검색 범위에서는 제외");
   await act(async () => {});

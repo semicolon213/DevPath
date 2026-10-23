@@ -36,6 +36,7 @@ it("keeps raw colour literals inside the root token block", async () => {
       : file.css;
     expect(css, file.name).not.toMatch(/#[0-9a-f]{3,8}\b/i);
     expect(css, file.name).not.toMatch(/\b(?:rgba?|hsla?)\s*\(/i);
+    expect(css, file.name).not.toContain("color-mix(");
   }
 
   const allCss = files.map(file => file.css).join("\n");

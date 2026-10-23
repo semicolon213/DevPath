@@ -1,4 +1,4 @@
-.ai-generated-panel { background: var(--ai-surface); border: 1px solid var(--ai-border); border-radius: var(--radius-panel); color: var(--ai-text); margin: 32px 0 0; padding: 22px; }
+.ai-generated-panel { background: var(--ai-surface); border: 0; border-radius: var(--radius-panel); color: var(--ai-text); margin: 32px 0 0; padding: 22px; }
 
 .ai-generated-panel a { color: var(--ai-link); }
 
@@ -22,7 +22,7 @@
 
 .ai-generated-panel__result ul { display: grid; gap: 12px; list-style: none; padding: 0; }
 
-.ai-generated-panel__result li, .ai-generated-panel__grid > section { background: var(--background-surface); border-radius: var(--radius-md); padding: 14px; }
+.ai-generated-panel__result li, .ai-generated-panel__grid > section { background: var(--background-surface); border-radius: var(--radius-card); padding: 14px; }
 
 .ai-generated-panel__result li p { margin: 6px 0; }
 
@@ -30,4 +30,9 @@
 
 .ai-generated-panel__result .ai-evidence-links { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 0; }
 
-.ai-generated-panel__result .ai-evidence-links li { background: var(--evidence-surface); border: 1px solid var(--evidence-border); border-radius: var(--radius-pill); font-size: .85rem; padding: 4px 9px; }
+.ai-generated-panel__result .ai-evidence-links li { background: var(--evidence-surface); border: 1px solid var(--evidence-border); border-radius: var(--radius-pill); font-size: .85rem; padding: 0 12px; }
+
+/* Job state inside the lavender panel stays a quiet white strip, not an indigo state panel. */
+.ai-generated-panel .state-panel { background: var(--background-page); border-radius: var(--radius-card); margin-top: 16px; padding: 16px 18px; text-align: left; }
+
+.ai-generated-panel .state-panel p { margin-top: 0; }

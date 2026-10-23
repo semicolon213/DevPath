@@ -5,6 +5,8 @@ import { ApiError } from "../shared/api/apiClient";
 import { SkillExplanationPanel } from "../features/ai/ui/SkillExplanationPanel";
 import { categoryLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
+import { PageHero } from "../shared/ui/PageHero";
+import { ResultBasis } from "../shared/ui/ResultBasis";
 import { EvidenceStatus } from "../shared/ui/EvidenceStatus";
 
 export function SkillsPage() {
@@ -25,21 +27,16 @@ export function SkillsPage() {
 
   return (
     <>
-      <header className="workspace-header skill-header skills-hero">
+      <PageHero>
         <div>
           <p className="eyebrow">공식 기술 역량 결과</p>
           <h1>기술 역량 분석</h1>
           <p>저장소에서 확인된 근거를 버전이 고정된 평가 규칙으로 계산한 공식 결과입니다.</p>
         </div>
-        <div className="skills-hero__aside">
-          <div className="analysis-version" aria-label="분석 버전 정보">
-            <span>정책 {matrix.policyVersion}</span>
-            <span>규칙 {matrix.ruleSetVersion}</span>
-            <span>{formatDateTime(matrix.generatedAt)} 분석</span>
-          </div>
+        <div>
           <Link className="button-link button-primary" to="/repositories">저장소 확인</Link>
         </div>
-      </header>
+      </PageHero>
 
       <section className="skill-summary" aria-label="기술 분석 요약">
         <Summary label="평가된 역량" value={matrix.skills.length} />
@@ -76,6 +73,7 @@ export function SkillsPage() {
       </section>
 
       <SkillExplanationPanel skillMatrixId={matrix.skillMatrixId} />
+      <ResultBasis items={[{ label: "분석 기준 시각", value: <time dateTime={matrix.generatedAt}>{formatDateTime(matrix.generatedAt)}</time> }, { label: "정책", value: matrix.policyVersion }, { label: "규칙", value: matrix.ruleSetVersion }]} />
     </>
   );
 }

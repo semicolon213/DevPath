@@ -5,8 +5,9 @@
   --background-surface: #f5f5f8;
   --background-subtle: #eef0ff;
   --background-muted: #f5f5f8;
-  --background-score-detail: rgba(255, 255, 255, .72);
+  --background-raised-translucent: rgba(255, 255, 255, .72);
   --background-inverse: #23277a;
+  --overlay-backdrop: color-mix(in srgb, var(--background-inverse) 55%, transparent);
   --text-primary: #15172b;
   --text-secondary: #4c5070;
   --text-muted: #4c5070;
@@ -22,6 +23,7 @@
   --border-focus: #23277a;
   --border-focus-inverse: #ffb547;
   --brand-band: #23277a;
+  --brand-band-raised: color-mix(in srgb, var(--background-page) 6%, var(--brand-band));
   --brand-default: #23277a;
   --brand-strong: #1a1d5c;
   --brand-link: #2a2f8c;
@@ -54,7 +56,7 @@
   --info-border-soft: #aeb2e3;
   --info-surface: #eef0ff;
   --info-surface-soft: #eef0ff;
-  --shadow-selected: rgba(35, 39, 122, .16);
+  --status-neutral-surface: #e6e7f0;
   --shadow-floating: rgba(21, 23, 43, .18);
   --evidence-surface: #f5f5f8;
   --evidence-border: #d8dae8;

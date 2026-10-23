@@ -35,7 +35,8 @@ it("renders a safe route error without exposing the error message or stack", asy
   const secretMessage = "sensitive route failure";
   const router = createMemoryRouter(appRoutes, { initialEntries: ["/"] });
   const { container } = render(<RouterProvider router={router} />);
-  expect(await screen.findByRole("alert")).toHaveTextContent("화면을 표시하지 못했습니다");
+  expect(await screen.findByRole("alert")).toHaveTextContent("화면을 그리는 중 오류가 발생했습니다");
+  expect(screen.getAllByRole("heading", { name: "화면을 표시하지 못했습니다" })).toHaveLength(1);
   expect(screen.getByRole("button", { name: "페이지 새로고침" })).toBeInTheDocument();
   expect(container).not.toHaveTextContent(secretMessage);
   await waitFor(() => expect(consoleError).toHaveBeenCalledWith("DevPath route error boundary captured an error.", expect.any(Error)));

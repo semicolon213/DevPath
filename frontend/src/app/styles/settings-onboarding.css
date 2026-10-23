@@ -6,27 +6,25 @@
 
 .connection-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 
-.onboarding-header { align-items: flex-start; }
-
-.onboarding-summary, .next-step-card, .onboarding-ready-actions { align-items: center; background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-panel); display: flex; gap: 24px; justify-content: space-between; padding: 24px; }
+.onboarding-summary, .next-step-card, .onboarding-ready-actions { align-items: center; background: var(--background-surface); border: 0; border-radius: var(--radius-panel); display: flex; gap: 24px; justify-content: space-between; padding: 24px; }
 
 .onboarding-count { align-items: baseline; display: flex; gap: 8px; white-space: nowrap; }
 
 .onboarding-count strong { color: var(--brand-default); font-size: clamp(2rem, 5vw, 3.5rem); }
 
-.next-step-card { background: var(--brand-surface); border-color: var(--brand-default); margin-top: 20px; }
+.next-step-card { background: var(--brand-surface); margin-top: 20px; }
 
 .onboarding-steps { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); list-style: none; margin: 24px 0; padding: 0; }
 
-.onboarding-step { background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-card); display: grid; gap: 12px; grid-template-columns: 40px 1fr; padding: 18px; }
+.onboarding-step { background: var(--background-surface); border: 0; border-radius: var(--radius-card); display: grid; gap: 12px; grid-template-columns: 40px 1fr; padding: 18px; }
 
-.onboarding-step--complete { background: var(--brand-surface); border-color: var(--info-border); }
+.onboarding-step--complete { background: var(--brand-surface); }
 
 .onboarding-step--current { background: var(--accent-amber-surface); border: 2px solid var(--accent-amber-border); }
 
 .onboarding-step--incomplete { border-left: 4px solid var(--warning-strong); }
 
-.onboarding-step--upcoming { background: var(--background-muted); border-style: dashed; }
+.onboarding-step--upcoming { background: var(--background-muted); border: 1px dashed var(--border-strong); }
 
 .onboarding-step__number { background: var(--evidence-surface); border-radius: var(--radius-pill); display: grid; font-weight: 700; height: 36px; place-items: center; width: 36px; }
 
@@ -38,13 +36,14 @@
 
 .onboarding-controls { margin: 32px 0; padding-top: 12px; }
 
-.settings-tabs { border-bottom: 1px solid var(--border-default); display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; }
+.settings-tabs { align-items: flex-end; border-bottom: 1px solid var(--border-default); display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 28px; }
 
-.settings-tab { border-radius: var(--radius-sm) var(--radius-sm) 0 0; color: var(--text-secondary); font-weight: 700; padding: 12px 16px; text-decoration: none; }
+.settings-tab { align-items: center; border-radius: var(--radius-sm) var(--radius-sm) 0 0; color: var(--text-secondary); display: inline-flex; font-weight: 700; min-height: 44px; padding: 10px 16px; text-decoration: none; }
 
 .settings-tab--active { background: var(--brand-surface); color: var(--text-primary); }
 
-.settings-section-list { border-top: 1px solid var(--border-strong); }
+/* The tab row already draws the top rule, so the list below it does not repeat it. */
+.settings-section-list { border-top: 0; }
 
 .settings-section-list article { align-items: center; border-bottom: 1px solid var(--border-default); display: flex; gap: 24px; justify-content: space-between; padding: 24px 4px; }
 
@@ -52,7 +51,12 @@
 
 .settings-security-note { background: var(--background-subtle); border: 0; border-radius: var(--radius-lg); margin-top: 20px; padding: 24px; }
 
-.settings-workspace .profile-panel, .settings-workspace .connection-panel { background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 24px; }
+.settings-workspace .profile-panel, .settings-workspace .connection-panel { background: var(--background-surface); border: 0; border-radius: var(--radius-lg); padding: 24px; }
+
+.settings-workspace .settings-tabs + .profile-panel, .settings-workspace .settings-tabs + .connection-panel { margin-top: 0; }
+
+/* Destructive connection actions sit in their own group at the end of the panel (D12). */
+.connection-danger { border-top: 1px solid var(--border-subtle); display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 24px; padding-top: 16px; }
 
 @media (max-width: 720px) {
   .onboarding-summary, .next-step-card, .onboarding-ready-actions { align-items: flex-start; flex-direction: column; }

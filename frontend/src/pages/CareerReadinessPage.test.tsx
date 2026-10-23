@@ -25,7 +25,8 @@ describe("CareerReadinessPage", () => {
     expect(await screen.findByText("67.5")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "커리어 준비도" })).toBeInTheDocument();
     expect(screen.getByText("일부 충족")).toBeInTheDocument();
-    expect(screen.getByText("정책 readiness-v1")).toBeInTheDocument();
+    expect(document.querySelector(".result-basis")).toHaveTextContent("정책 readiness-v1");
+    expect(document.querySelector(".page-hero .analysis-version")).not.toBeInTheDocument();
     expect(screen.getByRole("img", { name: "테스트 실제 점수 50점, 기준 60점" }).querySelector(".readiness-gap__reference")).toHaveStyle({ left: "60%" });
     expect(screen.getByRole("img", { name: "테스트 실제 점수 50점, 기준 60점" }).closest("article")).toHaveTextContent("50 / 기준 60 · 일부 충족");
     const missing = screen.getByRole("img", { name: "DevOps: 근거 없음" }).closest("article")!;

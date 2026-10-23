@@ -22,6 +22,7 @@ describe("DashboardPage", () => {
     expect(screen.getByText("테스트 보강")).toBeInTheDocument();
     expect(screen.getByText("지금 할 일")).toBeInTheDocument();
     expect(screen.getByText("저장소 동기화")).toBeInTheDocument();
+    expect(screen.getByText("100%")).toHaveClass("dashboard-job-progress");
     expect(screen.getByText("충분 · 신뢰도 88%")).toBeInTheDocument();
     expect(screen.getByText("테스트 · 16시간")).toBeInTheDocument();
     expect(screen.getByText("높음")).toBeInTheDocument();

@@ -85,7 +85,7 @@ test("changed result pages have no horizontal overflow and keep single-column mo
       const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width, height: 900 } });
       const page = await context.newPage();
       await installApiFixture(page, []);
-      for (const [path, heading] of [["/analyses/analysis-id", "이 분석의 역량 매트릭스"], ["/skills", "테스트 역량"], ["/roadmap", "실행 순서"], ["/recommendations", "추천 세트 이력"], [`/repositories/${repository.repositoryId}`, "감지된 기술 스택"], ["/skills/skill-id", "평가 추적 정보"]]) {
+      for (const [path, heading] of [["/analyses/analysis-id", "이 분석의 역량 매트릭스"], ["/skills", "테스트 역량"], ["/roadmap", "실행 순서"], ["/recommendations", "추천 세트 이력"], [`/repositories/${repository.repositoryId}`, "감지된 기술 스택"], ["/skills/skill-id", "평가 추적 정보"], ["/skills/compare?skillMatrixId=matrix-previous-id&skillMatrixId=matrix-id", "역량별 저장 결과"]]) {
         await page.goto(path);
         await expect(page.getByRole("heading", { name: heading })).toBeVisible();
         const size = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
@@ -140,6 +140,24 @@ test("profile target selects with a long career name do not overflow at 375px wi
   }
 });
 
+test("knowledge detail breadcrumb links stay clickable above the hero band", async ({ page }) => {
+  await installApiFixture(page, []);
+  const knowledgeDocument = { documentId: "knowledge-document-id", sourceType: "NOTION", sourceObjectId: "notion-page-id", title: "백엔드 학습 노트", status: "ACTIVE", currentVersionId: "knowledge-version-id", chunkCount: 0, createdAt: timestamp, updatedAt: timestamp };
+  await page.route(url => url.pathname === "/api/v1/knowledge-documents/knowledge-document-id", route => fulfill(route, knowledgeDocument));
+  await page.route(url => url.pathname === "/api/v1/knowledge-documents/knowledge-document-id/chunks", route => fulfill(route, { chunks: [] }));
+  for (const width of [1440, 375]) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/knowledge/knowledge-document-id");
+    await expect(page.getByRole("heading", { level: 1, name: "백엔드 학습 노트" })).toBeVisible();
+    const link = page.locator(".breadcrumbs").getByRole("link", { name: "지식" });
+    const onTop = await link.evaluate(element => {
+      const box = element.getBoundingClientRect();
+      return element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+    });
+    expect(onTop, `breadcrumb link is clickable at ${width}px`).toBe(true);
+  }
+});
+
 test("archived and externally deleted repository rows keep actions in the action column", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await installApiFixture(page, []);
@@ -157,6 +175,10 @@ test("archived and externally deleted repository rows keep actions in the action
     expect(Math.abs(actions.x - head!.x)).toBeLessThanOrEqual(1);
     expect(actions.y).toBeLessThan(identity.y + identity.height);
   }
+  const headColumns = await page.locator(".repository-table__head span").evaluateAll(spans => spans.map(span => Math.round(span.getBoundingClientRect().left)));
+  const archivedColumns = await page.locator(".repository-table .repository-card--archived").first().evaluate(card => [".repository-card__identity", "[data-label=\"공개 범위\"]", "[data-label=\"동기화\"]", "[data-label=\"최근 동기화\"]", ".repository-card__actions"].map(selector => Math.round(card.querySelector(selector)!.getBoundingClientRect().left)));
+  expect(archivedColumns.length).toBe(headColumns.length);
+  archivedColumns.forEach((left, index) => expect(Math.abs(left - headColumns[index]), `archived column ${index}`).toBeLessThanOrEqual(1));
   await expect(page.locator(".repository-table__head")).not.toContainText("최근 분석");
 });
 
@@ -164,11 +186,11 @@ test("repository hero secondary actions stay legible on the indigo band", async 
   await installApiFixture(page, []);
   const heroAction = async (name: string) => page.locator(".repository-detail-header").getByRole(name === "GitHub에서 보기" ? "link" : "button", { name }).evaluate(element => {
     const style = getComputedStyle(element);
-    const band = getComputedStyle(element.closest(".skills-hero")!).backgroundColor;
+    const band = getComputedStyle(element.closest(".page-hero")!).backgroundColor;
     return { color: style.color, borderColor: style.borderTopColor, band };
   });
   await page.goto(`/repositories/${repository.repositoryId}`);
-  await expect(page.locator(".repository-detail-header .status-badge")).toHaveText("사용 중 · 동기화 완료");
+  await expect(page.locator(".repository-detail-header .status-badge")).toHaveText(["사용 중", "동기화 완료"]);
   for (const name of ["GitHub 동기화", "GitHub에서 보기"]) {
     const style = await heroAction(name);
     expect(style.band).toBe("rgb(35, 39, 122)");
@@ -335,7 +357,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await page.goto("/skills");
   await expect(page.getByRole("heading", { name: "기술 역량 분석" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "테스트 역량" })).toBeVisible();
-  await expect(page.getByText("정책 skill-matrix-v2")).toBeVisible();
+  await expect(page.locator(".result-basis")).toContainText("정책 skill-matrix-v2");
   await expectNoAccessibilityViolations(page);
 
   await page.getByRole("link", { name: "테스트 역량" }).click();
@@ -352,21 +374,21 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await page.goto("/career-readiness");
   await expect(page.getByRole("heading", { name: "커리어 준비도" })).toBeVisible();
   await expect(page.getByText("67.5", { exact: true })).toBeVisible();
-  await expect(page.getByText("정책 readiness-v1", { exact: true })).toBeVisible();
+  await expect(page.locator(".result-basis")).toContainText("정책 readiness-v1");
   await expectNoAccessibilityViolations(page);
 
   await page.getByRole("link", { name: "추천 로드맵 보기" }).click();
   await expect(page).toHaveURL(/\/roadmap$/);
   await expect(page.getByRole("heading", { name: "추천 및 학습 로드맵" })).toBeVisible();
-  await expect(page.getByText("추천 recommendation-v1")).toBeVisible();
-  await expect(page.getByText("로드맵 roadmap-v1")).toBeVisible();
+  await expect(page.locator(".result-basis")).toContainText("추천 정책 recommendation-v1");
+  await expect(page.locator(".result-basis")).toContainText("로드맵 정책 roadmap-v1");
   await expect(page.getByRole("heading", { name: "테스트 자동화 강화" }).first()).toBeVisible();
   await expect(page.getByText("건너뜀")).toBeVisible();
   await expectNoAccessibilityViolations(page);
 
   await page.goto("/recommendations");
   await expect(page.getByRole("heading", { name: "추천 작업공간" })).toBeVisible();
-  await expect(page.getByText("recommendation-v1")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "recommendation-v1" })).toBeVisible();
   await expect(page.getByText("지금 할 일")).toBeVisible();
   await expectNoAccessibilityViolations(page);
   await page.getByRole("link", { name: "준비도 근거 보기" }).click();
@@ -396,13 +418,13 @@ test("anonymous readiness failure is actionable and accessible", async ({ page }
   await expectNoAccessibilityViolations(page);
 });
 
-test("page state error panel keeps its accent border and padding", async ({ page }) => {
+test("page state error panel uses the shared tint and padding without a decorative stripe", async ({ page }) => {
   await installApiFixture(page, []);
   await page.route(url => url.pathname === "/api/v1/careers", route => route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ code: "INTERNAL_ERROR" }) }));
   await page.goto("/careers");
   const panel = page.locator(".page-state--error");
   await expect(panel).toBeVisible();
-  await expect(panel).toHaveCSS("border-left-width", "5px");
+  await expect(panel).toHaveCSS("border-left-width", "0px");
   await expect(panel).toHaveCSS("padding-left", "56px");
 });
 

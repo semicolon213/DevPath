@@ -75,14 +75,6 @@ export function ConnectionPanel({ embedded = false }: { embedded?: boolean }) {
           <button className={embedded ? "button-secondary" : "button-primary"} type="button" disabled={authorize.isPending || disconnect.isPending} onClick={reconnect}>
             {authorize.isPending ? "GitHub로 이동하는 중…" : "권한 다시 승인"}
           </button>
-          <button
-            className="button-danger-secondary"
-            type="button"
-            disabled={authorize.isPending || disconnect.isPending}
-            onClick={() => { disconnect.reset(); setDisconnectMessage(""); setConfirmingDisconnect(true); }}
-          >
-            {disconnect.isPending ? "연결 해제 중…" : "연결 해제"}
-          </button>
         </div>
       )}
       {authorize.isError ? <p role="alert">GitHub 연결을 시작하지 못했습니다. 서버 설정을 확인해 주세요.</p> : null}
@@ -103,6 +95,11 @@ export function ConnectionPanel({ embedded = false }: { embedded?: boolean }) {
           refreshConnection={() => connections.refetch()}
         />
       ) : null}
+      {githubActive ? <div className="connection-danger">
+        <button className="button-danger-secondary" type="button" disabled={authorize.isPending || disconnect.isPending} onClick={() => { disconnect.reset(); setDisconnectMessage(""); setConfirmingDisconnect(true); }}>
+          {disconnect.isPending ? "연결 해제 중…" : "연결 해제"}
+        </button>
+      </div> : null}
       <ConfirmDialog open={confirmingDisconnect} title="GitHub 저장소 연결을 해제할까요?" description="저장된 GitHub 자격 증명을 폐기하고 원격 토큰 폐기를 시도합니다. 다시 연결하기 전까지 GitHub 저장소를 조회하거나 동기화할 수 없습니다." confirmLabel="GitHub 연결 해제" destructive pending={disconnect.isPending} error={disconnect.isError ? "GitHub 연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요." : undefined} returnFocusFallback={disconnectMessageRef} onCancel={() => setConfirmingDisconnect(false)} onConfirm={() => disconnect.mutate(undefined, { onSuccess: () => { setDisconnectMessage("GitHub 연결을 해제했습니다."); setConfirmingDisconnect(false); } })} />
     </section>
     <NotionConnectionPanel connections={connections} />
@@ -147,14 +144,16 @@ function NotionConnectionPanel({ connections }: { connections: ReturnType<typeof
           <button type="button" disabled={authorize.isPending || disconnect.isPending} onClick={connect}>
             {authorize.isPending ? "Notion으로 이동하는 중…" : "Notion 권한 다시 승인"}
           </button>
-          <button className="button-danger-secondary" type="button" disabled={authorize.isPending || disconnect.isPending} onClick={() => { disconnect.reset(); setDisconnectMessage(""); setConfirmingDisconnect(true); }}>
-            {disconnect.isPending ? "Notion 연결 해제 중…" : "Notion 연결 해제"}
-          </button>
         </div>
       )}
       {authorize.isError ? <p role="alert">Notion 연결을 시작하지 못했습니다. 서버 설정을 확인해 주세요.</p> : null}
       <p ref={disconnectMessageRef} role="status" tabIndex={-1}>{disconnectMessage}</p>
       {active ? <NotionWorkspaceList workspaces={workspaces} /> : null}
+      {active ? <div className="connection-danger">
+        <button className="button-danger-secondary" type="button" disabled={authorize.isPending || disconnect.isPending} onClick={() => { disconnect.reset(); setDisconnectMessage(""); setConfirmingDisconnect(true); }}>
+          {disconnect.isPending ? "Notion 연결 해제 중…" : "Notion 연결 해제"}
+        </button>
+      </div> : null}
       <ConfirmDialog open={confirmingDisconnect} title="Notion 연결을 해제할까요?" description="저장된 Notion 자격 증명과 페이지 메타데이터를 제거하고 원격 토큰 폐기를 시도합니다. 연결된 문서는 더 이상 검색하거나 갱신할 수 없습니다." confirmLabel="Notion 연결 해제" destructive pending={disconnect.isPending} error={disconnect.isError ? "Notion 연결을 해제하지 못했습니다. 잠시 후 다시 시도해 주세요." : undefined} returnFocusFallback={disconnectMessageRef} onCancel={() => setConfirmingDisconnect(false)} onConfirm={() => disconnect.mutate(undefined, { onSuccess: () => { setDisconnectMessage("Notion 연결을 해제했습니다."); setConfirmingDisconnect(false); } })} />
     </section>
   );

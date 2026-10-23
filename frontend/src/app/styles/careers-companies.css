@@ -14,17 +14,19 @@
 
 .target-grid select { max-width: 100%; min-width: 0; width: 100%; }
 
+.target-grid a { align-items: center; display: inline-flex; justify-self: start; min-height: 44px; }
+
 .field-help { color: var(--text-muted); font-size: .875rem; margin: -10px 0 0; }
 
-.error-summary { background: var(--danger-surface); border: 1px solid var(--danger-border); border-radius: var(--radius-md); padding: 14px; }
+.error-summary { background: var(--danger-surface); border: 1px solid var(--danger-border); border-radius: var(--radius-card); padding: 14px; }
 
 .error-summary ul { margin-bottom: 0; }
 
 .form-error { color: var(--danger-text); }
 
-.career-catalog-notice { align-items: center; background: var(--background-inverse); border-radius: var(--radius-lg); color: var(--text-inverse); display: flex; justify-content: space-between; margin-bottom: 24px; padding: 18px 22px; }
+.career-catalog-notice { align-items: center; background: var(--background-subtle); border-radius: var(--radius-lg); display: flex; justify-content: space-between; margin-bottom: 24px; padding: 18px 22px; }
 
-.career-catalog-notice span { color: var(--text-inverse-secondary); }
+.career-catalog-notice span { color: var(--text-secondary); }
 
 .catalog-list { border-top: 1px solid var(--border-strong); }
 
@@ -50,13 +52,13 @@
 
 .career-roadmap ol { display: grid; gap: 10px; list-style: none; padding: 0; }
 
-.career-roadmap li { align-items: center; background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); display: flex; gap: 14px; padding: 14px; }
+.career-roadmap li { align-items: center; background: var(--background-surface); border-radius: var(--radius-card); display: flex; gap: 14px; padding: 14px; }
 
 .career-roadmap li span { align-items: center; background: var(--brand-default); border-radius: 50%; color: var(--text-inverse); display: flex; height: 30px; justify-content: center; width: 30px; }
 
 .career-weight-list { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
 
-.career-weight-list div { background: var(--background-surface); border: 1px solid var(--border-default); border-radius: var(--radius-md); padding: 14px; }
+.career-weight-list div { background: var(--background-surface); border-radius: var(--radius-card); padding: 14px; }
 
 .career-weight-list dd { font-weight: 700; margin: 6px 0 0; }
 

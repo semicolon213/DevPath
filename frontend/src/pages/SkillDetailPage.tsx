@@ -6,6 +6,8 @@ import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 import { EvidenceStatus } from "../shared/ui/EvidenceStatus";
 import { SkillExplanationPanel } from "../features/ai/ui/SkillExplanationPanel";
+import { PageHero } from "../shared/ui/PageHero";
+import { ResultBasis } from "../shared/ui/ResultBasis";
 
 export function SkillDetailPage() {
   const { skillId } = useParams();
@@ -17,10 +19,9 @@ export function SkillDetailPage() {
   const { detail, evidence } = query.data;
   const skill = detail.skill;
   return <Shell>
-    <header className="workspace-header skill-header"><div><p className="eyebrow">현재 공식 역량</p>
+    <PageHero><div><p className="eyebrow">현재 공식 역량</p>
       <h1>{skillNameLabel(skill.skillKey, skill.skillName)}</h1><p>현재 적용 중인 불변 Skill Matrix에서 가져온 공식 평가와 정규화된 증거입니다.</p></div>
-      <div className="analysis-version" aria-label="기술 평가 버전"><span>정책 {detail.policyVersion}</span><span>규칙 {detail.ruleSetVersion}</span></div>
-    </header>
+    </PageHero>
     <section className="skill-detail-score" aria-label="현재 기술 평가 요약">
       <div><span>공식 점수</span><strong>{format(skill.score)}</strong><small>/ 100</small></div>
       <dl><Fact label="등급" value={levelLabel(skill.level)} /><Fact label="신뢰도" value={`${format(skill.confidence)}%`} /></dl>
@@ -43,7 +44,8 @@ export function SkillDetailPage() {
         </article>)}</div>}
     </section>
     <SkillExplanationPanel skillMatrixId={detail.skillMatrixId} />
-    <div className="workspace-actions"><Link className="button-link button-primary" to="/skills">전체 기술 역량</Link><Link to="/analyses">분석 이력</Link></div>
+    <div className="workspace-actions"><Link className="button-link button-secondary" to="/skills">전체 기술 역량</Link><Link to="/analyses">분석 이력</Link></div>
+    <ResultBasis items={[{ label: "분석 기준 시각", value: <time dateTime={detail.generatedAt}>{formatDate(detail.generatedAt)}</time> }, { label: "정책", value: detail.policyVersion }, { label: "규칙", value: detail.ruleSetVersion }]} />
   </Shell>;
 }
 
@@ -79,7 +81,7 @@ function SkillHistoryItem({ point }: { point: SkillHistoryPoint }) {
     <div className="skill-history-item__summary"><div><span className={`status-badge${point.matrixStatus === "CURRENT" ? " status-badge--info" : ""}`}>
       {point.matrixStatus === "CURRENT" ? "현재 Matrix" : "과거 Matrix"}</span><h3>{point.repositoryFullName}</h3>
       <time dateTime={point.generatedAt}>{formatDate(point.generatedAt)}</time></div>
-      <div className="official-score" aria-label={`저장된 공식 점수 ${format(point.skill.score)}점`}><strong>{format(point.skill.score)}</strong><span>/ 100</span></div></div>
+      <div className="official-score" role="group" aria-label={`저장된 공식 점수 ${format(point.skill.score)}점`}><strong>{format(point.skill.score)}</strong><span>/ 100</span></div></div>
     <EvidenceStatus status={point.skill.evidenceStatus} />
     <dl className="skill-history-facts"><Fact label="등급" value={levelLabel(point.skill.level)} /><Fact label="신뢰도" value={`${format(point.skill.confidence)}%`} />
       <Fact label="연결 근거" value={`${point.skill.evidenceIds.length}개`} /><Fact label="정책·규칙" value={`${point.policyVersion} · ${point.ruleSetVersion}`} /></dl>
