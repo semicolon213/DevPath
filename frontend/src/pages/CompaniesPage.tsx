@@ -30,7 +30,7 @@ export function CompaniesPage() {
       </PageHero>
       <section className="career-catalog-notice">
         <strong>{catalog.data.companies.length}개 지원 회사</strong>
-        <span>프로필 버전 {catalog.data.catalogVersion}</span>
+        <span>카탈로그 버전 {catalog.data.catalogVersion}</span>
       </section>
       <div className="catalog-list" role="list">
         {catalog.data.companies.map((v) => (

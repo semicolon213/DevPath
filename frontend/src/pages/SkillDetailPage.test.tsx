@@ -1,4 +1,4 @@
-import { fireEvent, screen } from "@testing-library/react";
+import { fireEvent, screen, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Route, Routes } from "react-router-dom";
 import { renderWithProviders } from "../test/renderWithProviders";
@@ -112,6 +112,16 @@ it.each([
   renderWithProviders(<Routes><Route path="/skills/:skillId" element={<SkillDetailPage />} /></Routes>, ["/skills/skill-1"]);
 
   expect(await screen.findByRole("note", { name: accessibleName })).toBeInTheDocument();
-  expect(screen.getByText("72")).toBeInTheDocument();
-  if (evidenceStatus === "NONE") expect(screen.getByText(/저장소 근거를 추가한 뒤 다시 분석해 주세요/)).toBeInTheDocument();
+  const summary = screen.getByRole("region", { name: "현재 기술 평가 요약" });
+  const scoreSlot = summary.firstElementChild as HTMLElement;
+  if (evidenceStatus === "NONE") {
+    expect(within(scoreSlot).getByText("근거 없음")).toHaveClass("score-none-label");
+    expect(within(scoreSlot).queryByText("72")).not.toBeInTheDocument();
+    expect(within(scoreSlot).queryByText("/ 100")).not.toBeInTheDocument();
+    expect(within(summary).getByText("저장된 공식 점수").nextElementSibling).toHaveTextContent("72");
+    expect(screen.getAllByText(/저장소 근거를 추가한 뒤 다시 분석해 주세요/)).toHaveLength(1);
+  } else {
+    expect(within(scoreSlot).getByText("72")).toBeInTheDocument();
+    expect(within(summary).queryByText("저장된 공식 점수")).not.toBeInTheDocument();
+  }
 });

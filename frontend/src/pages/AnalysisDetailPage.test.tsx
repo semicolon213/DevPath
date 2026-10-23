@@ -62,7 +62,7 @@ it("explains immutable official rules and marks the repository's current result"
   expect(screen.getByText("기술 문서화")).toBeInTheDocument();
   const officialRegion = screen.getByRole("heading", { name: "영역별 공식 결과" }).closest("section")!;
   for (const aiName of ["저장소 요약", "저장소 리뷰"]) {
-    const aiRegion = screen.getByRole("region", { name: `AI 생성 ${aiName}` });
+    const aiRegion = screen.getByRole("region", { name: `AI 생성 · 설명만 제공 ${aiName}` });
     expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   }
   expect(document.querySelectorAll(".button-primary")).toHaveLength(0);
@@ -79,7 +79,7 @@ it.each([
 
   renderWithProviders(<Routes><Route path="/analyses/:analysisId" element={<AnalysisDetailPage />} /></Routes>, ["/analyses/analysis-id"]);
 
-  const section = (await screen.findByRole("heading", { name: "이 분석의 역량 매트릭스" })).closest("section")!;
+  const section = (await screen.findByRole("heading", { name: "이 분석의 기술 역량" })).closest("section")!;
   if (hasProgress) expect(within(section).getByRole("progressbar")).toHaveAttribute("value", "100");
   else expect(within(section).queryByRole("progressbar")).not.toBeInTheDocument();
   expect(within(section).getByText(/공식 점수 100/)).toBeInTheDocument();
@@ -88,9 +88,9 @@ it.each([
   const row = section.querySelector(".historical-skill-row")!;
   expect(Array.from(row.children).map(child => child.className)).toEqual(["historical-skill-row__name", "historical-skill-row__score", "historical-skill-row__status"]);
   const score = row.querySelector<HTMLElement>(".historical-skill-row__score")!;
-  expect(within(score).getByText(/공식 점수 100/)).toBeInTheDocument();
+  expect(within(score).getByText(hasProgress ? /^공식 점수 100 · 신뢰도/ : /^저장된 공식 점수 100 · 신뢰도/)).toBeInTheDocument();
   if (hasProgress) expect(within(score).getByRole("progressbar")).toBeInTheDocument();
-  else expect(within(score).getByText("근거를 추가하면 공식 점수를 표시합니다.")).toBeInTheDocument();
+  expect(row.textContent!.split("근거 없음").length - 1).toBe(evidenceStatus === "NONE" ? 1 : 0);
   if (noteName) expect(row.querySelector(".historical-skill-row__status")).toContainElement(within(section).getByRole("note", { name: noteName }));
 });
 

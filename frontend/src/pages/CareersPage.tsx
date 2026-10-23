@@ -16,7 +16,7 @@ export function CareersPage() {
       <Link className="button-link button-primary" to="/settings/profile#targets">목표 직무 설정</Link>
     </PageHero>
     <section className="career-catalog-notice" aria-label="커리어 카탈로그 정보">
-      <strong>{careers.data.careers.length}개 지원 직무</strong><span>프로필 버전 {careers.data.catalogVersion}</span>
+      <strong>{careers.data.careers.length}개 지원 직무</strong><span>카탈로그 버전 {careers.data.catalogVersion}</span>
     </section>
     <div className="catalog-list" role="list">
       {careers.data.careers.map(career => <article role="listitem" aria-current={preferences.data?.careerId === career.careerId ? "true" : undefined} className={preferences.data?.careerId === career.careerId ? "catalog-tile catalog-tile--selected" : "catalog-tile"} key={career.careerId}>

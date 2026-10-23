@@ -19,7 +19,7 @@ it("connects an authorized Notion page to a recoverable ingestion job", async ()
   vi.stubGlobal("fetch", fetchMock);
   renderWithProviders(undefined, ["/knowledge"]);
 
-  expect(await screen.findByRole("heading", { name: "지식 작업 공간" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "지식" })).toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "회고 노트" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "지식으로 가져오기" }));
   await waitFor(() => expect(fetchMock).toHaveBeenCalledWith(expect.stringContaining("/knowledge-documents/imports/notion"),

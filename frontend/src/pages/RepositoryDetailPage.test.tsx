@@ -44,7 +44,7 @@ it("shows synchronization controls and immutable snapshot history separately fro
   expect(await screen.findByRole("heading", { name: "owner/devpath" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "분석 준비 상태" })).toBeInTheDocument();
   expect(screen.getByText(/버전이 고정된 Rule Engine으로만 계산됩니다/)).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "결정론적 분석 시작" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "분석 시작" })).toBeDisabled();
   expect(screen.getByRole("button", { name: "저장소 보관" })).toBeEnabled();
   expect(screen.getByRole("button", { name: "GitHub 동기화" })).toBeEnabled();
   expect(await screen.findByText("아직 완료된 동기화가 없습니다.")).toBeInTheDocument();
@@ -129,11 +129,11 @@ it("shows normalized languages frameworks and databases with evidence paths", as
   expect(await screen.findByRole("heading", { name: "감지된 기술 스택" })).toBeInTheDocument();
   expect(await screen.findByText("React")).toBeInTheDocument();
   expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
-  expect(screen.getByText("증거: frontend/package.json")).toBeInTheDocument();
+  expect(screen.getByText("근거: frontend/package.json")).toBeInTheDocument();
   expect(screen.getByText("프레임워크")).toBeInTheDocument();
   expect(screen.getAllByText("데이터베이스")).toHaveLength(2);
-  expect(await screen.findByRole("heading", { name: "엔지니어링 증거" })).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "결정론적 분석 시작" })).toBeEnabled();
+  expect(await screen.findByRole("heading", { name: "엔지니어링 근거" })).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "분석 시작" })).toBeEnabled();
   expect(screen.getByText("테스트 파일")).toBeInTheDocument();
   expect(screen.getByText("데이터베이스 마이그레이션")).toBeInTheDocument();
   expect(screen.getByText("컨테이너 설정")).toBeInTheDocument();

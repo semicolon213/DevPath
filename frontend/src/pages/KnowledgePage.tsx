@@ -7,6 +7,7 @@ import type { KnowledgeIngestionJob } from "../features/knowledge/api/knowledgeA
 import { knowledgeFreshnessLabel, knowledgeSourceTypeLabel, safeJobErrorMessage } from "../shared/ui/labels";
 import { mutationErrorMessage } from "../shared/api/apiClient";
 import { PageHero } from "../shared/ui/PageHero";
+import { formatDate } from "../shared/ui/formatDate";
 
 export function KnowledgePage() {
   const connections = useConnections();
@@ -50,8 +51,8 @@ export function KnowledgePage() {
       <PageHero>
         <div>
           <p className="eyebrow">지식 수집</p>
-          <h1>지식 작업 공간</h1>
-          <p>공유된 Notion 페이지를 비공개로 수집하고 버전이 있는 청크와 임베딩으로 보관합니다.</p>
+          <h1>지식</h1>
+          <p>공유된 Notion 페이지를 비공개로 수집하고 검색 가능한 단위로 나누어 보관합니다.</p>
         </div>
       </PageHero>
       <p className="state-panel state-panel--compact">검색 결과는 현재 권한이 있는 Notion 문서의 최신 인덱스만 사용합니다. AI 답변 생성에는 아직 연결하지 않습니다.</p>
@@ -85,7 +86,7 @@ export function KnowledgePage() {
         {knowledgeSearch.data?.results.length ? (
           <div className="knowledge-search-results" aria-live="polite">
             <p>
-              {knowledgeSearch.data.resultCount}개 결과 · 정책 {knowledgeSearch.data.policyVersion} · {knowledgeSearch.data.durationMs}ms
+              {knowledgeSearch.data.resultCount}개 결과 · 검색 정책 {knowledgeSearch.data.policyVersion}
             </p>
             <ol>
               {knowledgeSearch.data.results.map((result) => (
@@ -98,7 +99,7 @@ export function KnowledgePage() {
                     <h3>{result.heading ?? result.documentTitle}</h3>
                     <p>{result.excerpt}</p>
                     <div className="connection-actions">
-                      <Link to={`/knowledge/${result.documentId}`}>문서 메타데이터</Link>
+                      <Link to={`/knowledge/${result.documentId}`}>문서 상세</Link>
                       {safeNotionUrl(result.sourceUrl) ? (
                         <a href={result.sourceUrl!} target="_blank" rel="noreferrer">
                           Notion 원문 열기
@@ -138,7 +139,7 @@ export function KnowledgePage() {
                     <div>
                       <h3>{page.title}</h3>
                       <p>
-                        {workspace.workspaceName} · {new Date(page.lastEditedAt).toLocaleString("ko-KR")}
+                        {workspace.workspaceName} · {formatDate(page.lastEditedAt)}
                       </p>
                     </div>
                     <button type="button" disabled={importer.isPending} onClick={() => startImport(workspace.connectionId, page.providerPageId)}>
@@ -166,12 +167,12 @@ export function KnowledgePage() {
                   </div>
                   <h3>{document.title}</h3>
                   <p>
-                    마지막 갱신 {new Date(document.updatedAt).toLocaleString("ko-KR")} · 청크 {document.chunkCount}개
+                    마지막 갱신 {formatDate(document.updatedAt)} · 청크 {document.chunkCount}개
                   </p>
                 </div>
                 <div className="knowledge-document-list__status">
                   <strong>{document.status === "ACTIVE" ? "활성" : "보관됨"}</strong>
-                  <Link to={`/knowledge/${document.documentId}`}>문서 메타데이터 보기</Link>
+                  <Link to={`/knowledge/${document.documentId}`}>문서 상세</Link>
                 </div>
               </article>
             ))}
@@ -201,6 +202,7 @@ function JobPanel({ job, clear }: { job: ReturnType<typeof useKnowledgeJob>; cle
   const value = job.data!;
   return (
     <section className="knowledge-job" aria-live="polite">
+      <p>페이지를 벗어나도 서버에서 수집 작업이 계속됩니다.</p>
       <div>
         <strong>{jobLabel(value)}</strong>
         <span>

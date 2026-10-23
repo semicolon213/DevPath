@@ -49,7 +49,7 @@ export function RecommendationDetailPage() {
               <dd>{recommendation.effortHours}시간</dd>
             </div>
             <div>
-              <dt>결정론적 근거 코드</dt>
+              <dt>근거 코드</dt>
               <dd>
                 <code>{recommendation.rationaleCode}</code>
               </dd>
@@ -85,7 +85,7 @@ export function RecommendationDetailPage() {
         {evidence.length === 0 ? (
           <div className="state-panel">
             <h3>연결된 관찰 근거가 없습니다</h3>
-            <p>이 추천은 현재 Skill Gap을 채울 새로운 근거를 만들도록 안내합니다.</p>
+            <p>이 추천은 현재 부족한 역량을 채울 새로운 근거를 만들도록 안내합니다.</p>
           </div>
         ) : (
           <div className="recommendation-evidence-list">

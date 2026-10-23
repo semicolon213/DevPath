@@ -17,11 +17,11 @@ describe("LearningRoadmapPage", () => {
     vi.stubGlobal("fetch", journeyFetch());
     renderWithProviders(undefined, ["/roadmap"]);
     expect(await screen.findByText(/선택적 AI 학습 가이드는 아래 별도 영역/)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "추천 및 학습 로드맵" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "학습 로드맵" })).toBeInTheDocument();
     expect(screen.getAllByText("Add testing")).toHaveLength(2);
     expect(screen.getByText("높음")).toBeInTheDocument();
     const roadmapRegion = screen.getByRole("heading", { name: "실행 순서" }).closest("section")!;
-    const aiRegion = screen.getByRole("region", { name: "AI 생성 선택적 AI 학습 가이드" });
+    const aiRegion = screen.getByRole("region", { name: "AI 생성 · 설명만 제공 선택적 AI 학습 가이드" });
     expect(roadmapRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(aiRegion).toHaveTextContent("공식 점수나 로드맵 순서를 변경하지 않고");
     const historyRegion = screen.getByRole("heading", { name: "로드맵 이력" }).closest("section")!;

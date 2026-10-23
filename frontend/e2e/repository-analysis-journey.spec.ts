@@ -85,7 +85,7 @@ test("changed result pages have no horizontal overflow and keep single-column mo
       const context = await browser.newContext({ baseURL: test.info().project.use.baseURL, viewport: { width, height: 900 } });
       const page = await context.newPage();
       await installApiFixture(page, []);
-      for (const [path, heading] of [["/analyses/analysis-id", "이 분석의 역량 매트릭스"], ["/skills", "테스트 역량"], ["/roadmap", "실행 순서"], ["/recommendations", "추천 세트 이력"], [`/repositories/${repository.repositoryId}`, "감지된 기술 스택"], ["/skills/skill-id", "평가 추적 정보"], ["/skills/compare?skillMatrixId=matrix-previous-id&skillMatrixId=matrix-id", "역량별 저장 결과"]]) {
+      for (const [path, heading] of [["/analyses/analysis-id", "이 분석의 기술 역량"], ["/skills", "테스트 역량"], ["/roadmap", "실행 순서"], ["/recommendations", "추천 세트 이력"], [`/repositories/${repository.repositoryId}`, "감지된 기술 스택"], ["/skills/skill-id", "평가 추적 정보"], ["/skills/compare?skillMatrixId=matrix-previous-id&skillMatrixId=matrix-id", "역량별 저장 결과"]]) {
         await page.goto(path);
         await expect(page.getByRole("heading", { name: heading })).toBeVisible();
         const size = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
@@ -231,7 +231,7 @@ test("completed onboarding hands the first analysis journey to result workspaces
   await expect(page.getByRole("heading", { name: "첫 분석 준비를 마쳤습니다" })).toBeVisible();
   await expect(page.getByLabel("전체 8단계 중 7단계 완료")).toBeVisible();
   await expect(page.getByRole("list", { name: "온보딩 단계" })).toContainText("목표 회사");
-  await expect(page.getByRole("link", { name: "Skill Matrix" })).toHaveAttribute("href", "/skills");
+  await expect(page.getByRole("region", { name: "분석 결과에서 이어가기" }).getByRole("link", { name: "기술 역량" })).toHaveAttribute("href", "/skills");
   await expectNoAccessibilityViolations(page);
 });
 
@@ -241,7 +241,7 @@ test("shared Notion page becomes a recoverable knowledge ingestion job", async (
   await installApiFixture(page, [], captured, searches);
   await page.goto("/knowledge");
 
-  await expect(page.getByRole("heading", { name: "지식 작업 공간" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "지식", exact: true, level: 1 })).toBeVisible();
   await expect(page.getByLabel("Notion 페이지 가져오기").getByRole("heading", { name: "백엔드 학습 노트" })).toBeVisible();
   await expectNoAccessibilityViolations(page);
 
@@ -294,7 +294,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expect(page.getByRole("heading", { name: repository.fullName })).toBeVisible();
   await expect(page.getByRole("heading", { name: "감지된 기술 스택" })).toBeVisible();
   await expect(page.getByText("React", { exact: true })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "엔지니어링 증거" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "엔지니어링 근거" })).toBeVisible();
   await expectNoAccessibilityViolations(page);
 
   await page.getByRole("link", { name: "스냅샷 상세 보기" }).click();
@@ -309,7 +309,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expectNoAccessibilityViolations(page);
   await page.locator(".workspace-actions").getByRole("link", { name: "저장소 상세" }).click();
 
-  await page.getByRole("button", { name: "결정론적 분석 시작" }).click();
+  await page.getByRole("button", { name: "분석 시작", exact: true }).click();
   await expect(page.getByText("분석이 완료되었습니다.")).toBeVisible();
   await expect(page).toHaveURL(/analysisJobId=analysis-job-id/);
   await expect(page.getByRole("link", { name: "완료된 공식 분석 보기" })).toHaveAttribute("href", "/analyses/analysis-id");
@@ -323,7 +323,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   });
   expect(captured[0].idempotencyKey).toBeTruthy();
 
-  await page.getByRole("link", { name: "분석 이력 보기" }).click();
+  await page.getByText("분석이 완료되었습니다.").getByRole("link", { name: "분석 이력", exact: true }).click();
   await expect(page).toHaveURL(/\/analyses$/);
   await expect(page.getByRole("heading", { name: "분석 이력" })).toBeFocused();
   await page.getByRole("link", { name: "결과 상세" }).click();
@@ -355,7 +355,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await page.setViewportSize({ width: 1280, height: 720 });
 
   await page.goto("/skills");
-  await expect(page.getByRole("heading", { name: "기술 역량 분석" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "기술 역량", exact: true, level: 1 })).toBeVisible();
   await expect(page.getByRole("heading", { name: "테스트 역량" })).toBeVisible();
   await expect(page.locator(".result-basis")).toContainText("정책 skill-matrix-v2");
   await expectNoAccessibilityViolations(page);
@@ -366,7 +366,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expect(page.getByLabel("현재 기술 평가 요약").getByText("50", { exact: true })).toBeVisible();
   await expect(page.getByText("테스트 파일 근거가 확인되었습니다.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "기술 평가 이력" })).toBeVisible();
-  await expect(page.getByText("현재 Matrix")).toBeVisible();
+  await expect(page.getByText("현재 결과", { exact: true })).toBeVisible();
   await expect(page.getByText(/변화량이나 성장 추세는 계산하지 않습니다/)).toBeVisible();
   await expect(page.getByRole("link", { name: "분석 근거 보기" })).toHaveAttribute("href", "/analyses/analysis-id");
   await expectNoAccessibilityViolations(page);
@@ -377,9 +377,9 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expect(page.locator(".result-basis")).toContainText("정책 readiness-v1");
   await expectNoAccessibilityViolations(page);
 
-  await page.getByRole("link", { name: "추천 로드맵 보기" }).click();
+  await page.locator(".skill-next-action").getByRole("link", { name: "학습 로드맵" }).click();
   await expect(page).toHaveURL(/\/roadmap$/);
-  await expect(page.getByRole("heading", { name: "추천 및 학습 로드맵" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "학습 로드맵", exact: true, level: 1 })).toBeVisible();
   await expect(page.locator(".result-basis")).toContainText("추천 정책 recommendation-v1");
   await expect(page.locator(".result-basis")).toContainText("로드맵 정책 roadmap-v1");
   await expect(page.getByRole("heading", { name: "테스트 자동화 강화" }).first()).toBeVisible();
@@ -387,15 +387,16 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expectNoAccessibilityViolations(page);
 
   await page.goto("/recommendations");
-  await expect(page.getByRole("heading", { name: "추천 작업공간" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "recommendation-v1" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "추천", exact: true, level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { level: 3, name: /추천$/ })).toBeVisible();
+  await expect(page.locator(".result-basis")).toContainText("추천 정책 recommendation-v1");
   await expect(page.getByText("지금 할 일")).toBeVisible();
   await expectNoAccessibilityViolations(page);
   await page.getByRole("link", { name: "준비도 근거 보기" }).click();
   await expect(page).toHaveURL(/\/career-readiness\/career-readiness-id$/);
   await expect(page.getByRole("heading", { name: "커리어 준비도 상세" })).toBeFocused();
   await expect(page.getByText("67.5", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "기술 평가와 증거 보기" })).toHaveAttribute("href", "/skills/skill-id");
+  await expect(page.getByRole("link", { name: "기술 평가와 근거 보기" })).toHaveAttribute("href", "/skills/skill-id");
   await expectNoAccessibilityViolations(page);
   await page.goto("/recommendations");
   await page.getByRole("link", { name: "상세 근거 보기" }).click();
@@ -439,7 +440,7 @@ test("reduced-motion users keep the keyboard journey without nonessential transi
   await expect(skipLink).toHaveCSS("transition-duration", "0s");
   await page.keyboard.press("Enter");
   await expect(page.getByRole("main")).toBeFocused();
-  await expect(page.getByRole("button", { name: "결정론적 분석 시작" })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "분석 시작", exact: true })).toBeEnabled();
   await expectNoAccessibilityViolations(page);
 });
 

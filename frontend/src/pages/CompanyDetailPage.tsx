@@ -60,7 +60,7 @@ export function CompanyDetailPage() {
         <div className="section-heading">
           <div>
             <h2>추천 유형 강조 순서</h2>
-            <p>향후 결정론적 추천 정책이 참조할 구성값이며 현재 추천을 생성하지 않습니다.</p>
+            <p>향후 공식 추천 정책이 참조할 구성값이며 현재 추천을 생성하지 않습니다.</p>
           </div>
         </div>
         <ol>

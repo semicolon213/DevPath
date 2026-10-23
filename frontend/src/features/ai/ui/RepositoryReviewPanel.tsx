@@ -1,6 +1,7 @@
 import { useRepositoryReview } from "../model/useRepositoryReview";
 import { AiGeneratedPanel } from "./AiGeneratedPanel";
 import { EvidenceReferences } from "./EvidenceReferences";
+import { categoryLabel } from "../../../shared/ui/labels";
 
 export function RepositoryReviewPanel({ analysisId }: { analysisId: string }) {
   const generation = useRepositoryReview(analysisId);
@@ -24,8 +25,4 @@ function Review({ artifact }: { artifact: NonNullable<ReturnType<typeof useRepos
       <EvidenceReferences references={section.evidenceIds} analysisId={artifact.provenance.analysisId} />
     </section>)}</div>
   </article>;
-}
-
-function categoryLabel(value: string) {
-  return ({ ARCHITECTURE: "아키텍처", TESTING: "테스트", DEVOPS: "DevOps", DOCUMENTATION: "문서화", COLLABORATION: "협업" } as Record<string, string>)[value] ?? value;
 }

@@ -102,7 +102,7 @@ export function ProfilePanel({ embedded = false }: { embedded?: boolean }) {
       <label htmlFor="profile-bio">자기소개</label><p className="field-help" id="profile-bio-help">경험과 관심사를 1,000자 이내로 적어 주세요.</p><textarea ref={bioRef} id="profile-bio" value={bio} maxLength={1000} aria-invalid={Boolean(errors.bio)} aria-describedby={errors.bio ? "profile-bio-help profile-bio-error" : "profile-bio-help"} onChange={event => setBio(event.target.value)} />
       {errors.bio ? <p id="profile-bio-error" className="form-error">{errors.bio}</p> : null}
       <button className={embedded ? "button-secondary" : "button-primary"} disabled={update.isPending}>{update.isPending ? "저장 중…" : "프로필 저장"}</button>
-      {update.isSuccess ? <p role="status">프로필을 저장했습니다.</p> : null}{update.isError ? <p role="alert">프로필 저장에 실패했습니다.</p> : null}
+      {update.isSuccess ? <p role="status">프로필을 저장했습니다.</p> : null}{update.isError ? <p role="alert">프로필을 저장하지 못했습니다. 입력 내용을 확인한 뒤 다시 시도해 주세요.</p> : null}
     </form>
     <div id="targets" className="target-grid">
       <div><label htmlFor="career-target">목표 직무</label><select id="career-target" value={careerId} onChange={event => { setCareerId(event.target.value); setTargetMessage(null); }}><option value="">목표 직무 선택</option>{careers.data.careers.map(value => <option key={value.careerId} value={value.careerId}>{value.localizedName}</option>)}</select><button type="button" disabled={!careerId || careerId === (preferences.data?.careerId ?? "") || career.isPending} onClick={() => { career.reset(); setTargetKind("career"); }}>목표 직무 변경</button><Link to="/careers">직무별 평가 기준 살펴보기</Link></div>

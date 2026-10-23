@@ -25,7 +25,7 @@ it("renders document provenance and chunk metadata without raw content or embedd
   expect(metadataValue("현재 버전")).toHaveTextContent(/^22222222-2222-4222-8222-222222222222$/);
   expect(metadataValue("Notion 원본 ID")).toHaveTextContent(/^notion-page-42$/);
   expect(metadataValue("청크 수")).toHaveTextContent(/^7$/);
-  expect(metadataValue("마지막 갱신").textContent).toBe(new Date(knowledgeDocument.updatedAt).toLocaleString("ko-KR"));
+  expect(metadataValue("마지막 갱신").textContent).toBe(new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(knowledgeDocument.updatedAt)));
   expect(screen.getByText("API 설계")).toBeInTheDocument();
   expect(screen.getByText("색인됨 · 약 21 토큰")).toBeInTheDocument();
   expect(screen.getByText("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")).toBeInTheDocument();

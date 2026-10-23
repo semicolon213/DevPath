@@ -16,7 +16,7 @@ export function RepositoriesPage() {
   const archiveMessageRef = useRef<HTMLParagraphElement>(null);
 
   if (query.isPending) {
-    return <PageState state="loading" title="내 GitHub 저장소" message="내 저장소를 불러오는 중입니다…" />;
+    return <PageState state="loading" title="저장소" message="내 저장소를 불러오는 중입니다." />;
   }
   if (query.isError) {
     return (
@@ -33,10 +33,10 @@ export function RepositoriesPage() {
     <>
       <PageHero
         eyebrow="저장소 작업 공간"
-        title="내 GitHub 저장소"
+        title="저장소"
         description="DevPath에 등록한 저장소와 분석 준비 상태를 한곳에서 확인하세요."
         actions={<>
-          <Link className="button-link button-secondary" to="/skills">기술 분석 보기</Link>
+          <Link className="button-link button-secondary" to="/skills">기술 역량</Link>
           <Link className="button-link button-primary" to="/settings/integrations#github">저장소 추가</Link>
         </>}
       />
@@ -115,7 +115,7 @@ function RepositoryCard({ repository, returnFocusFallback, onArchiveMessage }: {
         <p className="muted">GitHub에서 삭제된 저장소는 로컬에서 복원할 수 없습니다.</p>
       ) : null}
       {repository.lifecycle === "ARCHIVED" && mutation.isError ? <p className="form-error" role="alert">저장소 상태를 변경하지 못했습니다. 다시 시도해 주세요.</p> : null}
-      <ConfirmDialog open={confirmingArchive} title={`${repository.fullName} 저장소를 보관할까요?`} description="활성 목록에서 숨겨지고 새 동기화와 분석을 시작할 수 없습니다. 기존 메타데이터, 불변 스냅샷과 공식 분석 결과는 유지됩니다." confirmLabel="저장소 보관" destructive pending={archive.isPending} error={archive.isError ? "저장소를 보관하지 못했습니다. 다시 시도해 주세요." : undefined} returnFocusFallback={returnFocusFallback} onCancel={() => setConfirmingArchive(false)} onConfirm={() => archive.mutate(repository.repositoryId, { onSuccess: () => { onArchiveMessage(`${repository.fullName} 저장소를 보관했습니다.`); setConfirmingArchive(false); } })} />
+      <ConfirmDialog open={confirmingArchive} title={`${repository.fullName} 저장소를 보관할까요?`} description="기본 목록에서 숨겨지고 동기화가 중지됩니다. 기존 메타데이터, 불변 스냅샷과 공식 분석 결과는 유지됩니다." confirmLabel="저장소 보관" destructive pending={archive.isPending} error={archive.isError ? "저장소를 보관하지 못했습니다. 다시 시도해 주세요." : undefined} returnFocusFallback={returnFocusFallback} onCancel={() => setConfirmingArchive(false)} onConfirm={() => archive.mutate(repository.repositoryId, { onSuccess: () => { onArchiveMessage(`${repository.fullName} 저장소를 보관했습니다.`); setConfirmingArchive(false); } })} />
       <div data-label="작업" className="repository-card__actions">
         <Link to={`/repositories/${repository.repositoryId}`}>상세 보기</Link>
         <button

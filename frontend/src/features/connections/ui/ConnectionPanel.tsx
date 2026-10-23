@@ -12,6 +12,7 @@ import { useImportRepository } from "../../repositories/model/useRepositories";
 import { rateLimitMessage } from "../../../shared/api/apiClient";
 import { useRef, useState } from "react";
 import { ConfirmDialog } from "../../../shared/ui/ConfirmDialog";
+import { formatDate } from "../../../shared/ui/formatDate";
 
 export function ConnectionPanel({ embedded = false }: { embedded?: boolean }) {
   const connections = useConnections();
@@ -77,7 +78,7 @@ export function ConnectionPanel({ embedded = false }: { embedded?: boolean }) {
           </button>
         </div>
       )}
-      {authorize.isError ? <p role="alert">GitHub 연결을 시작하지 못했습니다. 서버 설정을 확인해 주세요.</p> : null}
+      {authorize.isError ? <p role="alert">GitHub 연결을 시작하지 못했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.</p> : null}
       <p ref={disconnectMessageRef} role="status" tabIndex={-1}>{disconnectMessage}</p>
       {importRepository.isSuccess ? (
         <p role="status">
@@ -126,7 +127,7 @@ function NotionConnectionPanel({ connections }: { connections: ReturnType<typeof
     <section id="notion" className="connection-panel" aria-labelledby="notion-connection-title">
       <h2 id="notion-connection-title">Notion 워크스페이스</h2>
       <p>연결에 공유된 페이지의 제목과 수정 시각만 탐색합니다. 페이지 본문은 저장하지 않습니다.</p>
-      {callbackResult === "failed" ? <p role="alert">Notion 연결에 실패했습니다. 권한과 서버 설정을 확인해 주세요.</p> : null}
+      {callbackResult === "failed" ? <p role="alert">Notion 연결에 실패했습니다. 공유 권한을 확인한 뒤 다시 연결해 주세요.</p> : null}
       {callbackResult === "success" ? <p role="status">Notion 워크스페이스 연결을 완료했습니다.</p> : null}
       <div className="connection-status">
         <div>
@@ -146,7 +147,7 @@ function NotionConnectionPanel({ connections }: { connections: ReturnType<typeof
           </button>
         </div>
       )}
-      {authorize.isError ? <p role="alert">Notion 연결을 시작하지 못했습니다. 서버 설정을 확인해 주세요.</p> : null}
+      {authorize.isError ? <p role="alert">Notion 연결을 시작하지 못했습니다. 잠시 후 다시 시도하거나 관리자에게 문의해 주세요.</p> : null}
       <p ref={disconnectMessageRef} role="status" tabIndex={-1}>{disconnectMessage}</p>
       {active ? <NotionWorkspaceList workspaces={workspaces} /> : null}
       {active ? <div className="connection-danger">
@@ -168,7 +169,7 @@ function NotionWorkspaceList({ workspaces }: { workspaces: ReturnType<typeof use
   if (workspaces.data.workspaces.length === 0) return <p>연결된 Notion 워크스페이스가 없습니다.</p>;
   return <div className="repository-list notion-page-list">
     {workspaces.data.workspaces.map(workspace => <div key={workspace.workspaceId}>
-      <div className="section-heading"><div><h3>{workspace.workspaceName}</h3><p>공유된 활성 항목 {activeNotionPages(workspace.pages).length}개 · 마지막 확인 {new Date(workspace.discoveredAt).toLocaleString("ko-KR")}</p></div>
+      <div className="section-heading"><div><h3>{workspace.workspaceName}</h3><p>공유된 활성 항목 {activeNotionPages(workspace.pages).length}개 · 마지막 확인 {formatDate(workspace.discoveredAt)}</p></div>
         <button className="button-secondary" type="button" disabled={workspaces.isFetching} onClick={() => workspaces.refetch()}>
           {workspaces.isFetching ? "새로 고침 중…" : "페이지 목록 새로 고침"}
         </button>
@@ -177,7 +178,7 @@ function NotionWorkspaceList({ workspaces }: { workspaces: ReturnType<typeof use
         {activeNotionPages(workspace.pages).map(page => <li key={page.providerPageId}>
           <div>
             {safeNotionUrl(page.url) ? <a href={safeNotionUrl(page.url)!} target="_blank" rel="noreferrer">{page.title}</a> : <strong>{page.title}</strong>}
-            <span>{page.objectType === "PAGE" ? "페이지" : "데이터 소스"} · {new Date(page.lastEditedAt).toLocaleString("ko-KR")}</span>
+            <span>{page.objectType === "PAGE" ? "페이지" : "데이터 소스"} · {formatDate(page.lastEditedAt)}</span>
           </div>
         </li>)}
       </ul>}
@@ -230,7 +231,7 @@ function RepositoryList({
           <h3>접근 가능한 저장소</h3>
           <p>분석할 저장소를 DevPath 작업 공간에 먼저 추가하세요.</p>
         </div>
-        <Link to="/repositories">내 저장소 보기</Link>
+        <Link to="/repositories">저장소 확인</Link>
       </div>
       <ul>
         {repositories.data.repositories.map(repository => (

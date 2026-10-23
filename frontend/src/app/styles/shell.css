@@ -51,8 +51,6 @@
 /* No accent stripe: the tinted surface and the eyebrow carry the state. */
 .page-state { background: var(--background-subtle); margin-inline: auto; max-width: 760px; padding: clamp(28px, 6vw, 56px); text-align: left; }
 
-.page-state h1 { font-size: clamp(2.25rem, 5vw, 2.75rem); letter-spacing: -.03em; line-height: 1.2; margin: 6px 0 12px; }
-
 .page-state > .button-link, .page-state > button { margin-top: 12px; }
 
 .page-state--error { background: var(--danger-surface); }

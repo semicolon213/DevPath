@@ -129,7 +129,7 @@ it("shows an active repository-access connection reported by the server", async 
   expect(screen.getByRole("button", { name: "연결 해제" }).closest(".connection-danger")).not.toBeNull();
   expect(await screen.findByRole("link", { name: "devpath-user/devpath" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "DevPath에 추가" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "내 저장소 보기" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "저장소 확인" })).toBeInTheDocument();
 });
 
 it.each([

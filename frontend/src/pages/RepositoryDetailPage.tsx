@@ -59,11 +59,11 @@ export function RepositoryDetailPage() {
   }, [analysisJob.data?.status, queryClient]);
 
   if (query.isPending) {
-    return <><Breadcrumbs items={[{ label: "저장소", to: "/repositories" }, { label: "저장소 상세" }]} /><PageState state="loading" title="저장소 상세" message="저장소 상세 정보를 불러오는 중입니다…" /></>;
+    return <><Breadcrumbs items={[{ label: "저장소", to: "/repositories" }, { label: "저장소 상세" }]} /><PageState state="loading" title="저장소 상세" message="저장소 상세 정보를 불러오는 중입니다." /></>;
   }
   if (query.isError) {
     return (
-      <><Breadcrumbs items={[{ label: "저장소", to: "/repositories" }, { label: "저장소 상세" }]} /><PageState state="error" title="저장소를 표시할 수 없습니다" error={query.error} retry={() => query.refetch()} backTo="/repositories" backLabel="내 저장소로 돌아가기" /></>
+      <><Breadcrumbs items={[{ label: "저장소", to: "/repositories" }, { label: "저장소 상세" }]} /><PageState state="error" title="저장소를 표시할 수 없습니다" error={query.error} retry={() => query.refetch()} backTo="/repositories" backLabel="저장소 확인" /></>
     );
   }
 
@@ -126,10 +126,11 @@ export function RepositoryDetailPage() {
       </PageHero>
 
       <p ref={lifecycleMessageRef} role="status" tabIndex={-1}>{lifecycleMessage}</p>
-      <ConfirmDialog open={confirmingArchive} title="이 저장소를 DevPath에서 보관할까요?" description="활성 목록에서 숨겨지고 새 동기화와 분석을 시작할 수 없습니다. 기존 메타데이터, 불변 스냅샷과 공식 분석 결과는 유지됩니다." confirmLabel="저장소 보관" destructive pending={archive.isPending} error={archive.isError ? "저장소를 보관하지 못했습니다. 잠시 후 다시 시도해 주세요." : undefined} returnFocusFallback={lifecycleMessageRef} onCancel={() => setConfirmingArchive(false)} onConfirm={changeLifecycle} />
+      <ConfirmDialog open={confirmingArchive} title="이 저장소를 DevPath에서 보관할까요?" description="기본 목록에서 숨겨지고 동기화가 중지됩니다. 기존 메타데이터, 불변 스냅샷과 공식 분석 결과는 유지됩니다." confirmLabel="저장소 보관" destructive pending={archive.isPending} error={archive.isError ? "저장소를 보관하지 못했습니다. 잠시 후 다시 시도해 주세요." : undefined} returnFocusFallback={lifecycleMessageRef} onCancel={() => setConfirmingArchive(false)} onConfirm={changeLifecycle} />
 
       {job.data ? (
         <section className="sync-panel" aria-live="polite">
+          <p>페이지를 벗어나도 서버에서 동기화 작업이 계속됩니다.</p>
           <div>
             <strong>{jobLabel(job.data.status, job.data.phase)}</strong>
             <span>시도 {job.data.attemptCount}/{job.data.maxAttempts}</span>
@@ -162,16 +163,17 @@ export function RepositoryDetailPage() {
 
       {analysisJob.data ? (
         <section className="sync-panel analysis-panel" aria-live="polite">
+          <p>페이지를 벗어나도 서버에서 분석 작업이 계속됩니다.</p>
           <div>
             <strong>{analysisJobLabel(analysisJob.data.status, analysisJob.data.phase)}</strong>
             <span>시도 {analysisJob.data.attemptCount}/{analysisJob.data.maxAttempts}</span>
           </div>
           <progress aria-label="저장소 분석 진행률" max="100" value={analysisJob.data.progressPercent}>{analysisJob.data.progressPercent}%</progress>
           {analysisJob.data.status === "succeeded" ? (
-            <p>분석이 완료되었습니다. {analysisRouteFromResult(analysisJob.data.resultResourceUrl) ? <><Link to={analysisRouteFromResult(analysisJob.data.resultResourceUrl)!}>완료된 공식 분석 보기</Link> · </> : null}<Link to="/skills">스킬 분석 결과 보기</Link> · <Link to="/analyses">분석 이력 보기</Link></p>
+            <p>분석이 완료되었습니다. {analysisRouteFromResult(analysisJob.data.resultResourceUrl) ? <><Link to={analysisRouteFromResult(analysisJob.data.resultResourceUrl)!}>완료된 공식 분석 보기</Link> · </> : null}<Link to="/skills">기술 역량</Link> · <Link to="/analyses">분석 이력</Link></p>
           ) : null}
           {analysisJob.data.status === "failed" ? (
-            <p role="alert">결정론적 분석에 실패했습니다. 잠시 후 다시 요청해 주세요.</p>
+            <p role="alert">분석에 실패했습니다. 잠시 후 다시 요청해 주세요.</p>
           ) : null}
         </section>
       ) : analysisJob.isError ? (
@@ -206,7 +208,7 @@ export function RepositoryDetailPage() {
           <p className="large-status">{repositorySyncStatusLabel(repository.syncStatus)}</p>
           <p>
             GitHub 기본 브랜치·브랜치 목록·커밋 이력은 백그라운드 작업으로 수집됩니다.
-            공식 점수와 기술 분석은 이후 결정론적 Rule Engine 단계에서 생성됩니다.
+            공식 점수와 기술 분석은 이후 분석 단계에서 생성됩니다.
           </p>
           <p className="muted">공식 결과는 현재 불변 스냅샷과 버전이 고정된 Rule Engine으로만 계산됩니다.</p>
           <button
@@ -222,9 +224,9 @@ export function RepositoryDetailPage() {
               }, { replace: true })
             })}
           >
-            {requestAnalysis.isPending ? "분석 요청 중…" : "결정론적 분석 시작"}
+            {requestAnalysis.isPending ? "분석 요청 중…" : "분석 시작"}
           </button>
-          {repositoryArchived ? <p className="muted">보관된 저장소는 새 동기화와 분석을 시작할 수 없습니다. 기존 스냅샷과 분석 결과는 계속 조회할 수 있습니다.</p> : null}
+          {repositoryArchived ? <p className="muted">보관된 저장소는 동기화가 중지됩니다. 기존 스냅샷과 분석 결과는 계속 조회할 수 있습니다.</p> : null}
           {repositoryUnavailable ? <p className="muted">GitHub에서 삭제된 저장소는 새 작업을 시작할 수 없습니다. 보존된 과거 결과만 조회할 수 있습니다.</p> : null}
         </div>
       </section>
@@ -233,7 +235,7 @@ export function RepositoryDetailPage() {
         <div className="section-heading">
           <div>
             <h2 id="technology-summary-title">감지된 기술 스택</h2>
-            <p>GitHub 언어 통계를 현재 불변 스냅샷에 연결해 결정론적으로 정규화한 결과입니다.</p>
+            <p>GitHub 언어 통계를 현재 불변 스냅샷에 연결해 정규화한 결과입니다.</p>
           </div>
           {technologies.data?.primaryLanguage ? (
             <span className="status-badge status-badge--info">주 언어 {technologies.data.primaryLanguage}</span>
@@ -264,7 +266,7 @@ export function RepositoryDetailPage() {
                   ? `${technology.byteCount.toLocaleString("ko-KR")}바이트`
                   : `의존성 ${technology.evidenceLabel}`}
               </small>
-              {technology.evidencePaths.length > 0 ? <small>증거: {technology.evidencePaths.join(", ")}</small> : null}
+              {technology.evidencePaths.length > 0 ? <small>근거: {technology.evidencePaths.join(", ")}</small> : null}
             </article>
           ))}
         </div>
@@ -276,13 +278,13 @@ export function RepositoryDetailPage() {
       <section className="snapshot-section" aria-labelledby="engineering-evidence-title">
         <div className="section-heading">
           <div>
-            <h2 id="engineering-evidence-title">엔지니어링 증거</h2>
+            <h2 id="engineering-evidence-title">엔지니어링 근거</h2>
             <p>파일 구조와 동기화 메타데이터에서 추출한 측정 가능한 신호입니다. 아직 공식 점수는 아닙니다.</p>
           </div>
         </div>
-        {repository.syncStatus !== "SYNCHRONIZED" ? <p className="muted">저장소를 동기화하면 증거가 표시됩니다.</p> : null}
-        {evidence.isPending && repository.syncStatus === "SYNCHRONIZED" ? <p role="status">엔지니어링 증거를 불러오는 중입니다.</p> : null}
-        {evidence.isError ? <p role="alert">현재 스냅샷에는 파일 증거가 없습니다. 다시 동기화해 주세요.</p> : null}
+        {repository.syncStatus !== "SYNCHRONIZED" ? <p className="muted">저장소를 동기화하면 근거가 표시됩니다.</p> : null}
+        {evidence.isPending && repository.syncStatus === "SYNCHRONIZED" ? <p role="status">엔지니어링 근거를 불러오는 중입니다.</p> : null}
+        {evidence.isError ? <p role="alert">현재 스냅샷에는 파일 근거가 없습니다. 다시 동기화해 주세요.</p> : null}
         <div className="evidence-grid">
           {evidence.data?.categories.map(category => (
             <article className="evidence-card" key={category.category}>
@@ -293,12 +295,12 @@ export function RepositoryDetailPage() {
                     <div>
                       <strong>{evidenceSignalLabel(signal.signalKey)}</strong>
                       <span className={`status-badge ${signal.present ? "status-badge--active" : ""}`}>
-                        {signal.present ? "감지됨" : "증거 없음"}
+                        {signal.present ? "감지됨" : "근거 없음"}
                       </span>
                     </div>
                     {signal.count > 0 ? <small>관측 {signal.count.toLocaleString("ko-KR")}건</small> : null}
                     {signal.observedValue ? <small>{signal.observedValue}</small> : null}
-                    {signal.evidencePaths.length > 0 ? <small>증거: {signal.evidencePaths.join(", ")}</small> : null}
+                    {signal.evidencePaths.length > 0 ? <small>근거: {signal.evidencePaths.join(", ")}</small> : null}
                   </li>
                 ))}
               </ul>
@@ -379,7 +381,7 @@ export function RepositoryDetailPage() {
         ...(evidence.data ? [{ label: "근거 추출기", value: evidence.data.extractorVersion }] : [])
       ]} /> : null}
       {!repositoryArchived && !repositoryUnavailable ? <section className="danger-zone" aria-labelledby="repository-danger-title">
-        <div><h2 id="repository-danger-title">위험 영역</h2><p>저장소를 보관하면 새 동기화와 분석을 시작할 수 없습니다.</p></div>
+        <div><h2 id="repository-danger-title">위험 영역</h2><p>저장소를 보관하면 기본 목록에서 숨겨지고 동기화가 중지됩니다.</p></div>
         <button type="button" className="button-danger-secondary" disabled={actionDisabled} onClick={() => { archive.reset(); setLifecycleMessage(""); setConfirmingArchive(true); }}>
           {lifecycleMutation.isPending ? "처리 중…" : actionLabel}
         </button>
@@ -410,10 +412,10 @@ function jobLabel(status: string, phase: string) {
 }
 
 function analysisJobLabel(status: string, phase: string) {
-  if (status === "succeeded") return "결정론적 분석 완료";
-  if (status === "failed") return "결정론적 분석 실패";
+  if (status === "succeeded") return "분석 완료";
+  if (status === "failed") return "분석 실패";
   if (phase === "RETRY_WAIT") return "분석 재시도 대기 중";
-  if (status === "running") return "규칙 평가와 스킬 매트릭스 생성 중";
+  if (status === "running") return "규칙 평가와 기술 역량 생성 중";
   return "분석 대기 중";
 }
 

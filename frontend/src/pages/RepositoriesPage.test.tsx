@@ -34,7 +34,7 @@ it("renders a visible repository workspace with summaries and registered reposit
   renderWithProviders(<RepositoriesPage />, ["/repositories"]);
 
   expect(await screen.findByRole("heading", { name: "등록된 저장소" })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: "내 GitHub 저장소" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "저장소" })).toBeInTheDocument();
   expect(within(screen.getByRole("region", { name: "저장소 요약" })).getByText("등록된 저장소")).toBeInTheDocument();
   expect(screen.getByText("현재 불러온 저장소")).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "owner/devpath" })).toBeInTheDocument();
@@ -43,7 +43,7 @@ it("renders a visible repository workspace with summaries and registered reposit
   expect(screen.queryByText("동기화 상태")).not.toBeInTheDocument();
   expect(screen.getByRole("checkbox", { name: "보관 저장소 포함" })).not.toBeChecked();
   expect(screen.getByRole("link", { name: "저장소 추가" })).toHaveAttribute("href", "/settings/integrations#github");
-  expect(screen.getByRole("link", { name: "기술 분석 보기" })).not.toHaveClass("button-primary");
+  expect(screen.getByRole("link", { name: "기술 역량" })).not.toHaveClass("button-primary");
   expect(screen.getByText("불러온 저장소 중 최근 동기화")).toBeInTheDocument();
   expect(screen.getByText(/· 등록/).querySelector("time")).toHaveAttribute("dateTime");
 });
@@ -76,7 +76,7 @@ it("keeps the repository heading visible while loading and retries a network fai
     }));
   vi.stubGlobal("fetch", fetchMock);
   renderWithProviders(<RepositoriesPage />, ["/repositories"]);
-  expect(screen.getByRole("heading", { name: "내 GitHub 저장소" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "저장소" })).toBeInTheDocument();
   expect(await screen.findByRole("heading", { name: "서버에 연결할 수 없습니다." })).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(1);
   fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));

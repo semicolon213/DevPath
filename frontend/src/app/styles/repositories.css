@@ -43,6 +43,7 @@
 .repository-card__identity { min-width: 0; }
 
 .repository-card__identity h3 { font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; margin: 0 0 4px; overflow-wrap: anywhere; }
+.repository-card__identity h3 a { align-items: center; display: inline-flex; min-height: 44px; }
 
 .repository-card__identity > span, .repository-card time { color: var(--text-muted); font-size: .85rem; }
 

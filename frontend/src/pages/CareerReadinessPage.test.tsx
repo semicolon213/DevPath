@@ -25,17 +25,17 @@ describe("CareerReadinessPage", () => {
     expect(await screen.findByText("67.5")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "커리어 준비도" })).toBeInTheDocument();
     expect(screen.getByText("일부 충족")).toBeInTheDocument();
-    expect(document.querySelector(".result-basis")).toHaveTextContent("정책 readiness-v1");
+    expect(document.querySelector(".result-basis")).toHaveTextContent("준비도 정책 readiness-v1");
     expect(document.querySelector(".page-hero .analysis-version")).not.toBeInTheDocument();
     expect(screen.getByRole("img", { name: "테스트 실제 점수 50점, 기준 60점" }).querySelector(".readiness-gap__reference")).toHaveStyle({ left: "60%" });
     expect(screen.getByRole("img", { name: "테스트 실제 점수 50점, 기준 60점" }).closest("article")).toHaveTextContent("50 / 기준 60 · 일부 충족");
-    const missing = screen.getByRole("img", { name: "DevOps: 근거 없음" }).closest("article")!;
+    const missing = screen.getByRole("img", { name: "DevOps: 관찰 없음" }).closest("article")!;
     expect(missing.querySelector(".readiness-gap__track--empty")).toBeInTheDocument();
     expect(missing).not.toHaveTextContent("0 / 기준");
     expect(screen.getByText("관련 근거를 연결하면 평가됩니다.")).toBeInTheDocument();
     expect(document.querySelectorAll(".button-primary")).toHaveLength(1);
     const officialRegion = screen.getByRole("heading", { name: "역량 비교" }).closest("section")!;
-    const aiRegion = screen.getByRole("region", { name: "AI 생성 커리어 코칭" });
+    const aiRegion = screen.getByRole("region", { name: "AI 생성 · 설명만 제공 커리어 코칭" });
     expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -43,7 +43,7 @@ describe("CareerReadinessPage", () => {
     vi.stubGlobal("fetch", vi.fn(() => Promise.resolve(Response.json({ error: { code: "NOT_FOUND" } }, { status: 404 }))));
     renderWithProviders(undefined, ["/career-readiness"]);
     expect(await screen.findByRole("heading", { name: "아직 준비도 결과가 없습니다" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "분석 준비" })).toHaveAttribute("href", "/repositories");
+    expect(screen.getByRole("link", { name: "저장소 확인" })).toHaveAttribute("href", "/repositories");
   });
 
   it("shows the request reference for an internal readiness failure", async () => {

@@ -23,6 +23,7 @@
 .skill-card:first-child { border-top: 0; }
 
 .skill-card__heading { grid-column: 1; }
+.skill-card__heading h3 a { align-items: center; display: inline-flex; min-height: 44px; }
 
 .skill-card .evidence-status, .skill-card .skill-metadata, .skill-card details { grid-column: 3; }
 
@@ -50,7 +51,7 @@
 
 .skill-meter progress { height: 12px; width: 100%; }
 
-.skill-meter--empty { border: 1px dashed var(--border-strong); border-radius: var(--radius-pill); color: var(--text-muted); min-height: 34px; padding: 5px 10px; }
+.skill-detail-score > div:first-child .score-none-label, .skill-score-row .score-none-label, .official-score .score-none-label, .comparison-table td .score-none-label { color: var(--text-primary); font-size: 1.25rem; font-weight: 700; letter-spacing: 0; }
 
 .skill-metadata, .evidence-details { display: grid; gap: 10px; margin: 0; }
 

@@ -3,8 +3,6 @@ import type { GenerationJob } from "../api/generationApi";
 import { mutationErrorMessage } from "../../../shared/api/apiClient";
 
 type Messages = {
-  queued?: string;
-  running?: string;
   canceled: string;
   failed: string;
   rejected: string;
@@ -30,14 +28,13 @@ type Props = {
   onCancel: () => void;
   onRefetchJob: () => void;
   onRefetchArtifact: () => void;
-  badgeLabel?: string;
   children?: ReactNode;
 };
 
 export function AiGeneratedPanel({
   title, description, actionLabel, messages, job, generatedAt, validationStatus,
   requestPending, requestError, jobError, artifactPending, artifactError, cancelPending,
-  onRequest, onReset, onCancel, onRefetchJob, onRefetchArtifact, badgeLabel = "AI 생성", children
+  onRequest, onReset, onCancel, onRefetchJob, onRefetchArtifact, children
 }: Props) {
   const id = useId();
   const badgeId = `${id}-badge`;
@@ -48,7 +45,7 @@ export function AiGeneratedPanel({
   return <section className="ai-generated-panel" aria-labelledby={`${badgeId} ${titleId}`}>
     <div className="section-heading ai-generated-panel__heading">
       <div>
-        <span id={badgeId} className="ai-generated-panel__badge">{badgeLabel}</span>
+        <span id={badgeId} className="ai-generated-panel__badge">AI 생성 · 설명만 제공</span>
         <h2 id={titleId}>{title}</h2>
         <p>{description}</p>
       </div>
@@ -66,6 +63,7 @@ export function AiGeneratedPanel({
     {Boolean(requestError) && <Failure message={mutationErrorMessage(requestError, messages.failed)} retry={onRequest} />}
     {job && (job.status === "QUEUED" || job.status === "RUNNING") && <div className="state-panel" role="status">
       <p>{generationStateLabel(job.status)}</p>
+      <p>페이지를 벗어나도 서버에서 작업이 계속됩니다.</p>
       <button type="button" disabled={cancelPending} onClick={onCancel}>생성 취소</button>
     </div>}
     {job?.status === "CANCELED" && <div className="state-panel"><p>{messages.canceled}</p>

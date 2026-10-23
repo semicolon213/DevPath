@@ -3,7 +3,7 @@ import { LearningRecommendationPanel } from "../features/ai/ui/LearningRecommend
 import type { Recommendation, RoadmapStep } from "../features/recommendations/api/recommendationApi";
 import { useArchiveRoadmap, useRecommendationJourney } from "../features/recommendations/model/useRecommendationJourney";
 import { ApiError } from "../shared/api/apiClient";
-import { categoryLabel, priorityLabel, recommendationTypeLabel } from "../shared/ui/labels";
+import { categoryLabel, difficultyLabel, priorityLabel, recommendationTypeLabel, roadmapStatusLabel, roadmapStepStatusLabel } from "../shared/ui/labels";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { PageState } from "../shared/ui/PageState";
 import { PageHero } from "../shared/ui/PageHero";
@@ -15,16 +15,16 @@ export function LearningRoadmapPage() {
   const [confirmingArchive, setConfirmingArchive] = useState(false);
   const [archiveMessage, setArchiveMessage] = useState("");
   const archiveMessageRef = useRef<HTMLParagraphElement>(null);
-  if (query.isPending) return <PageState state="loading" title="추천 및 학습 로드맵" message="추천과 학습 로드맵을 불러오는 중입니다…" />;
-  if (query.isError) return query.error instanceof ApiError && query.error.status === 404 ? <PageState state="empty" title="아직 추천 로드맵이 없습니다" description="지원 직무를 선택하고 새 분석을 완료하면 자동 생성됩니다." actionTo="/repositories" actionLabel="분석 준비" /> : <PageState state="error" title="추천 로드맵을 표시할 수 없습니다" errorTitle="추천 로드맵을 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} />;
+  if (query.isPending) return <PageState state="loading" title="학습 로드맵" message="추천과 학습 로드맵을 불러오는 중입니다." />;
+  if (query.isError) return query.error instanceof ApiError && query.error.status === 404 ? <PageState state="empty" title="아직 학습 로드맵이 없습니다" description="지원 직무를 선택하고 새 분석을 완료하면 자동 생성됩니다." actionTo="/repositories" actionLabel="저장소 확인" /> : <PageState state="error" title="학습 로드맵을 표시할 수 없습니다" errorTitle="학습 로드맵을 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} />;
   const { recommendations, roadmap, roadmaps } = query.data;
   return (
     <>
       <PageHero>
         <div>
           <p className="eyebrow">공식 학습 계획</p>
-          <h1>추천 및 학습 로드맵</h1>
-          <p>공식 skill gap과 승인된 정책으로 생성된 로드맵입니다. 선택적 AI 학습 가이드는 아래 별도 영역에서 제공합니다.</p>
+          <h1>학습 로드맵</h1>
+          <p>공식 역량 차이와 승인된 정책으로 생성된 로드맵입니다. 선택적 AI 학습 가이드는 아래 별도 영역에서 제공합니다.</p>
         </div>
       </PageHero>
       {roadmap === null ? (
@@ -62,7 +62,7 @@ export function LearningRoadmapPage() {
                 <div className="section-heading">
                   <div>
                     <h2 id="recommendations-title">우선 추천</h2>
-                    <p>Missing, Weak, Partial 순서와 직무 가중치·선행 순서를 반영합니다.</p>
+                    <p>관찰 없음 → 약함 → 일부 충족 순서와 직무 가중치·선행 순서를 반영합니다.</p>
                   </div>
                 </div>
                 <ol className="roadmap-recommendation-list">
@@ -75,7 +75,7 @@ export function LearningRoadmapPage() {
                 <div className="section-heading">
                   <div>
                     <h2 id="roadmap-title">실행 순서</h2>
-                    <p>앞 단계가 다음 단계의 명시적 prerequisite로 연결됩니다.</p>
+                    <p>앞 단계가 다음 단계의 명시적 선행 단계로 연결됩니다.</p>
                   </div>
                 </div>
                 <ol className="roadmap-step-list">
@@ -139,7 +139,7 @@ export function LearningRoadmapPage() {
             {roadmaps.map((item) => (
               <li key={item.roadmapId}>
                 <div>
-                  <strong>{item.policyVersion}</strong>
+                  <strong>{formatDateTime(item.updatedAt)} 로드맵</strong>
                   <span>{roadmapStatusLabel(item.status)}</span>
                 </div>
                 <p>
@@ -212,22 +212,6 @@ function formatNumber(value: number) {
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
-function difficultyLabel(value: RoadmapStep["difficulty"]) {
-  return { BEGINNER: "입문", INTERMEDIATE: "중급", ADVANCED: "고급" }[value];
-}
 function stepStatus(value: RoadmapStep["status"]) {
-  return {
-    COMPLETED: { icon: "✓", label: "완료" },
-    IN_PROGRESS: { icon: "◷", label: "진행 중" },
-    NOT_STARTED: { icon: "○", label: "예정" },
-    SKIPPED: { icon: "↷", label: "건너뜀" },
-  }[value];
-}
-function roadmapStatusLabel(value: "CREATED" | "IN_PROGRESS" | "COMPLETED" | "ARCHIVED") {
-  return {
-    CREATED: "생성됨",
-    IN_PROGRESS: "진행 중",
-    COMPLETED: "완료",
-    ARCHIVED: "보관됨",
-  }[value];
+  return { COMPLETED: { icon: "✓", label: roadmapStepStatusLabel(value) }, IN_PROGRESS: { icon: "◷", label: roadmapStepStatusLabel(value) }, NOT_STARTED: { icon: "○", label: roadmapStepStatusLabel(value) }, SKIPPED: { icon: "↷", label: roadmapStepStatusLabel(value) } }[value];
 }

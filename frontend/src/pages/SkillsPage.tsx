@@ -3,7 +3,7 @@ import type { SkillAssessment } from "../features/skills/api/skillMatrixApi";
 import { useCurrentSkillMatrix } from "../features/skills/model/useSkillMatrix";
 import { ApiError } from "../shared/api/apiClient";
 import { SkillExplanationPanel } from "../features/ai/ui/SkillExplanationPanel";
-import { categoryLabel, levelLabel, skillNameLabel } from "../shared/ui/labels";
+import { categoryLabel, growthTrendLabel, levelLabel, skillNameLabel, skillStateLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
 import { PageHero } from "../shared/ui/PageHero";
 import { ResultBasis } from "../shared/ui/ResultBasis";
@@ -13,12 +13,12 @@ export function SkillsPage() {
   const query = useCurrentSkillMatrix();
 
   if (query.isPending) {
-    return <PageState state="loading" title="기술 역량 분석" message="최신 기술 분석 결과를 불러오는 중입니다…" />;
+    return <PageState state="loading" title="기술 역량" message="최신 기술 역량 결과를 불러오는 중입니다." />;
   }
   if (query.isError) {
     return query.error instanceof ApiError && query.error.status === 404
-      ? <PageState state="empty" title="아직 기술 분석 결과가 없습니다" description="GitHub 저장소를 동기화하고 결정론적 분석이 완료되면 이곳에 결과가 표시됩니다." actionTo="/repositories" actionLabel="저장소로 이동" />
-      : <PageState state="error" title="기술 분석 결과를 표시할 수 없습니다" errorTitle="기술 분석을 불러오지 못했습니다" description="기존 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} />;
+      ? <PageState state="empty" title="아직 기술 역량 결과가 없습니다" description="GitHub 저장소를 동기화하고 분석이 완료되면 이곳에 결과가 표시됩니다." actionTo="/repositories" actionLabel="저장소 확인" />
+      : <PageState state="error" title="기술 역량 결과를 표시할 수 없습니다" errorTitle="기술 역량을 불러오지 못했습니다" description="기존 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} />;
   }
 
   const matrix = query.data;
@@ -30,7 +30,7 @@ export function SkillsPage() {
       <PageHero>
         <div>
           <p className="eyebrow">공식 기술 역량 결과</p>
-          <h1>기술 역량 분석</h1>
+          <h1>기술 역량</h1>
           <p>저장소에서 확인된 근거를 버전이 고정된 평가 규칙으로 계산한 공식 결과입니다.</p>
         </div>
         <div>
@@ -73,13 +73,13 @@ export function SkillsPage() {
       </section>
 
       <SkillExplanationPanel skillMatrixId={matrix.skillMatrixId} />
-      <ResultBasis items={[{ label: "분석 기준 시각", value: <time dateTime={matrix.generatedAt}>{formatDateTime(matrix.generatedAt)}</time> }, { label: "정책", value: matrix.policyVersion }, { label: "규칙", value: matrix.ruleSetVersion }]} />
+      <ResultBasis items={[{ label: "분석 기준 시각", value: <time dateTime={matrix.generatedAt}>{formatDateTime(matrix.generatedAt)}</time> }, { label: "Skill Matrix 정책", value: matrix.policyVersion }, { label: "규칙 버전", value: matrix.ruleSetVersion }]} />
     </>
   );
 }
 
 function SkillCard({ skill }: { skill: SkillAssessment }) {
-  const state = skill.strength ? "강점" : skill.weakness ? "개선 필요" : "성장 중";
+  const state = skillStateLabel(skill.strength, skill.weakness);
   return (
     <article className={`skill-card skill-card--${skill.strength ? "strength" : skill.weakness ? "weakness" : "neutral"}`}>
       <div className="skill-card__heading">
@@ -89,22 +89,22 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
         </div>
         <span className="skill-flag">{state}</span>
       </div>
-      <div className="skill-card__score"><div className="skill-score-row">
+      <div className="skill-card__score">{skill.evidenceStatus === "NONE" ? <div className="skill-score-row"><strong className="score-none-label">근거 없음</strong></div> : <><div className="skill-score-row">
         <strong>{formatScore(skill.score)}</strong><span>{levelLabel(skill.level)}</span>
-      </div>
-      {skill.evidenceStatus !== "NONE" ? <label className="skill-meter"><span>공식 점수</span><progress max="100" value={skill.score}>{skill.score}점</progress></label> : <div className="skill-meter skill-meter--empty" role="img" aria-label="공식 점수: 근거 없음. 근거를 추가하면 공식 점수를 표시합니다."><span>근거를 추가하면 공식 점수를 표시합니다.</span></div>}</div>
+      </div><label className="skill-meter"><span>공식 점수</span><progress max="100" value={skill.score}>{skill.score}점</progress></label></>}</div>
       <EvidenceStatus status={skill.evidenceStatus} />
       <dl className="skill-metadata">
-        <div><dt>근거 신뢰도</dt><dd>{formatScore(skill.confidence)}%</dd></div>
+        <div><dt>신뢰도</dt><dd>{formatScore(skill.confidence)}%</dd></div>
         <div><dt>연결된 근거</dt><dd>{skill.evidenceIds.length}개</dd></div>
         <div><dt>분석 저장소</dt><dd>{skill.repositoryIds.length}개</dd></div>
-        <div><dt>성장 추세</dt><dd>{growthLabel(skill.growthTrend)}</dd></div>
+        <div><dt>성장 추세</dt><dd>{growthTrendLabel(skill.growthTrend)}</dd></div>
       </dl>
       <details>
         <summary>근거와 계산 기준 보기</summary>
         <dl className="evidence-details">
           <div><dt>평가 참조</dt><dd><code>{skill.aggregateRuleResultReference}</code></dd></div>
           <div><dt>규칙 버전</dt><dd>{skill.ruleSetVersion}</dd></div>
+          {skill.evidenceStatus === "NONE" ? <div><dt>저장된 공식 점수</dt><dd>{formatScore(skill.score)}</dd></div> : null}
           <div><dt>근거 ID</dt><dd>{skill.evidenceIds.length ? skill.evidenceIds.join(", ") : "직접 근거 없음"}</dd></div>
         </dl>
       </details>
@@ -114,10 +114,6 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
 
 function Summary({ label, value }: { label: string; value: number }) {
   return <div><strong>{value}</strong><span>{label}</span></div>;
-}
-
-function growthLabel(trend: SkillAssessment["growthTrend"]) {
-  return { UNAVAILABLE: "비교 데이터 없음", IMPROVING: "향상", STABLE: "유지", DECLINING: "감소" }[trend];
 }
 
 function formatScore(value: number) {

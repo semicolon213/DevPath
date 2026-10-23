@@ -22,7 +22,7 @@ export function AnalysesPage() {
           <h1>분석 이력</h1>
           <p>저장소와 스냅샷, 규칙 버전이 고정된 Rule Engine의 공식 결과를 시간순으로 확인합니다.</p>
         </div>
-        <Link className="button-link button-primary" to="/repositories">새 분석 준비</Link>
+        <Link className="button-link button-primary" to="/repositories">저장소 확인</Link>
       </PageHero>
 
       <section className="analysis-history-summary" aria-label="분석 이력 요약">
@@ -35,8 +35,8 @@ export function AnalysesPage() {
       {analyses.length === 0 ? (
         <div className="state-panel">
           <h2>아직 완료된 분석이 없습니다</h2>
-          <p>저장소를 동기화하고 결정론적 분석을 실행하면 결과가 이력으로 보존됩니다.</p>
-          <Link className="button-link" to="/repositories">저장소로 이동</Link>
+          <p>저장소를 동기화하고 분석을 실행하면 결과가 이력으로 보존됩니다.</p>
+          <Link className="button-link" to="/repositories">저장소 확인</Link>
         </div>
       ) : (
         <section aria-labelledby="analysis-history-list-title">

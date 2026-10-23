@@ -57,7 +57,7 @@ export function PageState(props: PageStateProps) {
   return <>
     <PageHero eyebrow={unauthorized || hidden ? "접근 안내" : "문제가 발생했습니다"} title={title} description={description} />
     <section className={`state-panel page-state page-state--${unauthorized || hidden ? "forbidden" : "error"}`} role="alert">
-      <p className="visually-hidden">{title}. {description}</p>
+      <p className="visually-hidden">{sentence(title)} {description}</p>
       {!unauthorized && !hidden && requestId ? <p>오류 참조 <code className="page-state-reference">{requestId}</code></p> : null}
       {unauthorized ? <Link className="button-link button-primary" to="/">홈으로 이동</Link>
         : hidden || !props.retry ? <Link className="button-link button-primary" to={props.backTo ?? "/"}>{props.backLabel ?? "돌아가기"}</Link>
@@ -65,3 +65,5 @@ export function PageState(props: PageStateProps) {
     </section>
   </>;
 }
+
+function sentence(value: string) { return /[.!?]$/.test(value) ? value : `${value}.`; }

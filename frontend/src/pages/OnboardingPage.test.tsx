@@ -45,7 +45,7 @@ describe("OnboardingPage", () => {
 
     expect(await screen.findByRole("heading", { name: "첫 분석 준비를 마쳤습니다" })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: "대시보드" })).not.toHaveLength(0);
-    expect(screen.getByRole("link", { name: "Skill Matrix" })).toHaveAttribute("href", "/skills");
+    expect(within(screen.getByRole("region", { name: "분석 결과에서 이어가기" })).getByRole("link", { name: "기술 역량" })).toHaveAttribute("href", "/skills");
     expect(screen.queryByText("설정 도구")).not.toBeInTheDocument();
   });
 

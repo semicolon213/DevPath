@@ -1,12 +1,14 @@
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useArchiveKnowledgeDocument, useKnowledgeChunks, useKnowledgeDocument, useKnowledgeJob, useReindexKnowledgeDocument } from "../features/knowledge/model/useKnowledge";
-import { chunkStatusLabel, jobStatusLabel } from "../shared/ui/labels";
+import { chunkStatusLabel, jobStatusLabel, knowledgeSourceTypeLabel, knowledgeStatusLabel } from "../shared/ui/labels";
 import { ConfirmDialog } from "../shared/ui/ConfirmDialog";
 import { useRef, useState } from "react";
 import { PageState } from "../shared/ui/PageState";
 import { mutationErrorMessage } from "../shared/api/apiClient";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 import { PageHero } from "../shared/ui/PageHero";
+import { formatDate } from "../shared/ui/formatDate";
+import { StatusChip } from "../shared/ui/StatusChip";
 
 export function KnowledgeDetailPage() {
   const { documentId = "" } = useParams();
@@ -16,7 +18,6 @@ export function KnowledgeDetailPage() {
   const reindex = useReindexKnowledgeDocument();
   const [searchParams, setSearchParams] = useSearchParams();
   const job = useKnowledgeJob(searchParams.get("job"));
-  const navigate = useNavigate();
   const [confirmingArchive, setConfirmingArchive] = useState(false);
   const [archiveMessage, setArchiveMessage] = useState("");
   const archiveMessageRef = useRef<HTMLParagraphElement>(null);
@@ -39,7 +40,7 @@ export function KnowledgeDetailPage() {
             void chunks.refetch();
           }}
           backTo="/knowledge"
-          backLabel="지식 작업공간으로 이동"
+          backLabel="지식"
         />
       </Shell>
     );
@@ -48,11 +49,11 @@ export function KnowledgeDetailPage() {
     <Shell>
       <PageHero>
         <div>
-          <p className="eyebrow">Notion 지식 문서</p>
+          <p className="eyebrow">{knowledgeSourceTypeLabel(value.sourceType)} 지식 문서</p>
           <h1>{value.title}</h1>
-          <p>본문과 임베딩은 노출하지 않고 추적 가능한 버전·청크 메타데이터만 표시합니다.</p>
+          <p>문서 본문은 표시하지 않고, 추적할 수 있는 버전과 문서 구간 정보만 보여 줍니다.</p>
         </div>
-        <span className={value.status === "ACTIVE" ? "status-badge status-badge--info" : "status-badge"}>{value.status === "ACTIVE" ? "활성" : "보관됨"}</span>
+        <StatusChip variant={value.status === "ACTIVE" ? "info" : "neutral"}>{knowledgeStatusLabel(value.status)}</StatusChip>
       </PageHero>
       <article className="knowledge-article">
         <dl className="knowledge-article__facts">
@@ -70,7 +71,7 @@ export function KnowledgeDetailPage() {
           </div>
           <div>
             <dt>마지막 갱신</dt>
-            <dd>{new Date(value.updatedAt).toLocaleString("ko-KR")}</dd>
+            <dd>{formatDate(value.updatedAt)}</dd>
           </div>
         </dl>
         {searchParams.get("job") ? (
@@ -135,9 +136,7 @@ export function KnowledgeDetailPage() {
             </ol>
           )}
         </section>
-        <button className="button-secondary" type="button" onClick={() => navigate("/knowledge")}>
-          지식 작업 공간으로 돌아가기
-        </button>
+        <Link className="button-link button-secondary" to="/knowledge">지식</Link>
         {value.status === "ACTIVE" ? <section className="danger-zone" aria-labelledby="knowledge-danger-title">
           <div><h2 id="knowledge-danger-title">위험 영역</h2><p>문서를 보관하면 활성 지식 검색 범위에서 제외됩니다.</p></div>
           <button className="button-danger-secondary" type="button" disabled={archive.isPending} onClick={() => { archive.reset(); setArchiveMessage(""); setConfirmingArchive(true); }}>

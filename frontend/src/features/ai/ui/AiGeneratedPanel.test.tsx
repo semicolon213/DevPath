@@ -44,8 +44,8 @@ describe("AiGeneratedPanel", () => {
 
   it("shows the shared AI identity and validated result metadata without official-result styling", () => {
     const { container } = render(<Panel job={job("SUCCEEDED", "PASSED")} generatedAt="2026-09-02T00:00:00Z" validationStatus="PASSED"><p>검증된 결과</p></Panel>);
-    expect(screen.getByText("AI 생성")).toBeInTheDocument();
-    expect(screen.getByRole("region", { name: "AI 생성 AI 설명" })).toBeInTheDocument();
+    expect(screen.getByText("AI 생성 · 설명만 제공")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "AI 생성 · 설명만 제공 AI 설명" })).toBeInTheDocument();
     expect(screen.getByText("생성 시각").nextElementSibling).not.toHaveTextContent("생성 전");
     expect(container.querySelector("time")).toHaveAttribute("datetime", "2026-09-02T00:00:00Z");
     expect(screen.getByText("검증 통과")).toBeInTheDocument();

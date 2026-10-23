@@ -17,7 +17,7 @@ const labels: Record<OnboardingStepName, { title: string; description: string }>
   },
   CAREER_TARGET: {
     title: "목표 직무",
-    description: "직무별 결정론적 평가 기준을 선택합니다.",
+    description: "직무별 공식 평가 기준을 선택합니다.",
   },
   COMPANY_TARGET: {
     title: "목표 회사",
@@ -36,14 +36,14 @@ const labels: Record<OnboardingStepName, { title: string; description: string }>
     description: "불변 스냅샷과 측정 가능한 근거를 수집합니다.",
   },
   INITIAL_ANALYSIS: {
-    title: "첫 결정론적 분석",
-    description: "Rule Engine이 공식 점수와 Skill Matrix를 생성합니다.",
+    title: "첫 분석",
+    description: "Rule Engine이 공식 점수와 기술 역량 결과를 생성합니다.",
   },
 };
 
 export function OnboardingPage() {
   const progress = useOnboardingProgress();
-  if (progress.isPending) return <PageState state="loading" title="DevPath 시작하기" message="온보딩 진행 상태를 확인하는 중입니다…" />;
+  if (progress.isPending) return <PageState state="loading" title="DevPath 시작하기" message="온보딩 진행 상태를 확인하는 중입니다." />;
   if (progress.isError) return <PageState state="error" title="온보딩 상태를 확인할 수 없습니다" description="저장된 진행 상태는 변경되지 않았습니다." error={progress.error} retry={() => progress.refetch()} />;
   const ready = progress.data.status === "DASHBOARD_READY";
   const nextIndex = progress.data.steps.findIndex((step) => step.step === progress.data.nextStep);
@@ -54,7 +54,7 @@ export function OnboardingPage() {
         <div>
           <p className="eyebrow">첫 분석 여정</p>
           <h1>{ready ? "첫 분석 준비를 마쳤습니다" : "DevPath 시작하기"}</h1>
-          <p>{ready ? "저장소 근거와 결정론적 분석 결과가 준비되었습니다. 이제 대시보드에서 다음 행동을 이어가세요." : "목표 설정부터 GitHub 근거 수집과 첫 분석까지 한 흐름으로 진행합니다."}</p>
+          <p>{ready ? "저장소 근거와 공식 분석 결과가 준비되었습니다. 이제 대시보드에서 다음 행동을 이어가세요." : "목표 설정부터 GitHub 근거 수집과 첫 분석까지 한 흐름으로 진행합니다."}</p>
         </div>
         <div className="workspace-actions">
           <button type="button" className="button-secondary" disabled={progress.isFetching} onClick={() => progress.refetch()}>
@@ -73,7 +73,7 @@ export function OnboardingPage() {
           <h2 id="onboarding-progress-title">설정 진행 상태</h2>
           <p>서버에 저장된 목표, 연결, 저장소, 동기화 및 분석 결과를 기준으로 확인합니다.</p>
         </div>
-        <div className="onboarding-count" aria-label={`전체 ${progress.data.totalStepCount}단계 중 ${progress.data.completedStepCount}단계 완료`}>
+        <div className="onboarding-count" role="status" aria-label={`전체 ${progress.data.totalStepCount}단계 중 ${progress.data.completedStepCount}단계 완료`}>
           <strong>{progress.data.completedStepCount}</strong>
           <span>/ {progress.data.totalStepCount} 완료</span>
         </div>
@@ -114,10 +114,10 @@ export function OnboardingPage() {
               대시보드
             </Link>
             <Link className="button-link button-secondary" to="/skills">
-              Skill Matrix
+              기술 역량
             </Link>
             <Link className="button-link button-secondary" to="/career-readiness">
-              직무 준비도
+              커리어 준비도
             </Link>
             <Link className="button-link button-secondary" to="/recommendations">
               추천

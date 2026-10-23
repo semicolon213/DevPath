@@ -21,6 +21,25 @@ const evidenceStatusLabels = {
   NONE: "근거 없음", INSUFFICIENT: "근거 부족", SUFFICIENT: "근거 충분"
 } as const satisfies Record<NonNullable<SkillAssessment["evidenceStatus"]>, string>;
 
+const gapStateLabels = { MISSING: "관찰 없음", WEAK: "약함", PARTIAL: "일부 충족", SUFFICIENT: "충족", STRONG: "강점" };
+const growthTrendLabels = { UNAVAILABLE: "비교 데이터 없음", IMPROVING: "향상", STABLE: "유지", DECLINING: "감소" };
+const skillStateLabels = { STRENGTH: "강점", WEAKNESS: "개선 영역", NEUTRAL: "보통" };
+const knowledgeStatusLabels = { ACTIVE: "활성", ARCHIVED: "보관됨" };
+const ruleStatusLabels = { PASSED: "충족", FAILED: "미충족", PARTIAL: "부분 충족", SKIPPED: "평가 제외", ERROR: "평가 오류" };
+const evidenceRoleLabels = { DIRECT: "직접 근거", SUPPORTING: "보조 근거", MISSING: "부족한 근거" };
+const ruleLabels: Record<string, string> = {
+  LANGUAGE_PRIMARY_SHARE: "주 사용 언어 비중", LANGUAGE_DIVERSITY: "사용 언어 다양성", FRAMEWORK_COUNT: "프레임워크 사용 수",
+  TEST_FILES: "테스트 파일", TEST_FRAMEWORKS: "테스트 프레임워크", CI_WORKFLOW_METADATA: "CI 워크플로",
+  README_PRESENT: "README", API_DOCUMENTATION: "API 문서", ARCHITECTURE_DOCUMENTATION: "아키텍처 문서",
+  CONTRIBUTING_GUIDE: "기여 가이드", LICENSE_PRESENT: "라이선스", COMMIT_COUNT: "커밋 수",
+  CONTRIBUTOR_COUNT: "기여자 수", BRANCH_COUNT: "브랜치 수"
+};
+const formulaLabels = { BOOLEAN_100: "존재하면 100점", LINEAR_0_100: "관찰값을 구간 안에서 0~100점으로 환산", COUNT_CAPPED_100: "개수를 상한까지 0~100점으로 환산" };
+const careerStatusLabels = { SUPPORTED: "공식 지원" };
+const roadmapStatusLabels = { CREATED: "생성됨", IN_PROGRESS: "진행 중", COMPLETED: "완료", ARCHIVED: "보관됨" };
+const roadmapStepStatusLabels = { COMPLETED: "완료", IN_PROGRESS: "진행 중", NOT_STARTED: "예정", SKIPPED: "건너뜀" };
+const difficultyLabels = { BEGINNER: "입문", INTERMEDIATE: "중급", ADVANCED: "고급" };
+
 const priorityLabels = {
   CRITICAL: "긴급", HIGH: "높음", MEDIUM: "보통", LOW: "낮음"
 } as const satisfies Record<Recommendation["priority"], string>;
@@ -66,6 +85,18 @@ function label(labels: Record<string, string>, value: string | null | undefined)
 export const categoryLabel = (value: string | null | undefined) => label(categoryLabels, value);
 export const levelLabel = (value: string | null | undefined) => label(levelLabels, value);
 export const evidenceStatusLabel = (value: string | null | undefined) => label(evidenceStatusLabels, value);
+export const gapStateLabel = (value: string | null | undefined) => label(gapStateLabels, value);
+export const growthTrendLabel = (value: string | null | undefined) => label(growthTrendLabels, value);
+export const skillStateLabel = (strength: boolean, weakness: boolean) => label(skillStateLabels, strength ? "STRENGTH" : weakness ? "WEAKNESS" : "NEUTRAL");
+export const knowledgeStatusLabel = (value: string | null | undefined) => label(knowledgeStatusLabels, value);
+export const ruleStatusLabel = (value: string | null | undefined) => label(ruleStatusLabels, value);
+export const evidenceRoleLabel = (value: string | null | undefined) => label(evidenceRoleLabels, value);
+export const ruleLabel = (value: string | null | undefined, fallback = unknownLabel) => ruleLabels[value ?? ""] ?? fallback;
+export const formulaLabel = (value: string | null | undefined) => label(formulaLabels, value);
+export const careerStatusLabel = (value: string | null | undefined) => label(careerStatusLabels, value);
+export const roadmapStatusLabel = (value: string | null | undefined) => label(roadmapStatusLabels, value);
+export const roadmapStepStatusLabel = (value: string | null | undefined) => label(roadmapStepStatusLabels, value);
+export const difficultyLabel = (value: string | null | undefined) => label(difficultyLabels, value);
 export const priorityLabel = (value: string | null | undefined) => label(priorityLabels, value);
 export const recommendationTypeLabel = (value: string | null | undefined) => label(recommendationTypeLabels, value);
 export const recommendationStatusLabel = (value: string | null | undefined) => label(recommendationStatusLabels, value);

@@ -33,9 +33,9 @@ describe("DashboardPage", () => {
     expect(screen.getByRole("link", { name: "목표 변경" })).toHaveAttribute("href", "/careers");
     const hero = screen.getByRole("heading", { name: "내 DevPath 대시보드" }).closest(".dashboard-hero");
     expect(hero).not.toBeNull();
-    expect(within(hero as HTMLElement).getByRole("link", { name: "저장소" })).toHaveAttribute("href", "/repositories");
-    expect(screen.getByText(/커리어 프로필 career-v2/)).toBeInTheDocument();
-    expect(screen.getByText(/회사 프로필 company-v3/)).toBeInTheDocument();
+    expect(within(hero as HTMLElement).getAllByRole("link", { name: "저장소 확인" })[0]).toHaveAttribute("href", "/repositories");
+    expect(screen.getByText(/커리어 프로필 버전 career-v2/)).toBeInTheDocument();
+    expect(screen.getByText(/회사 프로필 버전 company-v3/)).toBeInTheDocument();
     expect(screen.getByRole("progressbar", { name: "학습 로드맵 진행률" })).toHaveAttribute("value", "25");
     ["COMPETENT", "TESTING", "HIGH", "SUCCEEDED"].forEach(value => expect(screen.queryByText(value)).not.toBeInTheDocument());
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -56,8 +56,7 @@ describe("DashboardPage", () => {
 
     renderWithProviders(undefined, ["/dashboard"]);
 
-    expect(await screen.findByText(/목표 직무를 선택하지 않았습니다/)).toBeInTheDocument();
-    expect(screen.getByText(/선택한 회사가 없습니다/)).toBeInTheDocument();
+    expect(await screen.findByText("목표 · 직무 미선택 · 회사 미선택")).toBeInTheDocument();
     expect(screen.getByText("아직 준비도 결과가 없습니다.")).toBeInTheDocument();
     expect(screen.getByText("활성 학습 로드맵이 없습니다.")).toBeInTheDocument();
     expect(screen.getByText("아직 생성된 추천이 없습니다.")).toBeInTheDocument();
@@ -65,11 +64,10 @@ describe("DashboardPage", () => {
     expect(screen.getByText("완료된 분석이 없습니다.")).toBeInTheDocument();
     expect(screen.getByText("최근 실행된 작업이 없습니다.")).toBeInTheDocument();
     expect(screen.getByText("저장소별 최신 분석 결과가 아직 없습니다.")).toBeInTheDocument();
-    const fallbackActions = screen.getAllByRole("link", { name: "준비도 확인" });
-    expect(fallbackActions).toHaveLength(2);
-    expect(fallbackActions[0]).toHaveAttribute("href", "/career-readiness");
-    expect(fallbackActions[0]).toHaveClass("button-link");
-    expect(fallbackActions[1]).not.toHaveClass("button-link");
+    const fallbackActions = screen.getAllByRole("link", { name: "저장소 확인" });
+    fallbackActions.forEach(link => expect(link).toHaveAttribute("href", "/repositories"));
+    expect(fallbackActions[0]).toHaveClass("button-link", "button-primary");
+    expect(fallbackActions.slice(1).filter(link => link.classList.contains("button-primary"))).toHaveLength(0);
   });
 
   it("keeps available structure visible when every source is unavailable", async () => {
@@ -89,11 +87,11 @@ describe("DashboardPage", () => {
     expect(await screen.findByText("등록 저장소 · 확인 실패")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "내 DevPath 대시보드" })).toBeInTheDocument();
     expect(screen.getByText("목표 · 확인 실패")).toBeInTheDocument();
-    expect(screen.getByText(/커리어 프로필 확인 실패 · 회사 프로필 확인 실패/)).toBeInTheDocument();
+    expect(screen.getByText(/커리어 프로필 버전 확인 실패 · 회사 프로필 버전 확인 실패/)).toBeInTheDocument();
     expect(screen.getByText("커리어 준비도 정보를 불러오지 못했습니다.")).toBeInTheDocument();
     expect(screen.getAllByText(/일부 정보를 불러오지 못했습니다/)).toHaveLength(6);
     expect(screen.queryByRole("link", { name: "지금 할 일 보기: 테스트 보강" })).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "준비도 확인" })).toHaveAttribute("href", "/career-readiness");
+    expect(screen.getAllByRole("link", { name: "저장소 확인" })[0]).toHaveClass("button-primary");
   });
 
   it("distinguishes insufficient readiness evidence from a low score", async () => {
@@ -104,7 +102,7 @@ describe("DashboardPage", () => {
     renderWithProviders(undefined, ["/dashboard"]);
 
     expect(await screen.findByText("근거 부족")).toBeInTheDocument();
-    expect(screen.getByText("확인 불가 범주: 테스트")).toBeInTheDocument();
+    expect(screen.getByText("평가 불가 범주: 테스트")).toBeInTheDocument();
     expect(screen.queryByText("0", { exact: true })).not.toBeInTheDocument();
   });
 

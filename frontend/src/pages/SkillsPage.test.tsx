@@ -42,14 +42,14 @@ it("renders official scores, confidence, evidence, and Korean labels", async () 
   renderWithProviders(<SkillsPage />, ["/skills"]);
 
   expect(await screen.findByRole("heading", { name: "기술 문서화" })).toBeInTheDocument();
-  expect(screen.getByRole("heading", { name: "기술 역량 분석" })).toBeInTheDocument();
+  expect(screen.getByRole("heading", { name: "기술 역량" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "기술 문서화" })).toHaveAttribute("href", "/skills/skill-1");
   expect(screen.getByText("100")).toBeInTheDocument();
   expect(screen.getByText("87.5%")).toBeInTheDocument();
   expect(screen.getAllByText("강점")).toHaveLength(2);
   expect(screen.getByText("점수와 등급은 AI가 아닌 Rule Engine이 계산합니다.", { exact: false })).toBeInTheDocument();
   const officialRegion = screen.getByRole("heading", { name: "역량별 결과" }).closest("section")!;
-  const aiRegion = screen.getByRole("region", { name: "AI 코치 · 설명만 제공 기술 분석 설명" });
+  const aiRegion = screen.getByRole("region", { name: "AI 생성 · 설명만 제공 기술 분석 설명" });
   expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(document.querySelectorAll(".button-primary")).toHaveLength(1);
   expect(screen.getByRole("button", { name: "설명 생성" })).toHaveClass("button-ai");
@@ -78,6 +78,7 @@ it("uses the API evidence status without deriving it from evidence counts", asyn
 
   const none = (await screen.findByRole("heading", { name: "근거 없는 역량" })).closest("article")!;
   expect(within(none).queryByRole("progressbar")).not.toBeInTheDocument();
+  expect(within(none).getByText("근거 없음", { selector: ".skill-score-row strong" })).toBeInTheDocument();
   expect(within(none).getByRole("note", { name: "근거 상태: 근거 없음" })).toHaveTextContent("저장소 근거를 추가한 뒤 다시 분석해 주세요.");
   const insufficient = screen.getByRole("heading", { name: "근거 부족 역량" }).closest("article")!;
   expect(within(insufficient).getByRole("progressbar")).toHaveAttribute("value", "45");
@@ -95,8 +96,8 @@ it("renders an actionable empty state for a missing matrix", async () => {
 
   renderWithProviders(<SkillsPage />, ["/skills"]);
 
-  expect(await screen.findByRole("heading", { name: "아직 기술 분석 결과가 없습니다" })).toBeInTheDocument();
-  expect(screen.getByRole("link", { name: "저장소로 이동" })).toHaveAttribute("href", "/repositories");
+  expect(await screen.findByRole("heading", { name: "아직 기술 역량 결과가 없습니다" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "저장소 확인" })).toHaveAttribute("href", "/repositories");
 });
 
 it("keeps transport errors separate and offers retry", async () => {
@@ -120,7 +121,7 @@ it("shows the internal error state with the request reference for a server failu
 
   renderWithProviders(<SkillsPage />, ["/skills"]);
 
-  expect(await screen.findByRole("heading", { name: "기술 분석을 불러오지 못했습니다" })).toBeInTheDocument();
+  expect(await screen.findByRole("heading", { name: "기술 역량을 불러오지 못했습니다" })).toBeInTheDocument();
   expect(screen.getByRole("alert")).toHaveTextContent("기존 결과는 변경되지 않았습니다.");
   expect(screen.getByText("skills-request-500")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "다시 시도" })).toBeInTheDocument();

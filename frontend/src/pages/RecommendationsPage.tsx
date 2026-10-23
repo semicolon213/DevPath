@@ -4,10 +4,11 @@ import { categoryLabel, priorityLabel, recommendationTypeLabel } from "../shared
 import { PageState } from "../shared/ui/PageState";
 import { PageHero } from "../shared/ui/PageHero";
 import { ResultBasis } from "../shared/ui/ResultBasis";
+import { StatusChip } from "../shared/ui/StatusChip";
 
 export function RecommendationsPage() {
   const query = useRecommendationHistory();
-  if (query.isPending) return <PageState state="loading" title="추천 작업공간" message="추천 이력을 불러오는 중입니다." />;
+  if (query.isPending) return <PageState state="loading" title="추천" message="추천 이력을 불러오는 중입니다." />;
   if (query.isError) return <PageState state="error" title="추천 이력을 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} />;
   const sets = query.data;
   const recommendationCount = sets.reduce((total, set) => total + set.recommendations.length, 0);
@@ -17,8 +18,8 @@ export function RecommendationsPage() {
       <PageHero>
         <div>
           <p className="eyebrow">공식 추천</p>
-          <h1>추천 작업공간</h1>
-          <p>공식 기술 격차(Skill Gap)와 버전 관리된 정책으로 생성된 추천을 시간순으로 확인합니다. AI가 우선순위나 완료 기준을 계산하지 않습니다.</p>
+          <h1>추천</h1>
+          <p>공식 역량 차이와 버전 관리된 정책으로 생성된 추천을 시간순으로 확인합니다. AI가 우선순위나 완료 기준을 계산하지 않습니다.</p>
         </div>
         <div className="workspace-actions">
           <Link to="/career-readiness">커리어 준비도</Link>
@@ -44,9 +45,9 @@ export function RecommendationsPage() {
       {sets.length === 0 ? (
         <section className="state-panel">
           <h2>아직 생성된 추천이 없습니다</h2>
-          <p>결정론적 분석과 커리어 준비도 평가가 완료되면 측정 가능한 추천이 생성됩니다.</p>
+          <p>분석과 커리어 준비도 평가가 완료되면 측정 가능한 추천이 생성됩니다.</p>
           <Link className="button-link" to="/repositories">
-            분석 준비
+            저장소 확인
           </Link>
         </section>
       ) : (
@@ -62,8 +63,8 @@ export function RecommendationsPage() {
               <article className="recommendation-set" key={set.recommendationSetId}>
                 <header>
                   <div>
-                    <span className={`status-badge${set.status === "PUBLISHED" ? " status-badge--info" : ""}`}>{set.status === "PUBLISHED" ? "현재 적용" : "과거 세트"}</span>
-                    <h3>{set.policyVersion}</h3>
+                    <StatusChip variant={set.status === "PUBLISHED" ? "info" : "neutral"}>{set.status === "PUBLISHED" ? "현재 적용" : "과거 세트"}</StatusChip>
+                    <h3>{formatDate(set.generatedAt)} 추천</h3>
                     <Link to={`/career-readiness/${set.careerReadinessId}`}>준비도 근거 보기</Link>
                   </div>
                   <time dateTime={set.generatedAt}>{formatDate(set.generatedAt)}</time>
