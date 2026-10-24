@@ -42,7 +42,7 @@
 .workspace > section:has(> .section-heading:first-child):not(:first-child) { margin-top: 40px; }
 
 /* Stand-alone text links in lists and cards reach a 44px target without changing their look. */
-.readiness-gap > a, .analysis-history-card__actions a, .recommendation-set a, .catalog-tile > a, .knowledge-document-list__status a, .knowledge-search-results .connection-actions a, .snapshot-analysis-list article > a, .snapshot-card > a, .comparison-hero a, .dashboard-empty a, .ai-evidence-links a { align-items: center; display: inline-flex; justify-self: start; min-height: 44px; }
+.readiness-gap > a, .analysis-history-card__actions a, .recommendation-set a, .catalog-tile > a, .knowledge-document-list__status a, .knowledge-search-results .connection-actions a, .snapshot-analysis-list article > a, .snapshot-card > a, .comparison-hero a, .dashboard-empty a { align-items: center; display: inline-flex; justify-self: start; min-height: 44px; }
 
 @media (max-width: 720px) {
   .breadcrumbs { margin-top: -24px; }

@@ -76,7 +76,7 @@ function GenerationProgress({ job }: { job: GenerationJob }) {
   const started = Number.isNaN(createdAt) ? trackedAt : createdAt;
   return <div className="ai-generated-panel__progress" role="status">
     <p className="ai-generated-panel__phase">{generationStateLabel(job.status)}</p>
-    <p><strong>{formatElapsed(now - started)}</strong><span>경과 · 보통 1분 정도 걸립니다</span></p>
+    <p className="ai-generated-panel__elapsed"><strong>{formatElapsed(now - started)}</strong><span>경과 · 보통 1분 정도 걸립니다</span></p>
     <p>페이지를 떠나도 서버에서 계속 진행되며, 돌아오면 결과를 이어서 보여 줍니다.</p>
   </div>;
 }

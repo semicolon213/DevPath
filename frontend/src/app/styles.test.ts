@@ -46,6 +46,8 @@ it("keeps raw colour literals inside the root token block", async () => {
   expect(defaultButtonLinkRule).toBeDefined();
   expect(defaultButtonRule).not.toContain("var(--action-primary)");
   expect(defaultButtonLinkRule).not.toContain("var(--action-primary)");
+  // The elapsed time and its label sit in one line and need their own spacing rule.
+  expect(allCss.match(/^\.ai-generated-panel__elapsed\s*\{[^}]*\}/m)?.[0]).toMatch(/gap:\s*\d/);
 });
 
 it("imports every stylesheet part exactly once", async () => {

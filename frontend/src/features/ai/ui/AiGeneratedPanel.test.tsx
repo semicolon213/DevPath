@@ -32,7 +32,9 @@ describe("AiGeneratedPanel", () => {
     expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent(message);
     expect(screen.getByText(/0:4[12]/)).toBeInTheDocument();
-    expect(screen.getByText("경과 · 보통 1분 정도 걸립니다")).toBeInTheDocument();
+    const elapsedLabel = screen.getByText("경과 · 보통 1분 정도 걸립니다");
+    expect(elapsedLabel.parentElement).toHaveClass("ai-generated-panel__elapsed");
+    expect(elapsedLabel.previousElementSibling?.tagName).toBe("STRONG");
     expect(screen.getByText("페이지를 떠나도 서버에서 계속 진행되며, 돌아오면 결과를 이어서 보여 줍니다.")).toBeInTheDocument();
   });
 

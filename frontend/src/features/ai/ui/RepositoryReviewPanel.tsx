@@ -24,6 +24,6 @@ function Review({ artifact, evidence }: { artifact: NonNullable<ReturnType<typeo
     <div className="ai-generated-panel__grid">{artifact.content.sections.map(section => <section key={section.category}>
       <h3>{categoryLabel(section.category)}</h3><p>{section.review}<EvidenceMarkers references={section.evidenceIds} allReferences={references} evidence={evidence} scope="repository-review" /></p>
     </section>)}</div>
-    <EvidenceFootnotes references={references} evidence={evidence} scope="repository-review" analysisId={artifact.provenance.analysisId} />
+    <EvidenceFootnotes references={references} evidence={evidence} scope="repository-review" regionLabel="저장소 리뷰 근거" analysisId={artifact.provenance.analysisId} />
   </article>;
 }

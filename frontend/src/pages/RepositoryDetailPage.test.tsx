@@ -138,6 +138,8 @@ it("shows normalized languages frameworks and databases with evidence paths", as
   expect(screen.getByRole("button", { name: "분석 시작" })).toBeEnabled();
   expect(screen.getByText("테스트 파일 12건이 관찰되었습니다.")).toBeInTheDocument();
   expect(screen.getByText("라이선스: 관찰되지 않았습니다.")).toBeInTheDocument();
+  expect(screen.getAllByText("파일 경로 없음").length).toBeGreaterThan(0);
+  expect(screen.queryByText(/snapshot:/)).not.toBeInTheDocument();
   expect(screen.queryByText(/0건이 관찰/)).not.toBeInTheDocument();
   expect(screen.getByText(/PR 리뷰 8이 관찰되었습니다/)).toBeInTheDocument();
   expect(screen.getByText(/데이터베이스 마이그레이션 2건/)).toBeInTheDocument();

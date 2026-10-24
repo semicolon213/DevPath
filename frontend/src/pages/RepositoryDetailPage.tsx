@@ -293,7 +293,7 @@ export function RepositoryDetailPage() {
               <h3>{categoryLabel(category.category)}</h3>
               <div className="evidence-list">
                 {category.signals.map(signal => (
-                  <EvidenceItem key={signal.signalKey} evidence={{ evidenceType: "SNAPSHOT_SIGNAL", sourceReference: signal.evidencePaths.join(", ") || `snapshot:${evidence.data?.snapshotId ?? ""}`, observedFactSummary: signalFact(signal), meta: `${signal.present ? "감지됨" : "근거 없음"} · ${categoryLabel(category.category)}` }} />
+                  <EvidenceItem key={signal.signalKey} evidence={{ evidenceType: "SNAPSHOT_SIGNAL", sourceReference: signal.evidencePaths.join(", ") || "파일 경로 없음", observedFactSummary: signalFact(signal), meta: `${signal.present ? "감지됨" : "근거 없음"} · ${categoryLabel(category.category)}` }} />
                 ))}
               </div>
             </article>

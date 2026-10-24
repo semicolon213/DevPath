@@ -158,5 +158,7 @@ it("keeps evidence ids unique when the official list, rule expansion and both AI
   expect(screen.getAllByRole("link", { name: "근거 1: 저장소 파일 README.md" }).map(link => link.getAttribute("href"))).toEqual(["#footnote-repository-summary-evidence-id", "#footnote-repository-review-evidence-id"]);
   expect(document.getElementById("footnote-repository-summary-evidence-id")).toBeInTheDocument();
   expect(document.getElementById("footnote-repository-review-evidence-id")).toBeInTheDocument();
+  expect(screen.getByRole("region", { name: "저장소 요약 근거" })).toContainElement(document.getElementById("footnote-repository-summary-evidence-id"));
+  expect(screen.getByRole("region", { name: "저장소 리뷰 근거" })).toContainElement(document.getElementById("footnote-repository-review-evidence-id"));
   await waitFor(() => expect(row).toHaveFocus());
 });

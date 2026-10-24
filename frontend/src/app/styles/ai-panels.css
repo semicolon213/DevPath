@@ -31,7 +31,7 @@
 
 .ai-generated-panel__progress p { margin: 0; }
 
-.ai-generated-panel__progress p:first-child { align-items: baseline; display: flex; flex-wrap: wrap; gap: 10px; }
+.ai-generated-panel__elapsed { align-items: baseline; display: flex; flex-wrap: wrap; gap: 10px; }
 
 .ai-generated-panel__progress strong { font-size: 1.75rem; font-variant-numeric: tabular-nums; }
 

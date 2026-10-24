@@ -26,7 +26,7 @@ function Explanation({ artifact, evidence }: { artifact: NonNullable<ReturnType<
   return <article className="ai-generated-panel__result"><p>{artifact.content.summary}</p>
     <ExplanationList title="개선할 점" items={artifact.content.improvementAreas} references={references} evidence={evidence} />
     <ExplanationList title="강점" items={artifact.content.strengths} references={references} evidence={evidence} />
-    <EvidenceFootnotes references={references} evidence={evidence} scope="skill-explanation" analysisId={artifact.provenance.analysisId} />
+    <EvidenceFootnotes references={references} evidence={evidence} scope="skill-explanation" regionLabel="기술 역량 설명 근거" analysisId={artifact.provenance.analysisId} />
   </article>;
 }
 

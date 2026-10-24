@@ -19,15 +19,17 @@ export function EvidenceMarkers({ references, allReferences, evidence, scope, la
   })}</>;
 }
 
-export function EvidenceFootnotes({ references, evidence, scope, analysisId, label = "근거" }: {
+// regionLabel names the footnote landmark per panel so several panels on one page stay distinguishable.
+export function EvidenceFootnotes({ references, evidence, scope, regionLabel, analysisId, label = "근거" }: {
   references: string[];
   evidence: ResolvedEvidence;
   scope: string;
+  regionLabel: string;
   analysisId?: string | null;
   label?: string;
 }) {
   if (!references.length) return null;
-  return <section className="ai-generated-panel__evidence" aria-label={label}><h3>{label}</h3><ol>
+  return <section className="ai-generated-panel__evidence" aria-label={regionLabel}><h3>{label}</h3><ol>
     {references.map((reference, index) => {
       const resolved = resolve(reference, evidence);
       const footnoteId = `${scope}-${encodeURIComponent(reference)}`;

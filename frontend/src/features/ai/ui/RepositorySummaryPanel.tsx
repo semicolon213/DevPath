@@ -27,7 +27,7 @@ function Summary({ artifact, evidence }: { artifact: NonNullable<ReturnType<type
     <dl><div><dt>기술</dt><dd>{artifact.content.technologies.join(", ") || "확인된 기술 없음"}</dd></div></dl>
     <div className="ai-generated-panel__grid"><List title="개선할 점" values={artifact.content.improvementAreas} references={references} evidence={evidence} analysisId={analysisId} />
       <List title="강점" values={artifact.content.strengths} references={references} evidence={evidence} analysisId={analysisId} /></div>
-    <EvidenceFootnotes references={references} evidence={evidence} scope="repository-summary" analysisId={artifact.provenance.analysisId} />
+    <EvidenceFootnotes references={references} evidence={evidence} scope="repository-summary" regionLabel="저장소 요약 근거" analysisId={artifact.provenance.analysisId} />
   </article>;
 }
 
@@ -40,7 +40,7 @@ function Claim({ claim, references, evidence, analysisId }: { claim: RepositoryS
     {claim.ruleOutputReferences.length ? <p><small>규칙 결과{ruleOutputLabels(claim.ruleOutputReferences)} · <Link to={`/analyses/${analysisId}#category-results-title`}>영역별 공식 결과</Link></small></p> : null}</div>;
 }
 
-// Rule output references are "<analysisId>:<CATEGORY>:<RULE_ID>:<version>"; only the human labels are shown, never the id.
+// Rule output references are "<evaluationId>:<CATEGORY>:<RULE_ID>:<version>"; only the human labels are shown, never the id.
 function ruleOutputLabels(references: string[]) {
   const labels = [...new Set(references.flatMap(reference => {
     const [, category, ruleId] = reference.split(":");
