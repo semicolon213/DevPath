@@ -2,5 +2,5 @@ import { getGeneratedSkillExplanation, requestSkillExplanation } from "../api/ge
 import { useGeneration } from "./useGeneration";
 
 export function useSkillExplanation(skillMatrixId: string) {
-  return useGeneration(() => requestSkillExplanation(skillMatrixId), getGeneratedSkillExplanation);
+  return useGeneration(`SKILL_EXPLANATION:${skillMatrixId}`, () => requestSkillExplanation(skillMatrixId), getGeneratedSkillExplanation);
 }

@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLearningRecommendation } from "../model/useLearningRecommendation";
 import { LearningRecommendationPanel } from "./LearningRecommendationPanel";
@@ -42,7 +42,8 @@ describe("LearningRecommendationPanel", () => {
 
     expect(screen.getByText("작은 기능에 자동 테스트를 추가하세요.")).toBeInTheDocument();
     expect(screen.getByText("All tests pass")).toBeInTheDocument();
-    expect(screen.getByText("필요 근거: test files")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /필요 근거/ })).not.toBeInTheDocument();
+    expect(within(screen.getByRole("list", { name: "필요한 근거" })).getByText("test files")).toBeInTheDocument();
   });
 
   function state(overrides: Record<string, unknown> = {}) {

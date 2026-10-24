@@ -97,7 +97,10 @@ test("changed result pages have no horizontal overflow and keep single-column mo
           expect(slots[0][1]).toBeLessThan(slots[0][2]);
         }
         if (path === "/analyses/analysis-id" && width === 375) {
-          await expect(page.locator(".ai-generated-panel__heading").first(), "AI panel heading stacks at 375px").toHaveCSS("align-items", "stretch");
+          const toolbar = page.locator(".ai-generated-panel__toolbar").first();
+          await expect(toolbar, "AI panel toolbar wraps at 375px").toHaveCSS("flex-wrap", "wrap");
+          const toolbarFits = await toolbar.evaluate(element => Array.from(element.children).every(child => child.getBoundingClientRect().right <= element.getBoundingClientRect().right + 0.5));
+          expect(toolbarFits, "AI panel toolbar badge and action stay inside the panel at 375px").toBe(true);
         }
         if (path === "/skills" && width === 375) {
           const columns = await page.locator(".skill-card").first().evaluate(element => getComputedStyle(element).gridTemplateColumns.split(" ").length);
@@ -331,7 +334,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expect(page.getByRole("heading", { name: repository.fullName })).toBeFocused();
   await expect(page.getByRole("heading", { name: "왜 이 점수가 나왔나요?" })).toBeVisible();
   await expect(page.getByText("82.5", { exact: true })).toBeVisible();
-  await expect(page.getByText("README 파일을 확인했습니다.")).toBeVisible();
+  await expect(page.getByLabel("평가 근거").getByText("README 파일을 확인했습니다.")).toBeVisible();
   await expectNoAccessibilityViolations(page);
 
   await page.setViewportSize({ width: 375, height: 812 });
@@ -396,7 +399,7 @@ test("repository analysis result flows into skills, readiness, and roadmap", asy
   await expect(page).toHaveURL(/\/career-readiness\/career-readiness-id$/);
   await expect(page.getByRole("heading", { name: "커리어 준비도 상세" })).toBeFocused();
   await expect(page.getByText("67.5", { exact: true })).toBeVisible();
-  await expect(page.getByRole("link", { name: "기술 평가와 근거 보기" })).toHaveAttribute("href", "/skills/skill-id");
+  await expect(page.getByRole("link", { name: "근거 1개 보기" })).toHaveAttribute("href", "/skills/skill-id#skill-evidence-title");
   await expectNoAccessibilityViolations(page);
   await page.goto("/recommendations");
   await page.getByRole("link", { name: "상세 근거 보기" }).click();

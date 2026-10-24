@@ -115,7 +115,7 @@ it.each([
   const summary = screen.getByRole("region", { name: "현재 기술 평가 요약" });
   const scoreSlot = summary.firstElementChild as HTMLElement;
   if (evidenceStatus === "NONE") {
-    expect(within(scoreSlot).getByText("근거 없음")).toHaveClass("score-none-label");
+    expect(within(scoreSlot).getByText("—")).toHaveClass("score-none-label");
     expect(within(scoreSlot).queryByText("72")).not.toBeInTheDocument();
     expect(within(scoreSlot).queryByText("/ 100")).not.toBeInTheDocument();
     expect(within(summary).getByText("저장된 공식 점수").nextElementSibling).toHaveTextContent("72");

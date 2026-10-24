@@ -45,6 +45,7 @@
 .comparison-table th,.comparison-table td { border:0;border-top:1px solid var(--border-subtle);padding:16px;text-align:left; }
 
 .comparison-table thead th { background:var(--brand-surface);border-top:0; }
+.comparison-table thead time { color:var(--text-secondary);display:block;font-size:.8rem;font-weight:400; }
 
 .comparison-table td strong { color:var(--brand-strong);display:block;font-size:1.6rem; }
 
@@ -158,23 +159,11 @@
 
 .missing-evidence { color: var(--warning-text-strong); font-size: .88rem; }
 
-.analysis-evidence-list { display: grid; gap: 12px; }
-
-.analysis-evidence-list article { background: var(--background-surface); border-radius: var(--radius-card); display: grid; gap: 8px; padding: 16px; }
-
-.analysis-evidence-list article > div { align-items: center; display: flex; justify-content: space-between; }
-
-.analysis-evidence-list p { margin: 0; }
-
-.analysis-evidence-list code { overflow-wrap: anywhere; }
-
 .historical-skill-row__name { align-content: start; display: grid; gap: 4px; grid-column: 1; min-width: 0; }
 
 .historical-skill-row__name span { color: var(--text-muted); font-size: .875rem; }
 
 .historical-skill-row__score { display: grid; gap: 8px; grid-column: 2; min-width: 0; }
-
-.historical-skill-row__score p { color: var(--text-secondary); margin: 0; }
 
 .historical-skill-row__status { grid-column: 3; min-width: 0; }
 

@@ -51,7 +51,7 @@ export function KnowledgeDetailPage() {
         <div>
           <p className="eyebrow">{knowledgeSourceTypeLabel(value.sourceType)} 지식 문서</p>
           <h1>{value.title}</h1>
-          <p>문서 본문은 표시하지 않고, 추적할 수 있는 버전과 문서 구간 정보만 보여 줍니다.</p>
+          <p>문서 본문은 표시하지 않고, 추적할 수 있는 버전과 청크 정보만 보여 줍니다.</p>
         </div>
         <StatusChip variant={value.status === "ACTIVE" ? "info" : "neutral"}>{knowledgeStatusLabel(value.status)}</StatusChip>
       </PageHero>

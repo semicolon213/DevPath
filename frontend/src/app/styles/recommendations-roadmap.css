@@ -114,18 +114,6 @@
 
 .expected-evidence-list { display:grid;gap:10px;padding-left:22px; }
 
-.recommendation-evidence-list { display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
-
-.recommendation-evidence-list article { background: var(--background-surface);border-radius: var(--radius-lg);display:grid;gap:10px;padding:18px; }
-
-.recommendation-evidence-list header { display:flex;justify-content:space-between; }
-
-.recommendation-evidence-list p { margin:0; }
-
-.recommendation-evidence-list code { overflow-wrap:anywhere; }
-
-.recommendation-evidence-list time { color:var(--text-muted);font-size:.875rem; }
-
 @media (max-width: 720px) {
   .roadmap-summary { grid-template-columns:1fr; }
   .recommendation-history-summary,.recommendation-detail-grid { grid-template-columns:1fr; }

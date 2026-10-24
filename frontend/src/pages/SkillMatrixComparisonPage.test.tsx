@@ -50,9 +50,13 @@ it("shows NONE guidance and an INSUFFICIENT text indicator without changing stor
 
   const row = await screen.findByRole("row", { name: /테스트 역량/ });
   expect(row).toHaveTextContent("저장된 공식 점수 15");
-  expect(row.querySelector(".score-none-label")).toHaveTextContent("근거 없음");
+  expect(row.querySelector(".score-none-label")).toHaveTextContent("—");
   expect(within(row).queryByText("15")).not.toBeInTheDocument();
   expect(row).toHaveTextContent("45");
   expect(screen.getByRole("note", { name: "근거 상태: 근거 없음" })).not.toHaveTextContent("다시 분석해 주세요");
   expect(screen.getByRole("note", { name: "근거 상태: 근거 부족" })).toBeInTheDocument();
+  const headers = screen.getAllByRole("columnheader").map(header => header.textContent ?? "");
+  expect(headers[1]).toMatch(/^결과 A 2026./);
+  expect(headers[2]).toMatch(/^결과 B 2026./);
+  expect(screen.queryByText(/이전|이후/)).not.toBeInTheDocument();
 });

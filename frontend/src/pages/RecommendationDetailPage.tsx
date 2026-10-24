@@ -1,6 +1,7 @@
 import { useParams } from "react-router-dom";
 import { useRecommendationDetail } from "../features/recommendations/model/useRecommendations";
-import { categoryLabel, evidenceTypeLabel, priorityLabel, recommendationStatusLabel, recommendationTypeLabel } from "../shared/ui/labels";
+import { categoryLabel, priorityLabel, recommendationStatusLabel, recommendationTypeLabel } from "../shared/ui/labels";
+import { EvidenceEmptyState, EvidenceItem } from "../shared/ui/EvidenceItem";
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 import { PageHero } from "../shared/ui/PageHero";
@@ -17,7 +18,7 @@ export function RecommendationDetailPage() {
   if (query.isError)
     return (
       <Shell>
-        <PageState state="error" title="추천을 표시할 수 없습니다" errorTitle="추천 상세를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} backTo="/recommendations" backLabel="추천 이력으로 이동" />
+        <PageState state="error" title="추천을 표시할 수 없습니다" errorTitle="추천 상세를 불러오지 못했습니다" error={query.error} retry={() => query.refetch()} backTo="/recommendations" backLabel="추천 이력" />
       </Shell>
     );
   const { recommendation, evidence } = query.data;
@@ -83,24 +84,9 @@ export function RecommendationDetailPage() {
           <span className="status-badge">{evidence.length}개</span>
         </div>
         {evidence.length === 0 ? (
-          <div className="state-panel">
-            <h3>연결된 관찰 근거가 없습니다</h3>
-            <p>이 추천은 현재 부족한 역량을 채울 새로운 근거를 만들도록 안내합니다.</p>
-          </div>
+          <EvidenceEmptyState description="이 추천은 현재 부족한 역량을 채울 새로운 근거를 만들도록 안내합니다." to="/repositories" linkLabel="저장소 연결하기" />
         ) : (
-          <div className="recommendation-evidence-list">
-            {evidence.map((item) => (
-              <article key={item.evidenceId}>
-                <header>
-                  <strong>{evidenceTypeLabel(item.evidenceType)}</strong>
-                  <span>신뢰도 {formatNumber(item.confidence)}%</span>
-                </header>
-                <p>{item.observedFactSummary}</p>
-                <code>{item.sourceReference}</code>
-                <time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time>
-              </article>
-            ))}
-          </div>
+          <div className="evidence-list">{evidence.map(item => <EvidenceItem key={item.evidenceId} evidence={{ ...item, meta: `수집 ${formatDate(item.createdAt)}` }} />)}</div>
         )}
       </section>
     </Shell>
@@ -113,9 +99,6 @@ function Shell({ children }: { children: React.ReactNode }) {
       {children}
     </>
   );
-}
-function formatNumber(value: number) {
-  return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value);
 }
 function formatDate(value: string) {
   return new Intl.DateTimeFormat("ko-KR", {

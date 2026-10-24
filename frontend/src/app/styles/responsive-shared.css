@@ -1,5 +1,5 @@
 /* Cross-area responsive overrides kept last: they must win over same-specificity area rules
-   such as .ai-generated-panel__heading (a .section-heading). */
+   such as .section-heading in the area files. */
 @media (max-width: 720px) {
   .repository-detail-header, .section-heading { align-items: stretch; flex-direction: column; }
 }

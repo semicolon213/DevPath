@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 import type { GenerationJob } from "../api/generationApi";
 import { mutationErrorMessage } from "../../../shared/api/apiClient";
 
@@ -24,7 +24,6 @@ type Props = {
   artifactError: boolean;
   cancelPending: boolean;
   onRequest: () => void;
-  onReset: () => void;
   onCancel: () => void;
   onRefetchJob: () => void;
   onRefetchArtifact: () => void;
@@ -34,46 +33,52 @@ type Props = {
 export function AiGeneratedPanel({
   title, description, actionLabel, messages, job, generatedAt, validationStatus,
   requestPending, requestError, jobError, artifactPending, artifactError, cancelPending,
-  onRequest, onReset, onCancel, onRefetchJob, onRefetchArtifact, children
+  onRequest, onCancel, onRefetchJob, onRefetchArtifact, children
 }: Props) {
   const id = useId();
   const badgeId = `${id}-badge`;
   const titleId = `${id}-title`;
   const status = validationStatus ?? job?.validationStatus ?? "PENDING";
   const hasArtifact = Boolean(generatedAt && validationStatus);
+  const active = job?.status === "QUEUED" || job?.status === "RUNNING";
 
   return <section className="ai-generated-panel" aria-labelledby={`${badgeId} ${titleId}`}>
-    <div className="section-heading ai-generated-panel__heading">
-      <div>
-        <span id={badgeId} className="ai-generated-panel__badge">AI 생성 · 설명만 제공</span>
-        <h2 id={titleId}>{title}</h2>
-        <p>{description}</p>
-      </div>
-      {!job && <button className="button-ai" type="button" disabled={requestPending} onClick={onRequest}>
-        {requestPending ? "요청 중…" : actionLabel}
-      </button>}
+    <div className="ai-generated-panel__toolbar">
+      <span id={badgeId} className="ai-generated-panel__badge">AI 생성 · 설명만 제공</span>
+      {active ? <button className="button-ai" type="button" disabled={cancelPending} onClick={onCancel}>생성 취소</button>
+        : <button className="button-ai" type="button" disabled={requestPending} onClick={onRequest}>{requestPending ? "요청 중…" : hasArtifact ? "다시 생성" : actionLabel}</button>}
     </div>
-    {hasArtifact ? <dl className="ai-generated-panel__metadata">
-      <div><dt>생성 시각</dt><dd><time dateTime={generatedAt}>{formatDateTime(generatedAt!)}</time></dd></div>
-      <div><dt>검증 상태</dt><dd>{validationLabel(status)}</dd></div>
-    </dl> : status === "REJECTED" ? <dl className="ai-generated-panel__metadata">
-      <div><dt>검증 상태</dt><dd>{validationLabel(status)}</dd></div>
-    </dl> : !jobError && !artifactError && job?.status !== "QUEUED" && job?.status !== "RUNNING" ? <p className="ai-generated-panel__metadata">{generationStateLabel(job?.status)}</p> : null}
+    <h2 id={titleId}>{title}{job?.status === "QUEUED" ? " · 대기 중" : job?.status === "RUNNING" ? " · 생성 중" : ""}</h2>
+    <p className="ai-generated-panel__description">{description}</p>
+    {!hasArtifact && !jobError && !artifactError && !active ? <p className="ai-generated-panel__state">{generationStateLabel(job?.status)}</p> : null}
 
     {Boolean(requestError) && <Failure message={mutationErrorMessage(requestError, messages.failed)} retry={onRequest} />}
-    {job && (job.status === "QUEUED" || job.status === "RUNNING") && <div className="state-panel" role="status">
-      <p>{generationStateLabel(job.status)}</p>
-      <p>페이지를 벗어나도 서버에서 작업이 계속됩니다.</p>
-      <button type="button" disabled={cancelPending} onClick={onCancel}>생성 취소</button>
-    </div>}
-    {job?.status === "CANCELED" && <div className="state-panel"><p>{messages.canceled}</p>
-      <button className="button-ai" type="button" onClick={onReset}>다시 시작</button></div>}
+    {job && active && <GenerationProgress job={job} />}
+    {job?.status === "CANCELED" && <div className="state-panel"><p>{messages.canceled}</p></div>}
     {job?.status === "FAILED" && <Failure message={job.validationStatus === "REJECTED" ? messages.rejected : messages.failed} retry={onRequest} />}
     {jobError && <Failure message={messages.failed} retry={onRefetchJob} />}
     {artifactPending && job?.status === "SUCCEEDED" && job.artifactUrl && <p role="status">{messages.loading}</p>}
     {artifactError && <Failure message={messages.failed} retry={onRefetchArtifact} />}
     {children}
+    {hasArtifact ? <p className="ai-generated-panel__metadata">생성 <time dateTime={generatedAt}>{formatDateTime(generatedAt!)}</time> · {validationLabel(status)} · 공식 결과는 바꾸지 않습니다</p>
+      : status === "REJECTED" ? <p className="ai-generated-panel__metadata">{validationLabel(status)}</p> : null}
   </section>;
+}
+
+function GenerationProgress({ job }: { job: GenerationJob }) {
+  const [trackedAt] = useState(Date.now());
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const createdAt = Date.parse(job.createdAt);
+  const started = Number.isNaN(createdAt) ? trackedAt : createdAt;
+  return <div className="ai-generated-panel__progress" role="status">
+    <p className="ai-generated-panel__phase">{generationStateLabel(job.status)}</p>
+    <p><strong>{formatElapsed(now - started)}</strong><span>경과 · 보통 1분 정도 걸립니다</span></p>
+    <p>페이지를 떠나도 서버에서 계속 진행되며, 돌아오면 결과를 이어서 보여 줍니다.</p>
+  </div>;
 }
 
 function Failure({ message, retry }: { message: string; retry: () => void }) {
@@ -97,4 +102,9 @@ function generationStateLabel(status?: GenerationJob["status"]) {
 
 function formatDateTime(value: string) {
   return new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
+}
+
+function formatElapsed(milliseconds: number) {
+  const seconds = Math.max(0, Math.floor(milliseconds / 1000));
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }

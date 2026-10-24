@@ -10,7 +10,7 @@ export function CareerCoachingPanel({ careerReadinessId }: { careerReadinessId: 
     job={generation.job.data} generatedAt={artifact?.provenance.generatedAt} validationStatus={artifact?.validation.status}
     requestPending={generation.request.isPending} requestError={generation.request.error} jobError={generation.job.isError}
     artifactPending={generation.artifact.isPending} artifactError={generation.artifact.isError} cancelPending={generation.cancel.isPending}
-    onRequest={() => generation.request.mutate()} onReset={() => generation.request.reset()} onCancel={() => generation.cancel.mutate()}
+    onRequest={() => generation.request.mutate()} onCancel={() => generation.cancel.mutate()}
     onRefetchJob={() => { void generation.job.refetch(); }} onRefetchArtifact={() => { void generation.artifact.refetch(); }}>
     {artifact && <Advice artifact={artifact} />}
   </AiGeneratedPanel>;

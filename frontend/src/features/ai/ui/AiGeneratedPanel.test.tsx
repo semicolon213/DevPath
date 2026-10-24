@@ -6,8 +6,6 @@ import { AiGeneratedPanel } from "./AiGeneratedPanel";
 describe("AiGeneratedPanel", () => {
   it.each([
     [undefined, "아직 생성하지 않았습니다."],
-    ["QUEUED", "생성 요청이 대기 중입니다."],
-    ["RUNNING", "AI 결과를 생성하고 있습니다."],
     ["CANCELED", "생성이 취소되었습니다."],
     ["FAILED", "생성에 실패했습니다."],
     ["SUCCEEDED", "생성 결과를 불러오고 있습니다."]
@@ -19,13 +17,23 @@ describe("AiGeneratedPanel", () => {
   });
 
   it.each([
-    ["QUEUED", "생성 요청이 대기 중입니다."],
-    ["RUNNING", "AI 결과를 생성하고 있습니다."],
     ["CANCELED", "생성을 취소했습니다."],
     ["FAILED", "생성하지 못했습니다."]
   ] as const)("renders the %s job frame", (status, message) => {
     render(<Panel job={job(status)} />);
     expect(screen.getByText(message)).toBeInTheDocument();
+  });
+
+  it.each([
+    ["QUEUED", "AI 설명 · 대기 중", "생성 요청이 대기 중입니다."],
+    ["RUNNING", "AI 설명 · 생성 중", "AI 결과를 생성하고 있습니다."]
+  ] as const)("distinguishes the %s job and renders its elapsed time", (status, heading, message) => {
+    render(<Panel job={{ ...job(status), createdAt: new Date(Date.now() - 42_000).toISOString() }} />);
+    expect(screen.getByRole("heading", { name: heading })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(message);
+    expect(screen.getByText(/0:4[12]/)).toBeInTheDocument();
+    expect(screen.getByText("경과 · 보통 1분 정도 걸립니다")).toBeInTheDocument();
+    expect(screen.getByText("페이지를 떠나도 서버에서 계속 진행되며, 돌아오면 결과를 이어서 보여 줍니다.")).toBeInTheDocument();
   });
 
   it("distinguishes validation rejection from generation failure", () => {
@@ -46,9 +54,9 @@ describe("AiGeneratedPanel", () => {
     const { container } = render(<Panel job={job("SUCCEEDED", "PASSED")} generatedAt="2026-09-02T00:00:00Z" validationStatus="PASSED"><p>검증된 결과</p></Panel>);
     expect(screen.getByText("AI 생성 · 설명만 제공")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "AI 생성 · 설명만 제공 AI 설명" })).toBeInTheDocument();
-    expect(screen.getByText("생성 시각").nextElementSibling).not.toHaveTextContent("생성 전");
     expect(container.querySelector("time")).toHaveAttribute("datetime", "2026-09-02T00:00:00Z");
-    expect(screen.getByText("검증 통과")).toBeInTheDocument();
+    expect(container.querySelector(".ai-generated-panel__metadata")).toHaveTextContent("검증 통과");
+    expect(screen.getByRole("button", { name: "다시 생성" })).toHaveClass("button-ai");
     expect(screen.getByText("검증된 결과")).toBeInTheDocument();
     expect(container.querySelector(".category-result-card")).toBeNull();
   });
@@ -97,7 +105,7 @@ function Panel({ job: value, onCancel = vi.fn(), onRequest = vi.fn(), onRefetchJ
   return <AiGeneratedPanel title="AI 설명" description="공식 결과와 분리된 설명입니다." actionLabel="설명 생성" messages={messages}
     job={value} generatedAt={generatedAt} validationStatus={validationStatus}
     requestPending={false} requestError={requestError} jobError={jobError} artifactPending={false} artifactError={artifactError} cancelPending={false}
-    onRequest={onRequest} onReset={vi.fn()} onCancel={onCancel} onRefetchJob={onRefetchJob} onRefetchArtifact={onRefetchArtifact}>{children}</AiGeneratedPanel>;
+    onRequest={onRequest} onCancel={onCancel} onRefetchJob={onRefetchJob} onRefetchArtifact={onRefetchArtifact}>{children}</AiGeneratedPanel>;
 }
 
 function job(status: GenerationJob["status"], validationStatus: GenerationJob["validationStatus"] = "PENDING"): GenerationJob {

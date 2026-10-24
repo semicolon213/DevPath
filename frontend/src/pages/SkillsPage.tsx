@@ -44,14 +44,6 @@ export function SkillsPage() {
         <Summary label="개선할 영역" value={weaknesses.length} />
       </section>
 
-      <section className="analysis-notice" aria-labelledby="analysis-basis-title">
-        <div>
-          <h2 id="analysis-basis-title">분석 기준</h2>
-          <p>점수와 등급은 AI가 아닌 Rule Engine이 계산합니다. 근거가 부족한 항목은 낮은 점수와 별도로 신뢰도를 함께 확인하세요.</p>
-        </div>
-        <time dateTime={matrix.generatedAt}>{formatDateTime(matrix.generatedAt)} 생성</time>
-      </section>
-
       <section aria-labelledby="skill-list-title">
         <div className="section-heading">
           <div>
@@ -87,25 +79,21 @@ function SkillCard({ skill }: { skill: SkillAssessment }) {
           <span className="skill-category">{categoryLabel(skill.category)}</span>
           <h3><Link to={`/skills/${skill.skillId}`}>{skillNameLabel(skill.skillKey, skill.skillName)}</Link></h3>
         </div>
-        <span className="skill-flag">{state}</span>
       </div>
-      <div className="skill-card__score">{skill.evidenceStatus === "NONE" ? <div className="skill-score-row"><strong className="score-none-label">근거 없음</strong></div> : <><div className="skill-score-row">
-        <strong>{formatScore(skill.score)}</strong><span>{levelLabel(skill.level)}</span>
-      </div><label className="skill-meter"><span>공식 점수</span><progress max="100" value={skill.score}>{skill.score}점</progress></label></>}</div>
-      <EvidenceStatus status={skill.evidenceStatus} />
-      <dl className="skill-metadata">
-        <div><dt>신뢰도</dt><dd>{formatScore(skill.confidence)}%</dd></div>
-        <div><dt>연결된 근거</dt><dd>{skill.evidenceIds.length}개</dd></div>
-        <div><dt>분석 저장소</dt><dd>{skill.repositoryIds.length}개</dd></div>
-        <div><dt>성장 추세</dt><dd>{growthTrendLabel(skill.growthTrend)}</dd></div>
-      </dl>
+      <div className="skill-card__score">{skill.evidenceStatus === "NONE" ? <div className="skill-score-empty"><strong>—</strong><span>관련 저장소나 문서를 연결하면 다음 분석에서 평가됩니다.</span><small>{levelLabel(skill.level)}</small></div> : <div className="skill-score-row">
+        <strong>{formatScore(skill.score)}</strong><label className="skill-meter"><span className="visually-hidden">공식 점수</span><progress max="100" value={skill.score}>{skill.score}점</progress></label><span>{levelLabel(skill.level)}</span>
+      </div>}</div>
+      <div className="skill-card__status"><EvidenceStatus status={skill.evidenceStatus} guidance={false} /><span className="skill-flag">{state}</span></div>
       <details>
-        <summary>근거와 계산 기준 보기</summary>
+        <summary>세부 지표와 근거 {skill.evidenceIds.length}개 보기</summary>
         <dl className="evidence-details">
+          <div><dt>신뢰도</dt><dd>{formatScore(skill.confidence)}%</dd></div>
+          <div><dt>분석 저장소</dt><dd>{skill.repositoryIds.length}개</dd></div>
+          <div><dt>성장 추세</dt><dd>{growthTrendLabel(skill.growthTrend)}</dd></div>
           <div><dt>평가 참조</dt><dd><code>{skill.aggregateRuleResultReference}</code></dd></div>
           <div><dt>규칙 버전</dt><dd>{skill.ruleSetVersion}</dd></div>
           {skill.evidenceStatus === "NONE" ? <div><dt>저장된 공식 점수</dt><dd>{formatScore(skill.score)}</dd></div> : null}
-          <div><dt>근거 ID</dt><dd>{skill.evidenceIds.length ? skill.evidenceIds.join(", ") : "직접 근거 없음"}</dd></div>
+          {skill.evidenceIds.length ? <div><dt>근거 ID</dt><dd>{skill.evidenceIds.join(", ")}</dd></div> : null}
         </dl>
       </details>
     </article>

@@ -18,7 +18,7 @@ function GapRow({ gap }: { gap: SkillGap }) {
       ? <><div className="readiness-gap__track readiness-gap__track--empty" role="img" aria-label={`${categoryLabel(gap.category)}: ${gapStateLabel(gap.gapState)}`} /><span className="readiness-gap__guidance">관련 근거를 연결하면 평가됩니다.</span></>
       : <div className="readiness-gap__track" role="img" aria-label={`${categoryLabel(gap.category)} 실제 점수 ${format(gap.actualScore)}점, 기준 ${format(gap.expectedMinimum)}점`}><span className="readiness-gap__fill" style={{ width: `${gap.actualScore}%` }} /><span className={`readiness-gap__reference${gap.expectedMinimum >= 100 ? " readiness-gap__reference--end" : ""}`} style={gap.expectedMinimum < 100 ? { left: `${gap.expectedMinimum}%` } : undefined} /></div>}
     <small>직무 가중치 {format(gap.careerWeight)}% · 근거 {gap.evidenceIds.length}개</small>
-    <Link to={`/skills/${gap.skillId}`}>기술 평가와 근거 보기</Link>
+    <Link to={`/skills/${gap.skillId}#skill-evidence-title`}>{gap.evidenceIds.length ? `근거 ${gap.evidenceIds.length}개 보기` : "기술 평가와 근거 보기"}</Link>
   </article>;
 }
 

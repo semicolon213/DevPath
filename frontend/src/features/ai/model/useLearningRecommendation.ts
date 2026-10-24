@@ -2,5 +2,5 @@ import { getGeneratedLearningRecommendation, requestLearningRecommendation } fro
 import { useGeneration } from "./useGeneration";
 
 export function useLearningRecommendation(learningRoadmapId: string) {
-  return useGeneration(() => requestLearningRecommendation(learningRoadmapId), getGeneratedLearningRecommendation);
+  return useGeneration(`LEARNING_RECOMMENDATION:${learningRoadmapId}`, () => requestLearningRecommendation(learningRoadmapId), getGeneratedLearningRecommendation);
 }

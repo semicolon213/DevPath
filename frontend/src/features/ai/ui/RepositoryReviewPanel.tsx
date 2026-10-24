@@ -1,9 +1,9 @@
 import { useRepositoryReview } from "../model/useRepositoryReview";
 import { AiGeneratedPanel } from "./AiGeneratedPanel";
-import { EvidenceReferences } from "./EvidenceReferences";
+import { EvidenceFootnotes, EvidenceMarkers, type ResolvedEvidence } from "./EvidenceReferences";
 import { categoryLabel } from "../../../shared/ui/labels";
 
-export function RepositoryReviewPanel({ analysisId }: { analysisId: string }) {
+export function RepositoryReviewPanel({ analysisId, evidence = [] }: { analysisId: string; evidence?: ResolvedEvidence }) {
   const generation = useRepositoryReview(analysisId);
   const artifact = generation.artifact.data;
   return <AiGeneratedPanel title="저장소 리뷰"
@@ -12,17 +12,18 @@ export function RepositoryReviewPanel({ analysisId }: { analysisId: string }) {
     job={generation.job.data} generatedAt={artifact?.provenance.generatedAt} validationStatus={artifact?.validation.status}
     requestPending={generation.request.isPending} requestError={generation.request.error} jobError={generation.job.isError}
     artifactPending={generation.artifact.isPending} artifactError={generation.artifact.isError} cancelPending={generation.cancel.isPending}
-    onRequest={() => generation.request.mutate()} onReset={() => generation.request.reset()} onCancel={() => generation.cancel.mutate()}
+    onRequest={() => generation.request.mutate()} onCancel={() => generation.cancel.mutate()}
     onRefetchJob={() => { void generation.job.refetch(); }} onRefetchArtifact={() => { void generation.artifact.refetch(); }}>
-    {artifact && <Review artifact={artifact} />}
+    {artifact && <Review artifact={artifact} evidence={evidence} />}
   </AiGeneratedPanel>;
 }
 
-function Review({ artifact }: { artifact: NonNullable<ReturnType<typeof useRepositoryReview>["artifact"]["data"]> }) {
+function Review({ artifact, evidence }: { artifact: NonNullable<ReturnType<typeof useRepositoryReview>["artifact"]["data"]>; evidence: ResolvedEvidence }) {
+  const references = [...new Set(artifact.content.sections.flatMap(section => section.evidenceIds))];
   return <article className="ai-generated-panel__result"><p>{artifact.content.summary}</p>
     <div className="ai-generated-panel__grid">{artifact.content.sections.map(section => <section key={section.category}>
-      <h3>{categoryLabel(section.category)}</h3><p>{section.review}</p>
-      <EvidenceReferences references={section.evidenceIds} analysisId={artifact.provenance.analysisId} />
+      <h3>{categoryLabel(section.category)}</h3><p>{section.review}<EvidenceMarkers references={section.evidenceIds} allReferences={references} evidence={evidence} scope="repository-review" /></p>
     </section>)}</div>
+    <EvidenceFootnotes references={references} evidence={evidence} scope="repository-review" analysisId={artifact.provenance.analysisId} />
   </article>;
 }

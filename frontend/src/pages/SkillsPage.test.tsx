@@ -47,7 +47,8 @@ it("renders official scores, confidence, evidence, and Korean labels", async () 
   expect(screen.getByText("100")).toBeInTheDocument();
   expect(screen.getByText("87.5%")).toBeInTheDocument();
   expect(screen.getAllByText("강점")).toHaveLength(2);
-  expect(screen.getByText("점수와 등급은 AI가 아닌 Rule Engine이 계산합니다.", { exact: false })).toBeInTheDocument();
+  expect(screen.queryByRole("heading", { name: "분석 기준" })).not.toBeInTheDocument();
+  expect(screen.getByText("세부 지표와 근거 1개 보기")).toBeInTheDocument();
   const officialRegion = screen.getByRole("heading", { name: "역량별 결과" }).closest("section")!;
   const aiRegion = screen.getByRole("region", { name: "AI 생성 · 설명만 제공 기술 분석 설명" });
   expect(officialRegion.compareDocumentPosition(aiRegion) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -78,8 +79,9 @@ it("uses the API evidence status without deriving it from evidence counts", asyn
 
   const none = (await screen.findByRole("heading", { name: "근거 없는 역량" })).closest("article")!;
   expect(within(none).queryByRole("progressbar")).not.toBeInTheDocument();
-  expect(within(none).getByText("근거 없음", { selector: ".skill-score-row strong" })).toBeInTheDocument();
-  expect(within(none).getByRole("note", { name: "근거 상태: 근거 없음" })).toHaveTextContent("저장소 근거를 추가한 뒤 다시 분석해 주세요.");
+  expect(within(none).getByText("—")).toBeInTheDocument();
+  expect(within(none).getByText("관련 저장소나 문서를 연결하면 다음 분석에서 평가됩니다.")).toBeInTheDocument();
+  expect(within(none).getByRole("note", { name: "근거 상태: 근거 없음" })).toHaveTextContent("근거 없음");
   const insufficient = screen.getByRole("heading", { name: "근거 부족 역량" }).closest("article")!;
   expect(within(insufficient).getByRole("progressbar")).toHaveAttribute("value", "45");
   expect(within(insufficient).getByRole("note", { name: "근거 상태: 근거 부족" })).toBeInTheDocument();

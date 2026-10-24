@@ -42,8 +42,8 @@ describe("RepositoryReviewPanel", () => {
 
     expect(screen.getByText("근거 기반 리뷰")).toBeInTheDocument();
     expect(screen.getByText("문서 근거가 확인됩니다")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "분석 근거 1" })).toHaveAttribute("href", "/analyses/analysis-id#evidence-evidence-id");
-    expect(screen.queryByText("evidence-id")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "근거 1: 근거 ID evidence-id" })).toHaveAttribute("href", "#footnote-repository-review-evidence-id");
+    expect(screen.getByText("evidence-id")).toBeInTheDocument();
     expect(document.querySelector("[dangerouslySetInnerHTML]")).toBeNull();
   });
 

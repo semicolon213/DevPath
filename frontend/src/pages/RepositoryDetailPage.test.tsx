@@ -98,7 +98,8 @@ it("shows normalized languages frameworks and databases with evidence paths", as
         ] },
         { category: "DOCUMENTATION", label: "Documentation", signals: [
           { signalKey: "README_QUALITY_SECTIONS", label: "README quality sections", present: true,
-            count: 4, observedValue: "OVERVIEW, SETUP, TESTING, USAGE", evidencePaths: ["README.md"] }
+            count: 4, observedValue: "OVERVIEW, SETUP, TESTING, USAGE", evidencePaths: ["README.md"] },
+          { signalKey: "LICENSE_PRESENT", label: "License", present: false, count: 0, observedValue: null, evidencePaths: [] }
         ] },
         { category: "COLLABORATION", label: "Collaboration", signals: [
           { signalKey: "PULL_REQUEST_REVIEW_COUNT", label: "Pull request reviews", present: true,
@@ -129,18 +130,22 @@ it("shows normalized languages frameworks and databases with evidence paths", as
   expect(await screen.findByRole("heading", { name: "감지된 기술 스택" })).toBeInTheDocument();
   expect(await screen.findByText("React")).toBeInTheDocument();
   expect(screen.getByText("PostgreSQL")).toBeInTheDocument();
-  expect(screen.getByText("근거: frontend/package.json")).toBeInTheDocument();
+  expect(screen.getByText("frontend/package.json")).toBeInTheDocument();
+  expect(screen.getAllByText("의존성 선언")).toHaveLength(2);
   expect(screen.getByText("프레임워크")).toBeInTheDocument();
   expect(screen.getAllByText("데이터베이스")).toHaveLength(2);
   expect(await screen.findByRole("heading", { name: "엔지니어링 근거" })).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "분석 시작" })).toBeEnabled();
-  expect(screen.getByText("테스트 파일")).toBeInTheDocument();
-  expect(screen.getByText("데이터베이스 마이그레이션")).toBeInTheDocument();
-  expect(screen.getByText("컨테이너 설정")).toBeInTheDocument();
+  expect(screen.getByText("테스트 파일 12건이 관찰되었습니다.")).toBeInTheDocument();
+  expect(screen.getByText("라이선스: 관찰되지 않았습니다.")).toBeInTheDocument();
+  expect(screen.queryByText(/0건이 관찰/)).not.toBeInTheDocument();
+  expect(screen.getByText(/PR 리뷰 8이 관찰되었습니다/)).toBeInTheDocument();
+  expect(screen.getByText(/데이터베이스 마이그레이션 2건/)).toBeInTheDocument();
+  expect(screen.getByText(/컨테이너 설정 1건/)).toBeInTheDocument();
   expect(screen.getByText("협업")).toBeInTheDocument();
-  expect(screen.getByText("PR 리뷰")).toBeInTheDocument();
-  expect(screen.getByText("종료된 이슈")).toBeInTheDocument();
-  expect(screen.getByText("README 품질 섹션")).toBeInTheDocument();
+  expect(screen.getByText(/PR 리뷰 8/)).toBeInTheDocument();
+  expect(screen.getByText(/종료된 이슈 5/)).toBeInTheDocument();
+  expect(screen.getByText(/README 품질 섹션 OVERVIEW/)).toBeInTheDocument();
   expect(screen.getByRole("heading", { name: "저장소 활동 타임라인" })).toBeInTheDocument();
   expect(screen.getByText("PR 병합")).toBeInTheDocument();
   expect(screen.getByText("커밋")).toBeInTheDocument();

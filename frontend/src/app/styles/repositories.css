@@ -89,6 +89,8 @@
 
 .technology-card > div { display: flex; gap: 16px; justify-content: space-between; }
 
+.technology-card > .evidence-list { display: grid; }
+
 .technology-card progress { width: 100%; }
 
 .technology-card > .technology-card__score { align-items: center; display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) auto; }
@@ -99,15 +101,7 @@
 
 .evidence-card h3 { margin-top: 0; }
 
-.evidence-card ul { display: grid; gap: 12px; list-style: none; margin: 0; padding: 0; }
-
-.evidence-card li { border-top: 1px solid var(--border-soft); display: grid; gap: 5px; padding-top: 12px; }
-
-.evidence-card li > div { align-items: center; display: flex; gap: 10px; justify-content: space-between; }
-
 .evidence-card small { overflow-wrap: anywhere; }
-
-.evidence-card li:first-child { border-top: 0; padding-top: 0; }
 
 .activity-timeline { display: grid; gap: 0; list-style: none; margin: 0; padding: 0 0 0 24px; }
 

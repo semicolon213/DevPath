@@ -1,16 +1,44 @@
-import { Link } from "react-router-dom";
+import { EvidenceItem, type EvidenceItemValue } from "../../../shared/ui/EvidenceItem";
+import { evidenceTypeLabel } from "../../../shared/ui/labels";
 
-export function EvidenceReferences({ references, analysisId, label = "분석 근거", target = "evidence", showReference = false }: {
+export type ResolvedEvidence = EvidenceItemValue[];
+
+// scope keeps footnote ids unique when several panels on one page cite the same evidence.
+export function EvidenceMarkers({ references, allReferences, evidence, scope, label = "근거" }: {
   references: string[];
+  allReferences: string[];
+  evidence: ResolvedEvidence;
+  scope: string;
+  label?: string;
+}) {
+  return <>{references.map(reference => {
+    const number = allReferences.indexOf(reference) + 1;
+    const resolved = resolve(reference, evidence);
+    const name = resolved?.evidenceType ? `${evidenceTypeLabel(resolved.evidenceType)} ${resolved.sourceReference}` : `근거 ID ${resolved?.sourceReference ?? reference}`;
+    return <a className="evidence-marker" key={reference} href={`#footnote-${scope}-${encodeURIComponent(reference)}`} aria-label={`${label} ${number}: ${name}`}>[{number}]</a>;
+  })}</>;
+}
+
+export function EvidenceFootnotes({ references, evidence, scope, analysisId, label = "근거" }: {
+  references: string[];
+  evidence: ResolvedEvidence;
+  scope: string;
   analysisId?: string | null;
   label?: string;
-  target?: "evidence" | "rules";
-  showReference?: boolean;
 }) {
   if (!references.length) return null;
-  return <ul className="ai-evidence-links" aria-label={label}>{references.map((reference, index) => <li key={`${reference}:${index}`}>
-    {analysisId
-      ? <Link to={`/analyses/${analysisId}#${target === "evidence" ? `evidence-${encodeURIComponent(reference)}` : "category-results-title"}`}>{label} {index + 1}</Link>
-      : <span>{showReference ? `${label}: ${reference}` : `${label} ${index + 1}`}</span>}
-  </li>)}</ul>;
+  return <section className="ai-generated-panel__evidence" aria-label={label}><h3>{label}</h3><ol>
+    {references.map((reference, index) => {
+      const resolved = resolve(reference, evidence);
+      const footnoteId = `${scope}-${encodeURIComponent(reference)}`;
+      return <EvidenceItem key={reference} variant="footnote" number={index + 1} evidence={resolved
+        ? { ...resolved, evidenceId: footnoteId }
+        : { evidenceId: footnoteId, sourceReference: reference }}
+        linkTo={analysisId && resolved?.evidenceId ? `/analyses/${analysisId}#evidence-${encodeURIComponent(resolved.evidenceId)}` : undefined} />;
+    })}
+  </ol></section>;
+}
+
+function resolve(reference: string, evidence: ResolvedEvidence) {
+  return evidence.find(item => item.evidenceId === reference || item.sourceReference === reference);
 }

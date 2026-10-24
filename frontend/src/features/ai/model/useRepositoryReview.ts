@@ -2,5 +2,5 @@ import { getGeneratedRepositoryReview, requestRepositoryReview } from "../api/ge
 import { useGeneration } from "./useGeneration";
 
 export function useRepositoryReview(analysisId: string) {
-  return useGeneration(() => requestRepositoryReview(analysisId), getGeneratedRepositoryReview);
+  return useGeneration(`REPOSITORY_REVIEW:${analysisId}`, () => requestRepositoryReview(analysisId), getGeneratedRepositoryReview);
 }

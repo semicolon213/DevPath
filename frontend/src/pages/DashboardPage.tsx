@@ -30,7 +30,7 @@ export function DashboardPage() {
           <section className="dashboard-readiness" aria-labelledby="dashboard-readiness-title">
             <span id="dashboard-readiness-title">커리어 준비도</span>
             <Readiness status={view.readiness.status} resultStatus={view.readiness.resultStatus} score={view.readiness.score} level={view.readiness.level} confidence={view.readiness.confidence} unavailableCategories={view.readiness.unavailableCategories} />
-            <Link to="/career-readiness">준비도 상세</Link>
+            <Link to="/career-readiness">커리어 준비도</Link>
           </section>
         </div>
       </header>
@@ -49,7 +49,7 @@ export function DashboardPage() {
 
       <section className="dashboard-section dashboard-section--recommendations" aria-labelledby="dashboard-recommendations-title">
         <CardHeading eyebrow="공식 추천" title="우선 추천" link="/recommendations" linkLabel="추천 전체 보기" id="dashboard-recommendations-title" />
-        {view.recommendations.status === "UNAVAILABLE" ? <Unavailable /> : view.recommendations.items.length ? <ol className="dashboard-recommendation-list">{view.recommendations.items.map((item, index) => <li className={index === 0 ? "dashboard-recommendation dashboard-recommendation--current" : "dashboard-recommendation"} key={item.recommendationId}><span className="dashboard-recommendation__number">{index + 1}</span><div><span className="dashboard-recommendation__state">{index === 0 ? "지금 할 일" : `${index + 1}번째 추천`}</span><strong>{item.title}</strong><small>{categoryLabel(item.category)} · {item.effortHours}시간</small></div><span className="dashboard-recommendation__priority">{priorityLabel(item.priority)}</span><Link to={`/recommendations/${item.recommendationId}`} aria-label={`${item.title} 추천 상세`}>추천 상세</Link></li>)}</ol> : <Empty text="아직 생성된 추천이 없습니다." action="준비도 확인" to="/career-readiness" />}
+        {view.recommendations.status === "UNAVAILABLE" ? <Unavailable /> : view.recommendations.items.length ? <ol className="dashboard-recommendation-list">{view.recommendations.items.map((item, index) => <li className={index === 0 ? "dashboard-recommendation dashboard-recommendation--current" : "dashboard-recommendation"} key={item.recommendationId}><span className="dashboard-recommendation__number">{index + 1}</span><div><span className="dashboard-recommendation__state">{index === 0 ? "지금 할 일" : `${index + 1}번째 추천`}</span><strong>{item.title}</strong><small>{categoryLabel(item.category)} · {item.effortHours}시간</small></div><span className="dashboard-recommendation__priority">{priorityLabel(item.priority)}</span><Link to={`/recommendations/${item.recommendationId}`} aria-label={`${item.title} 추천 상세`}>추천 상세</Link></li>)}</ol> : <Empty text="아직 생성된 추천이 없습니다." action="커리어 준비도" to="/career-readiness" />}
       </section>
 
       <div className="dashboard-feature-grid">
@@ -59,8 +59,8 @@ export function DashboardPage() {
         </section>
 
         <section className="dashboard-section dashboard-section--analysis" aria-labelledby="dashboard-latest-title">
-          <CardHeading eyebrow="공식 분석" title="최신 공식 분석" link="/analyses" linkLabel="전체 이력" id="dashboard-latest-title" />
-          {view.analyses.status === "UNAVAILABLE" ? <Unavailable /> : latest ? <><div className="dashboard-score"><strong>{formatScore(latest.overallScore)}</strong><span>/ 100</span></div><h3>{latest.repositoryFullName}</h3><p>{latest.currentForRepository ? "현재 저장소에 적용되는 최신 결과" : "보존된 과거 분석 결과"}</p><Link to={`/analyses/${latest.analysisId}`}>점수 근거 확인</Link></> : <Empty text="완료된 분석이 없습니다." action="저장소에서 분석 시작" to="/repositories" />}
+          <CardHeading eyebrow="공식 분석" title="최신 공식 분석" link="/analyses" linkLabel="분석 이력" id="dashboard-latest-title" />
+          {view.analyses.status === "UNAVAILABLE" ? <Unavailable /> : latest ? <><div className="dashboard-score"><strong>{formatScore(latest.overallScore)}</strong><span>/ 100</span></div><h3>{latest.repositoryFullName}</h3><p>{latest.currentForRepository ? "현재 저장소에 적용되는 최신 결과" : "보존된 과거 분석 결과"}</p><Link to={`/analyses/${latest.analysisId}`}>점수 근거 확인</Link></> : <Empty text="완료된 분석이 없습니다." action="저장소 확인" to="/repositories" />}
         </section>
       </div>
 

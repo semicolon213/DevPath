@@ -1,10 +1,29 @@
-import { fireEvent, screen, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { Route, Routes } from "react-router-dom";
+import { useRepositoryReview } from "../features/ai/model/useRepositoryReview";
+import { useRepositorySummary } from "../features/ai/model/useRepositorySummary";
+import { RouteAccessibility } from "../shared/ui/RouteAccessibility";
 import { renderWithProviders } from "../test/renderWithProviders";
 import { AnalysisDetailPage } from "./AnalysisDetailPage";
 
-afterEach(() => vi.unstubAllGlobals());
+const actualHooks = vi.hoisted(() => ({} as { summary?: typeof useRepositorySummary; review?: typeof useRepositoryReview }));
+vi.mock("../features/ai/model/useRepositorySummary", async importOriginal => {
+  const actual = await importOriginal<typeof import("../features/ai/model/useRepositorySummary")>();
+  actualHooks.summary = actual.useRepositorySummary;
+  return { useRepositorySummary: vi.fn(actual.useRepositorySummary) };
+});
+vi.mock("../features/ai/model/useRepositoryReview", async importOriginal => {
+  const actual = await importOriginal<typeof import("../features/ai/model/useRepositoryReview")>();
+  actualHooks.review = actual.useRepositoryReview;
+  return { useRepositoryReview: vi.fn(actual.useRepositoryReview) };
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.mocked(useRepositorySummary).mockImplementation(actualHooks.summary!);
+  vi.mocked(useRepositoryReview).mockImplementation(actualHooks.review!);
+});
 const metadata = { requestId: "r", apiVersion: "v1", timestamp: "2026-08-11T10:00:00Z" };
 
 type EvidenceStatus = "NONE" | "INSUFFICIENT" | "SUFFICIENT" | null;
@@ -58,7 +77,7 @@ it("explains immutable official rules and marks the repository's current result"
   expect(screen.getByRole("heading", { name: "영역별 공식 결과" })).toBeInTheDocument();
   expect(screen.getByText("이 저장소의 현재 적용 결과")).toBeInTheDocument();
   expect(screen.getAllByText("README").length).toBeGreaterThan(0);
-  expect(screen.getByText("README 파일을 확인했습니다.")).toBeInTheDocument();
+  expect(screen.getAllByText("README 파일을 확인했습니다.")).toHaveLength(2);
   expect(screen.getByText("기술 문서화")).toBeInTheDocument();
   const officialRegion = screen.getByRole("heading", { name: "영역별 공식 결과" }).closest("section")!;
   for (const aiName of ["저장소 요약", "저장소 리뷰"]) {
@@ -109,4 +128,35 @@ it("uses the shared network failure state and recovers on retry", async () => {
   fireEvent.click(screen.getByRole("button", { name: "다시 시도" }));
   expect(await screen.findByRole("heading", { name: "owner/devpath" })).toBeInTheDocument();
   expect(analysisAttempts).toBe(2);
+});
+
+it("keeps evidence ids unique when the official list, rule expansion and both AI panels cite the same evidence", async () => {
+  const scrollIntoView = vi.fn();
+  Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: scrollIntoView });
+  vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true })));
+  vi.stubGlobal("fetch", vi.fn(analysisDetailResponse));
+  const provenance = { skillMatrixId: "matrix-id", analysisId: "analysis-id", promptContextId: "context-id", templateVersion: "v2", provider: "OLLAMA", model: "qwen-test", contextHash: "a".repeat(64), generatedAt: "2026-09-11T00:00:00Z" };
+  const validation = { status: "PASSED", validatorVersion: "validator-v2", validatedAt: "2026-09-11T00:00:00Z", violations: [] };
+  const generation = (content: unknown) => ({
+    request: { data: undefined, isPending: false, isError: false, mutate: vi.fn(), reset: vi.fn() },
+    job: { data: { status: "SUCCEEDED" }, isError: false, refetch: vi.fn() },
+    artifact: { data: { artifactId: "artifact-id", status: "VALIDATED", provenance, validation, content }, isPending: false, isError: false, refetch: vi.fn() },
+    cancel: { isPending: false, mutate: vi.fn() }
+  });
+  vi.mocked(useRepositorySummary).mockImplementation(() => generation({ summary: { text: "요약 문장", evidenceReferences: ["evidence-id"], ruleOutputReferences: [] }, strengths: [], improvementAreas: [], technologies: [] }) as unknown as ReturnType<typeof useRepositorySummary>);
+  vi.mocked(useRepositoryReview).mockImplementation(() => generation({ summary: "리뷰 요약", sections: [{ category: "DOCUMENTATION", review: "리뷰 문장", evidenceIds: ["evidence-id"] }] }) as unknown as ReturnType<typeof useRepositoryReview>);
+
+  renderWithProviders(<><RouteAccessibility /><main><Routes><Route path="/analyses/:analysisId" element={<AnalysisDetailPage />} /></Routes></main></>, ["/analyses/analysis-id#evidence-evidence-id"]);
+
+  const evidenceSection = (await screen.findByRole("heading", { name: "평가 근거" })).closest("section")!;
+  const ids = Array.from(document.querySelectorAll("[id]"), element => element.id);
+  expect(new Set(ids).size).toBe(ids.length);
+  const row = document.getElementById("evidence-evidence-id")!;
+  expect(evidenceSection).toContainElement(row);
+  expect(row).toHaveAttribute("tabindex", "-1");
+  expect(screen.getAllByText("README 파일을 확인했습니다.").length).toBeGreaterThan(1);
+  expect(screen.getAllByRole("link", { name: "근거 1: 저장소 파일 README.md" }).map(link => link.getAttribute("href"))).toEqual(["#footnote-repository-summary-evidence-id", "#footnote-repository-review-evidence-id"]);
+  expect(document.getElementById("footnote-repository-summary-evidence-id")).toBeInTheDocument();
+  expect(document.getElementById("footnote-repository-review-evidence-id")).toBeInTheDocument();
+  await waitFor(() => expect(row).toHaveFocus());
 });

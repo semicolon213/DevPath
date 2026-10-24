@@ -27,18 +27,18 @@ export function SkillMatrixComparisonPage() {
       <Link className="button-link button-secondary" to="/analyses">다른 결과 선택</Link>
     </PageHero>
     <section className="comparison-hero" aria-label="Skill Matrix 비교 대상">
-      <MatrixSummary label="Matrix A" matrix={left} /><div aria-hidden="true">VS</div><MatrixSummary label="Matrix B" matrix={right} />
+      <MatrixSummary label="역량 결과 A" matrix={left} /><div aria-hidden="true">VS</div><MatrixSummary label="역량 결과 B" matrix={right} />
     </section>
     <section aria-labelledby="skill-comparison-title">
       <div className="section-heading"><div><h2 id="skill-comparison-title">역량별 저장 결과</h2>
         <p>점수, 등급, 신뢰도, 근거 개수는 각 기술 역량에 저장된 값을 그대로 보여줍니다.</p></div></div>
       <p className="comparison-scroll-hint" id="skill-comparison-hint">표를 좌우로 스크롤해 비교할 수 있습니다.</p>
-      <div className="comparison-table-wrap" role="region" aria-label="역량별 저장 결과 표" aria-describedby="skill-comparison-hint" tabIndex={0}><table className="comparison-table"><thead><tr><th scope="col">역량</th><th scope="col">Matrix A</th><th scope="col">Matrix B</th></tr></thead>
+      <div className="comparison-table-wrap" role="region" aria-label="역량별 저장 결과 표" aria-describedby="skill-comparison-hint" tabIndex={0}><table className="comparison-table"><thead><tr><th scope="col">역량</th><th scope="col">결과 A <time dateTime={left.generatedAt}>{formatDate(left.generatedAt)}</time></th><th scope="col">결과 B <time dateTime={right.generatedAt}>{formatDate(right.generatedAt)}</time></th></tr></thead>
         <tbody>{skillKeys.map(key => <SkillRow key={key} skillKey={key} left={findSkill(left, key)} right={findSkill(right, key)} />)}</tbody>
       </table></div>
     </section>
-    <section className="comparison-rule-grid" aria-label="비교 재현 정보"><MatrixFacts label="Matrix A" matrix={left} /><MatrixFacts label="Matrix B" matrix={right} /></section>
-    <ResultBasis items={[{ label: "Matrix A 정책·규칙", value: `${left.policyVersion} · ${left.ruleSetVersion}` }, { label: "Matrix B 정책·규칙", value: `${right.policyVersion} · ${right.ruleSetVersion}` }]} />
+    <section className="comparison-rule-grid" aria-label="비교 재현 정보"><MatrixFacts label="결과 A" matrix={left} /><MatrixFacts label="결과 B" matrix={right} /></section>
+    <ResultBasis items={[{ label: `결과 A (${formatDate(left.generatedAt)}) 정책·규칙`, value: `${left.policyVersion} · ${left.ruleSetVersion}` }, { label: `결과 B (${formatDate(right.generatedAt)}) 정책·규칙`, value: `${right.policyVersion} · ${right.ruleSetVersion}` }]} />
   </>;
 }
 
@@ -50,10 +50,10 @@ function SkillRow({ skillKey, left, right }: { skillKey: string; left?: SkillAss
   return <tr><th scope="row"><strong>{skillNameLabel(skillKey, left?.skillName ?? right?.skillName)}</strong><small>{categoryLabel(left?.category ?? right?.category)}</small></th><SkillCell skill={left} /><SkillCell skill={right} /></tr>;
 }
 function SkillCell({ skill }: { skill?: SkillAssessment }) {
-  return <td>{skill ? <>{skill.evidenceStatus === "NONE" ? <strong className="score-none-label">근거 없음</strong> : <strong>{formatScore(skill.score)}</strong>}<small>{levelLabel(skill.level)} · 신뢰도 {formatScore(skill.confidence)}% · 근거 {skill.evidenceIds.length}개{skill.evidenceStatus === "NONE" ? ` · 저장된 공식 점수 ${formatScore(skill.score)}` : ""}</small><EvidenceStatus status={skill.evidenceStatus} guidance={false} /></> : <span>없음</span>}</td>;
+  return <td>{skill ? <>{skill.evidenceStatus === "NONE" ? <strong className="score-none-label">—</strong> : <strong>{formatScore(skill.score)}</strong>}<small>{levelLabel(skill.level)} · 신뢰도 {formatScore(skill.confidence)}% · 근거 {skill.evidenceIds.length}개{skill.evidenceStatus === "NONE" ? ` · 저장된 공식 점수 ${formatScore(skill.score)}` : ""}</small><EvidenceStatus status={skill.evidenceStatus} guidance={false} /></> : <span>없음</span>}</td>;
 }
 function MatrixFacts({ label, matrix }: { label: string; matrix: SkillMatrix }) {
-  return <article><h2>{label} 재현 정보</h2><dl><div><dt>Skill Matrix ID</dt><dd><code>{matrix.skillMatrixId}</code></dd></div><div><dt>Skill Matrix 정책</dt><dd>{matrix.policyVersion}</dd></div><div><dt>규칙 버전</dt><dd>{matrix.ruleSetVersion}</dd></div><div><dt>강점</dt><dd>{matrix.strengths.length}개</dd></div><div><dt>개선 영역</dt><dd>{matrix.weaknesses.length}개</dd></div></dl></article>;
+  return <article><h2>{label} 재현 정보</h2><dl><div><dt>생성 시각</dt><dd><time dateTime={matrix.generatedAt}>{formatDate(matrix.generatedAt)}</time></dd></div><div><dt>Skill Matrix ID</dt><dd><code>{matrix.skillMatrixId}</code></dd></div><div><dt>Skill Matrix 정책</dt><dd>{matrix.policyVersion}</dd></div><div><dt>규칙 버전</dt><dd>{matrix.ruleSetVersion}</dd></div><div><dt>강점</dt><dd>{matrix.strengths.length}개</dd></div><div><dt>개선 영역</dt><dd>{matrix.weaknesses.length}개</dd></div></dl></article>;
 }
 function findSkill(matrix: SkillMatrix, key: string) { return matrix.skills.find(skill => skill.skillKey === key); }
 function formatScore(value: number) { return new Intl.NumberFormat("ko-KR", { maximumFractionDigits: 2 }).format(value); }

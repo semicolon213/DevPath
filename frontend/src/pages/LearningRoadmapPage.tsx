@@ -139,7 +139,7 @@ export function LearningRoadmapPage() {
             {roadmaps.map((item) => (
               <li key={item.roadmapId}>
                 <div>
-                  <strong>{formatDateTime(item.updatedAt)} 로드맵</strong>
+                  <strong>{formatDateTime(item.generatedAt)} 로드맵</strong>
                   <span>{roadmapStatusLabel(item.status)}</span>
                 </div>
                 <p>

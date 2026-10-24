@@ -22,6 +22,8 @@ import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 import { PageHero } from "../shared/ui/PageHero";
 import { ResultBasis } from "../shared/ui/ResultBasis";
+import { EvidenceItem } from "../shared/ui/EvidenceItem";
+import type { EvidenceSignal } from "../features/repositories/api/repositoryApi";
 import { StatusChip, repositorySyncStatusVariant } from "../shared/ui/StatusChip";
 
 export function RepositoryDetailPage() {
@@ -255,7 +257,7 @@ export function RepositoryDetailPage() {
         ) : null}
         <div className="technology-list">
           {technologies.data?.technologies.map(technology => (
-            <article className="technology-card" key={`${technology.category}:${technology.name}:${technology.evidenceLabel}`}>
+            <div className="technology-card" key={`${technology.category}:${technology.name}:${technology.evidenceLabel}`}>
               <div>
                 <strong>{technology.name}</strong>
                 <span>{categoryLabel(technology.category)}</span>
@@ -266,8 +268,8 @@ export function RepositoryDetailPage() {
                   ? `${technology.byteCount.toLocaleString("ko-KR")}바이트`
                   : `의존성 ${technology.evidenceLabel}`}
               </small>
-              {technology.evidencePaths.length > 0 ? <small>근거: {technology.evidencePaths.join(", ")}</small> : null}
-            </article>
+              {technology.evidencePaths.length > 0 ? <div className="evidence-list">{technology.evidencePaths.map(path => <EvidenceItem key={path} evidence={{ evidenceType: technology.evidenceType, sourceReference: path, observedFactSummary: technology.byteCount !== null ? `${technology.name} ${technology.byteCount.toLocaleString("ko-KR")}바이트가 관찰되었습니다.` : `${technology.evidenceLabel} 의존성이 관찰되었습니다.` }} />)}</div> : null}
+            </div>
           ))}
         </div>
         {technologies.data ? (
@@ -289,21 +291,11 @@ export function RepositoryDetailPage() {
           {evidence.data?.categories.map(category => (
             <article className="evidence-card" key={category.category}>
               <h3>{categoryLabel(category.category)}</h3>
-              <ul>
+              <div className="evidence-list">
                 {category.signals.map(signal => (
-                  <li key={signal.signalKey}>
-                    <div>
-                      <strong>{evidenceSignalLabel(signal.signalKey)}</strong>
-                      <span className={`status-badge ${signal.present ? "status-badge--active" : ""}`}>
-                        {signal.present ? "감지됨" : "근거 없음"}
-                      </span>
-                    </div>
-                    {signal.count > 0 ? <small>관측 {signal.count.toLocaleString("ko-KR")}건</small> : null}
-                    {signal.observedValue ? <small>{signal.observedValue}</small> : null}
-                    {signal.evidencePaths.length > 0 ? <small>근거: {signal.evidencePaths.join(", ")}</small> : null}
-                  </li>
+                  <EvidenceItem key={signal.signalKey} evidence={{ evidenceType: "SNAPSHOT_SIGNAL", sourceReference: signal.evidencePaths.join(", ") || `snapshot:${evidence.data?.snapshotId ?? ""}`, observedFactSummary: signalFact(signal), meta: `${signal.present ? "감지됨" : "근거 없음"} · ${categoryLabel(category.category)}` }} />
                 ))}
-              </ul>
+              </div>
             </article>
           ))}
         </div>
@@ -453,6 +445,22 @@ const evidenceLabels: Record<string, string> = {
 
 function evidenceSignalLabel(signalKey: string) {
   return evidenceLabels[signalKey] ?? signalKey;
+}
+
+function signalFact(signal: EvidenceSignal) {
+  const label = evidenceSignalLabel(signal.signalKey);
+  if (!signal.present || (signal.observedValue === null && signal.count === 0)) return `${label}: 관찰되지 않았습니다.`;
+  const value = signal.observedValue ?? `${signal.count.toLocaleString("ko-KR")}건`;
+  return `${label} ${value}${subjectParticle(value)} 관찰되었습니다.`;
+}
+
+// 이/가 follows the final sound of the value; unknown endings keep the neutral 이(가).
+function subjectParticle(value: string) {
+  const last = value.trim().slice(-1);
+  const code = last.charCodeAt(0) - 0xac00;
+  if (code >= 0 && code <= 11171) return code % 28 ? "이" : "가";
+  if (/[0-9]/.test(last)) return "013678".includes(last) ? "이" : "가";
+  return "이(가)";
 }
 
 function activityEventLabel(eventType: "COMMIT" | "PULL_REQUEST_OPENED" | "PULL_REQUEST_CLOSED" | "PULL_REQUEST_MERGED" | "ISSUE_OPENED" | "ISSUE_CLOSED") {

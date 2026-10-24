@@ -3,19 +3,20 @@ import type { RuleCategoryScore, RuleEvidence, RuleResult } from "../features/an
 import { useAnalysisDetail } from "../features/analysis/model/useAnalysis";
 import { RepositoryReviewPanel } from "../features/ai/ui/RepositoryReviewPanel";
 import { RepositorySummaryPanel } from "../features/ai/ui/RepositorySummaryPanel";
-import { categoryLabel, evidenceRoleLabel, evidenceTypeLabel, formulaLabel, levelLabel, ruleLabel, ruleStatusLabel, skillNameLabel } from "../shared/ui/labels";
+import { categoryLabel, evidenceRoleLabel, formulaLabel, levelLabel, ruleLabel, ruleStatusLabel, skillNameLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 import { EvidenceStatus } from "../shared/ui/EvidenceStatus";
 import { PageHero } from "../shared/ui/PageHero";
 import { ResultBasis } from "../shared/ui/ResultBasis";
+import { EvidenceEmptyState, EvidenceItem } from "../shared/ui/EvidenceItem";
 
 export function AnalysisDetailPage() {
   const { analysisId } = useParams();
   const query = useAnalysisDetail(analysisId);
 
   if (query.isPending) return <PageShell><PageState state="loading" title="분석 결과" message="분석 결과와 근거를 불러오는 중입니다." /></PageShell>;
-  if (query.isError) return <PageShell><PageState state="error" title="분석 결과를 찾을 수 없습니다" errorTitle="분석 상세를 불러오지 못했습니다" description="저장된 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} backTo="/analyses" backLabel="분석 이력으로 이동" /></PageShell>;
+  if (query.isError) return <PageShell><PageState state="error" title="분석 결과를 찾을 수 없습니다" errorTitle="분석 상세를 불러오지 못했습니다" description="저장된 결과는 변경되지 않았습니다." error={query.error} retry={() => query.refetch()} backTo="/analyses" backLabel="분석 이력" /></PageShell>;
 
   const { result, repository, evaluation, evidence, matrix } = query.data;
   return (
@@ -71,14 +72,14 @@ export function AnalysisDetailPage() {
       <section aria-labelledby="category-results-title">
         <div className="section-heading"><div><h2 id="category-results-title" tabIndex={-1}>영역별 공식 결과</h2><p>규칙을 펼치면 어떤 관찰값이 어떤 공식과 가중치로 반영됐는지 확인할 수 있습니다.</p></div></div>
         <div className="category-result-grid">
-          {evaluation.categoryScores.map(category => <CategoryResult key={category.category} category={category} />)}
+          {evaluation.categoryScores.map(category => <CategoryResult key={category.category} category={category} evidence={evidence} />)}
         </div>
       </section>
 
       <section className="analysis-evidence-section" aria-labelledby="evidence-title">
         <div className="section-heading"><div><h2 id="evidence-title">평가 근거</h2><p>분석 스냅샷에서 정규화되어 규칙 결과에 연결된 근거입니다.</p></div><span>{evidence.length}개</span></div>
-        {evidence.length === 0 ? <p className="muted">직접 연결된 근거가 없습니다.</p> : (
-          <div className="analysis-evidence-list">{evidence.map(item => <EvidenceItem key={item.evidenceId} evidence={item} />)}</div>
+        {evidence.length === 0 ? <EvidenceEmptyState description="저장소를 동기화하고 다시 분석하면 관찰 근거가 연결됩니다." to={`/repositories/${repository.repositoryId}`} linkLabel="저장소 확인" /> : (
+          <div className="evidence-list">{evidence.map(item => <EvidenceItem key={item.evidenceId} evidence={{ ...item, meta: `${evidenceRoleLabel(item.contributionRole)} · ${ruleLabel(item.ruleId)} 규칙에 반영` }} />)}</div>
         )}
       </section>
 
@@ -109,26 +110,27 @@ export function AnalysisDetailPage() {
         </dl>
       </details>
 
-      <RepositorySummaryPanel analysisId={result.analysisId} />
-      <RepositoryReviewPanel analysisId={result.analysisId} />
+      <RepositorySummaryPanel analysisId={result.analysisId} evidence={evidence} />
+      <RepositoryReviewPanel analysisId={result.analysisId} evidence={evidence} />
       <ResultBasis items={[{ label: "분석 기준 시각", value: <time dateTime={result.completedAt}>{formatDateTime(result.completedAt)}</time> }, { label: "규칙 버전", value: evaluation.ruleSetVersion }, { label: "공식 계산식", value: evaluation.formulaLibraryVersion }, { label: "Skill Matrix 정책", value: matrix.policyVersion }]} />
     </PageShell>
   );
 }
 
-function CategoryResult({ category }: { category: RuleCategoryScore }) {
+function CategoryResult({ category, evidence }: { category: RuleCategoryScore; evidence: RuleEvidence[] }) {
   return (
     <article className="category-result-card">
       <div className="category-result-card__heading"><div><span>{categoryLabel(category.category)}</span><strong>{formatScore(category.score)}점</strong></div><small>종합 점수 반영 비중 {formatPercent(category.weight)}</small></div>
       <div className="category-result-card__bar"><progress aria-label={`${categoryLabel(category.category)} 공식 점수`} max="100" value={category.score}>{category.score}점</progress><strong>{formatScore(category.score)} / 100</strong></div>
       <p>근거 신뢰도 {formatScore(category.confidence)}%</p>
-      <div className="rule-result-list">{category.ruleResults.map(rule => <RuleResultItem key={rule.ruleId} rule={rule} />)}</div>
+      <div className="rule-result-list">{category.ruleResults.map(rule => <RuleResultItem key={rule.ruleId} rule={rule} evidence={evidence} />)}</div>
       {category.missingEvidence.length > 0 ? <p className="missing-evidence">부족한 근거: {category.missingEvidence.map(ruleId => ruleLabel(ruleId)).join(", ")}</p> : null}
     </article>
   );
 }
 
-function RuleResultItem({ rule }: { rule: RuleResult }) {
+function RuleResultItem({ rule, evidence }: { rule: RuleResult; evidence: RuleEvidence[] }) {
+  const linkedEvidence = evidence.filter(item => rule.evidenceReferences.includes(item.evidenceId) || rule.evidenceReferences.includes(item.sourceReference));
   return (
     <details>
       <summary><span>{ruleLabel(rule.ruleId)}</span><span>{ruleStatusLabel(rule.status)} · {formatScore(rule.score)}점</span></summary>
@@ -137,13 +139,10 @@ function RuleResultItem({ rule }: { rule: RuleResult }) {
         <div><dt>관찰값</dt><dd>{formatObservedValue(rule)}</dd></div><div><dt>규칙 가중치</dt><dd>{formatPercent(rule.weight)}</dd></div>
         <div><dt>계산식</dt><dd>{formulaLabel(rule.formulaId)}</dd></div><div><dt>규칙 버전</dt><dd>{rule.ruleVersion}</dd></div>
       </dl>
+      {linkedEvidence.length ? <div className="evidence-list">{linkedEvidence.map(item => <EvidenceItem key={item.evidenceId} omitId evidence={{ ...item, meta: evidenceRoleLabel(item.contributionRole) }} />)}</div> : null}
       <details className="calculation-trace"><summary>원본 계산 추적 보기</summary><p>{rule.trace}</p></details>
     </details>
   );
-}
-
-function EvidenceItem({ evidence }: { evidence: RuleEvidence }) {
-  return <article id={`evidence-${evidence.evidenceId}`} tabIndex={-1}><div><strong>{ruleLabel(evidence.ruleId)}</strong><span className="status-badge">{evidenceRoleLabel(evidence.contributionRole)}</span></div><p>{evidence.observedFactSummary}</p><span>{evidenceTypeLabel(evidence.evidenceType)}</span><code>{evidence.sourceReference}</code><small>신뢰도 {formatScore(evidence.confidence)}%</small></article>;
 }
 
 function PageShell({ children }: { children: React.ReactNode }) { return <><Breadcrumbs items={[{ label: "분석", to: "/analyses" }, { label: "분석 상세" }]} />{children}</>; }
@@ -152,4 +151,4 @@ function formatPercent(value: number) { return `${formatScore(value * 100)}%`; }
 function formatDateTime(value: string) { return new Intl.DateTimeFormat("ko-KR", { dateStyle: "long", timeStyle: "short" }).format(new Date(value)); }
 function countScoredRules(categories: RuleCategoryScore[]) { return categories.reduce((count, category) => count + category.ruleResults.filter(rule => rule.status !== "SKIPPED" && rule.status !== "ERROR").length, 0); }
 function formatObservedValue(rule: RuleResult) { return rule.formulaId === "BOOLEAN_100" ? (rule.rawValue > 0 ? "있음" : "없음") : formatScore(rule.rawValue); }
-function ruleReason(rule: RuleResult) { return `${ruleLabel(rule.ruleId, "이 규칙")}의 관찰값은 ${formatObservedValue(rule)}이며, '${formulaLabel(rule.formulaId)}' 공식을 적용한 공식 규칙 점수는 ${formatScore(rule.score)}점입니다.`; }
+function ruleReason(rule: RuleResult) { const formula = formulaLabel(rule.formulaId); return `${ruleLabel(rule.ruleId, "이 규칙")}의 관찰값은 ${formatObservedValue(rule)}이며, ${formula === "알 수 없음" ? "저장된 계산식" : `'${formula}' 공식`}을 적용한 공식 규칙 점수는 ${formatScore(rule.score)}점입니다.`; }

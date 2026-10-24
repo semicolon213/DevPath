@@ -2,5 +2,5 @@ import { getGeneratedRepositorySummary, requestRepositorySummary } from "../api/
 import { useGeneration } from "./useGeneration";
 
 export function useRepositorySummary(analysisId: string) {
-  return useGeneration(() => requestRepositorySummary(analysisId), getGeneratedRepositorySummary);
+  return useGeneration(`REPOSITORY_SUMMARY:${analysisId}`, () => requestRepositorySummary(analysisId), getGeneratedRepositorySummary);
 }

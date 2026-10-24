@@ -1,13 +1,14 @@
 import { Link, useParams } from "react-router-dom";
 import type { SkillAssessment, SkillHistoryPoint } from "../features/skills/api/skillMatrixApi";
 import { useSkillHistory, useSkillWorkspace } from "../features/skills/model/useSkillMatrix";
-import { categoryLabel, evidenceTypeLabel, growthTrendLabel, levelLabel, skillNameLabel, skillStateLabel } from "../shared/ui/labels";
+import { categoryLabel, growthTrendLabel, levelLabel, skillNameLabel, skillStateLabel } from "../shared/ui/labels";
 import { PageState } from "../shared/ui/PageState";
 import { Breadcrumbs } from "../shared/ui/Breadcrumbs";
 import { EvidenceStatus } from "../shared/ui/EvidenceStatus";
 import { SkillExplanationPanel } from "../features/ai/ui/SkillExplanationPanel";
 import { PageHero } from "../shared/ui/PageHero";
 import { ResultBasis } from "../shared/ui/ResultBasis";
+import { EvidenceEmptyState, EvidenceItem } from "../shared/ui/EvidenceItem";
 
 export function SkillDetailPage() {
   const { skillId } = useParams();
@@ -23,7 +24,7 @@ export function SkillDetailPage() {
       <h1>{skillNameLabel(skill.skillKey, skill.skillName)}</h1><p>현재 적용 중인 기술 역량(Skill Matrix)에서 가져온 공식 평가와 정규화된 근거입니다.</p></div>
     </PageHero>
     <section className="skill-detail-score" aria-label="현재 기술 평가 요약">
-      {skill.evidenceStatus === "NONE" ? <div><strong className="score-none-label">근거 없음</strong></div> : <div><span>공식 점수</span><strong>{format(skill.score)}</strong><small>/ 100</small></div>}
+      {skill.evidenceStatus === "NONE" ? <div><strong className="score-none-label">—</strong></div> : <div><span>공식 점수</span><strong>{format(skill.score)}</strong><small>/ 100</small></div>}
       <dl><Fact label="등급" value={levelLabel(skill.level)} /><Fact label="신뢰도" value={`${format(skill.confidence)}%`} />{skill.evidenceStatus === "NONE" ? <Fact label="저장된 공식 점수" value={format(skill.score)} /> : null}</dl>
       <EvidenceStatus status={skill.evidenceStatus} />
     </section>
@@ -36,14 +37,10 @@ export function SkillDetailPage() {
         <Fact label="연결 저장소" value={`${skill.repositoryIds.length}개`} /><Fact label="Skill Matrix ID" value={detail.skillMatrixId} /></dl></section>
     <section aria-labelledby="skill-evidence-title"><div className="section-heading"><div><h2 id="skill-evidence-title">연결된 근거</h2>
       <p>사용자 소유의 불변 스냅샷에서 정규화된 관찰 사실만 표시합니다.</p></div></div>
-      {evidence.evidence.length === 0 ? <div className="state-panel"><p>직접 연결된 근거가 없습니다.</p></div> :
-        <div className="skill-evidence-list">{evidence.evidence.map(item => <article key={item.evidenceId}>
-          <div className="skill-card__heading"><div><span className="skill-category">{evidenceTypeLabel(item.evidenceType)}</span><h3>{item.observedFactSummary}</h3></div></div>
-          <dl className="skill-metadata"><div><dt>신뢰도</dt><dd>{format(item.confidence)}%</dd></div><div><dt>스냅샷</dt><dd><code>{item.snapshotId}</code></dd></div></dl>
-          <details className="skill-evidence-reference"><summary>근거 참조 보기</summary><code>{item.sourceReference}</code></details>
-        </article>)}</div>}
+      {evidence.evidence.length === 0 ? <EvidenceEmptyState description="관련 저장소나 Notion 문서를 연결하면 다음 분석에서 평가됩니다." to="/repositories" linkLabel="저장소 연결하기" /> :
+        <div className="evidence-list">{evidence.evidence.map(item => <EvidenceItem key={item.evidenceId} evidence={{ ...item, meta: `스냅샷 ${item.snapshotId}` }} />)}</div>}
     </section>
-    <SkillExplanationPanel skillMatrixId={detail.skillMatrixId} />
+    <SkillExplanationPanel skillMatrixId={detail.skillMatrixId} evidence={evidence.evidence} />
     <div className="workspace-actions"><Link className="button-link button-secondary" to="/skills">기술 역량</Link><Link to="/analyses">분석 이력</Link></div>
     <ResultBasis items={[{ label: "분석 기준 시각", value: <time dateTime={detail.generatedAt}>{formatDate(detail.generatedAt)}</time> }, { label: "Skill Matrix 정책", value: detail.policyVersion }, { label: "규칙 버전", value: detail.ruleSetVersion }]} />
   </Shell>;
@@ -81,7 +78,7 @@ function SkillHistoryItem({ point }: { point: SkillHistoryPoint }) {
     <div className="skill-history-item__summary"><div><span className={`status-badge${point.matrixStatus === "CURRENT" ? " status-badge--info" : ""}`}>
       {point.matrixStatus === "CURRENT" ? "현재 결과" : "과거 결과"}</span><h3>{point.repositoryFullName}</h3>
       <time dateTime={point.generatedAt}>{formatDate(point.generatedAt)}</time></div>
-      {point.skill.evidenceStatus === "NONE" ? <div className="official-score" role="group" aria-label="근거 없음"><strong className="score-none-label">근거 없음</strong></div> : <div className="official-score" role="group" aria-label={`저장된 공식 점수 ${format(point.skill.score)}점`}><strong>{format(point.skill.score)}</strong><span>/ 100</span></div>}</div>
+      {point.skill.evidenceStatus === "NONE" ? <div className="official-score" role="group" aria-label="공식 점수 미표시"><strong className="score-none-label">—</strong></div> : <div className="official-score" role="group" aria-label={`저장된 공식 점수 ${format(point.skill.score)}점`}><strong>{format(point.skill.score)}</strong><span>/ 100</span></div>}</div>
     <EvidenceStatus status={point.skill.evidenceStatus} guidance={false} />
     <dl className="skill-history-facts"><Fact label="등급" value={levelLabel(point.skill.level)} /><Fact label="신뢰도" value={`${format(point.skill.confidence)}%`} />
       <Fact label="연결 근거" value={`${point.skill.evidenceIds.length}개`} /><Fact label="Skill Matrix 정책 · 규칙 버전" value={`${point.policyVersion} · ${point.ruleSetVersion}`} />{point.skill.evidenceStatus === "NONE" ? <Fact label="저장된 공식 점수" value={format(point.skill.score)} /> : null}</dl>

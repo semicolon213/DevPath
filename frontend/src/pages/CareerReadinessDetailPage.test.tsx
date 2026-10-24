@@ -34,7 +34,8 @@ it("connects immutable readiness gaps to skill evidence and next actions", async
   expect(screen.queryByText(/토스/)).not.toBeInTheDocument();
   expect(screen.getByText("일부 충족")).toBeInTheDocument();
   expect(screen.getByRole("img", { name: "테스트 실제 점수 50점, 기준 60점" }).querySelector(".readiness-gap__reference")).toHaveStyle({ left: "60%" });
-  expect(screen.getByRole("link", { name: "기술 평가와 근거 보기" })).toHaveAttribute("href", "/skills/skill-1");
+  expect(screen.getByRole("link", { name: "근거 1개 보기" })).toHaveAttribute("href", "/skills/skill-1#skill-evidence-title");
+  expect(screen.queryByText("evidence-1")).not.toBeInTheDocument();
   expect(screen.getByRole("link", { name: "추천 이력" })).toHaveAttribute("href", "/recommendations");
   expect(document.querySelectorAll(".button-primary")).toHaveLength(1);
 });

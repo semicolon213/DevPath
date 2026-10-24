@@ -1,6 +1,5 @@
 import { useLearningRecommendation } from "../model/useLearningRecommendation";
 import { AiGeneratedPanel } from "./AiGeneratedPanel";
-import { EvidenceReferences } from "./EvidenceReferences";
 
 export function LearningRecommendationPanel({ learningRoadmapId }: { learningRoadmapId: string }) {
   const generation = useLearningRecommendation(learningRoadmapId);
@@ -10,7 +9,7 @@ export function LearningRecommendationPanel({ learningRoadmapId }: { learningRoa
     job={generation.job.data} generatedAt={artifact?.provenance.generatedAt} validationStatus={artifact?.validation.status}
     requestPending={generation.request.isPending} requestError={generation.request.error} jobError={generation.job.isError}
     artifactPending={generation.artifact.isPending} artifactError={generation.artifact.isError} cancelPending={generation.cancel.isPending}
-    onRequest={() => generation.request.mutate()} onReset={() => generation.request.reset()} onCancel={() => generation.cancel.mutate()}
+    onRequest={() => generation.request.mutate()} onCancel={() => generation.cancel.mutate()}
     onRefetchJob={() => { void generation.job.refetch(); }} onRefetchArtifact={() => { void generation.artifact.refetch(); }}>
     {artifact && <Guide artifact={artifact} />}
   </AiGeneratedPanel>;
@@ -19,6 +18,7 @@ export function LearningRecommendationPanel({ learningRoadmapId }: { learningRoa
 function Guide({ artifact }: { artifact: NonNullable<ReturnType<typeof useLearningRecommendation>["artifact"]["data"]> }) {
   return <article className="ai-generated-panel__result"><p>{artifact.content.recommendationSummary}</p><ol>{artifact.content.steps.map(step => <li key={step.roadmapStepId}>
     <h3>{step.milestoneExplanation}</h3><p><strong>학습 목표</strong> {step.objective}</p><p><strong>연습 과제</strong> {step.practiceTask}</p>
-    <p><strong>완료 기준</strong> {step.completionCriteria}</p><EvidenceReferences references={step.expectedEvidence} label="필요 근거" showReference />
+    <p><strong>완료 기준</strong> {step.completionCriteria}</p>
+    {step.expectedEvidence.length ? <div className="ai-generated-panel__expected"><strong>필요한 근거</strong><ul aria-label="필요한 근거">{step.expectedEvidence.map(item => <li key={item}>{item}</li>)}</ul></div> : null}
   </li>)}</ol></article>;
 }

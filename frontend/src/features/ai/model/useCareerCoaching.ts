@@ -2,5 +2,5 @@ import { getGeneratedCareerAdvice, requestCareerCoaching } from "../api/generati
 import { useGeneration } from "./useGeneration";
 
 export function useCareerCoaching(careerReadinessId: string) {
-  return useGeneration(() => requestCareerCoaching(careerReadinessId), getGeneratedCareerAdvice);
+  return useGeneration(`CAREER_COACHING:${careerReadinessId}`, () => requestCareerCoaching(careerReadinessId), getGeneratedCareerAdvice);
 }
