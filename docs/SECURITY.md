@@ -191,6 +191,8 @@ AI 생성 실패 감사 기록은 정규화된 메타데이터만 남기고 상�
 
 ## 9. 비밀과 설정
 
+로컬 환경을 제외한 운영 백엔드 API 통신은 HTTPS를 사용해야 한다.
+
 | 항목 | 규칙 | 구현 위치 |
 |---|---|---|
 | 비밀 주입 | DB 계정, OAuth client secret, 암호화 키는 환경변수로만 받는다. Spring Boot는 `backend/.env.example`을 읽지 않는다. 로컬 `bootRun`만 `backend/.env`를 읽고, 이 파일은 Git에서 제외한다. | `application.yml`, `backend/build.gradle` |
@@ -210,7 +212,7 @@ AI 생성 실패 감사 기록은 정규화된 메타데이터만 남기고 상�
 |---|---|
 | 민감 파일 | `.env`, `.env.*`(`.env.example` 제외), `.jks`, `.key`, `.keystore`, `.p12`, `.pem`, `.pfx` |
 | 내장 비밀 | 개인 키 헤더, GitHub 토큰, GitHub fine-grained 토큰, OpenAI 키, AWS access key |
-| 스키마 변경 모드 | `ddl-auto: update/create/create-drop` |
+| 스키마 변경 모드 | `ddl-auto`의 자동 스키마 변경 옵션 |
 | 브라우저 자격 증명 저장 | `frontend/src/`에서 `localStorage`/`sessionStorage`와 token·session·credential이 함께 쓰인 줄 |
 | 브라우저 직접 호출 | `frontend/src/`의 `https://api.github.com`, `api.notion.com`, `api.openai.com` |
 

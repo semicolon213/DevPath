@@ -184,8 +184,11 @@ flowchart LR
 | INV-004, INV-005 | `READY` 스냅샷은 불변이고, 공식 분석은 스냅샷을 참조한다. |
 | INV-006, INV-007 | 공식 점수는 Rule Engine만 계산한다. LLM은 점수, 가중치, 준비도, 추천 우선순위를 계산·변경하지 않는다. |
 | INV-008, INV-009 | 완료된 평가 결과는 불변이고, 모든 점수는 `RuleSetVersion`과 증거를 참조한다. |
+| INV-010 | `RuleCategoryScore`와 `SkillAssessment`의 점수는 0~100 범위를 벗어날 수 없다. |
+| INV-011 | `RuleSetVersion`은 평가 전에 카테고리·규칙 가중치 합계, 양수 가중치, 규칙 ID 중복 등을 검증한다. `RuleDefinition`은 필수 값과 공식 파라미터를 검증한다. |
 | INV-012 ~ INV-014 | Skill Matrix는 완료된 평가 하나에 속하고, 이력은 덮어쓰지 않는다 (`CURRENT` → `SUPERSEDED`). |
 | INV-015, INV-016 | 준비도는 Skill Matrix와 `CareerProfileVersion` 없이 존재하지 않고, 전체 점수와 다르다. |
+| INV-018 | 목표 회사가 없어도 선택한 지원 직무의 커리어 준비도를 평가할 수 있다. |
 | INV-020, INV-021 | 추천은 스킬 갭·증거를 참조하고, 우선순위는 정책으로 결정된다. |
 | INV-023, INV-024 | 학습 로드맵은 원본 추천 세트를 참조하고, 각 단계에 완료 기준이 있다. |
 | INV-025 ~ INV-028 | 청크는 문서 버전 하나에 속하고, 임베딩은 모델·버전을 기록하며, 지식은 사용자별로 격리되고, 보관·재색인 시 청크·임베딩이 `STALE`이 된다. |
@@ -270,7 +273,7 @@ ADR-027에 따라 PostgreSQL 작업 테이블과 트랜잭션 outbox를 쓴다. 
 |---|---|
 | 같은 소유자 + 같은 키 + 같은 명령 | 원래 작업 반환 (`202`) |
 | 같은 소유자 + 같은 키 + 다른 명령 | `409 DUPLICATE_REQUEST` (`DuplicateRequestException`) |
-| 다른 키로 같은 활성 작업 요청 | 기존 활성 작업 재사용 (동기화·분석·지식 수집). 동시 요청은 `pg_advisory_xact_lock`으로 직렬화 |
+| 다른 키로 같은 활성 작업 요청 | 기존 활성 작업 재사용. 동기화·분석은 `pg_advisory_xact_lock`으로 직렬화하고, 지식 수집은 `findActiveJob` 조회와 `knowledge_ingestion_jobs_active_source_uk` 부분 유니크 인덱스로 중복 활성 작업을 막는다. |
 | 유니크 제약 경합 | `409 RESOURCE_CONFLICT` |
 | 로드맵 보관 | 키 형식만 검증하고 저장하지 않는다. 보관 상태 자체가 멱등성을 보장한다. |
 
@@ -367,7 +370,7 @@ OpenAPI에는 `x-api-id`가 있는 업무 operation 70개와 인프라·세션 o
 2. `prompt` 모듈의 빌더(`SkillExplanationPromptBuilder`, `RepositoryReviewPromptBuilder`, `RepositorySummaryPromptBuilder`, `CareerCoachingPromptBuilder`, `LearningRecommendationPromptBuilder`)가 결과를 JSON 컨텍스트로 직렬화한다. 빌더는 계산하지 않고 선택·정렬만 한다.
 3. 빌더는 템플릿 유효성을 확인한다 (예: Skill 설명 템플릿은 시스템 지침에 "never calculate"를 포함해야 한다).
 4. `PromptSecretDetector`가 컨텍스트에서 개인 키, GitHub 토큰, `sk-` 키, AWS 키, `password:`/`password=` 패턴을 찾으면 요청을 거부한다.
-5. 추정 토큰 수(`(지침 + 컨텍스트 + 161) / 4`)가 예산을 넘으면 거부한다.
+5. 추정 토큰 수(`(지침 + 컨텍스트 + 161 + 3) / 4`, 정수 나눗셈)가 예산을 넘으면 거부한다.
 6. `PromptPackage`(컨텍스트, 프롬프트, SHA-256 컨텍스트 해시, 예산)를 `prompt_contexts`에 저장하고 작업을 `QUEUED`로 만든다.
 
 ### 7.5 출력 검증
@@ -399,7 +402,7 @@ OpenAPI에는 `x-api-id`가 있는 업무 operation 70개와 인프라·세션 o
 | 분할 단위 | 빈 줄(`\n\n` 이상)로 나눈 문단 |
 | 청크 최대 길이 | 1,800자. 문단을 이어 붙이다 넘으면 새 청크 |
 | 긴 문단 | 1,800자 단위로 자른다 |
-| 제목 | `#`~`###`로 시작하는 문단이 제목. 제목이 나오면 청크를 끊고, 이후 청크에 제목(최대 512자)을 붙인다 |
+| 제목 | `#`로 시작하는 모든 문단이 제목이다. 선두 `#`는 1~3개만 제거해 제목(최대 512자)을 만들며, 원래 제목 문단은 청크 본문에도 남는다. 제목이 나오면 기존 청크를 끊는다. |
 | 겹침(overlap) | 없음 |
 | 청크 수 | 1~200개. 범위를 벗어나면 실패 |
 | 해시 | 청크 본문 SHA-256 |

@@ -4,7 +4,7 @@
 
 이 문서는 DevPath의 화면을 설계하거나 구현하는 디자이너, 프론트엔드 개발자, AI 에이전트가 공통으로 따라야 하는 UI/UX 기준을 정의한다. 이 문서 하나만 읽어도 제품의 시각적 방향, 정보 우선순위, 화면 상태, 반응형 동작, 접근성 기준을 이해할 수 있어야 한다.
 
-이 문서는 새로운 비즈니스 기능을 정의하지 않는다. 기능 범위는 `docs/01_SRS.md`, 화면 및 프론트엔드 구조는 `docs/12_Frontend_Architecture.md`, API 동작은 `docs/10_API_Specification.md`를 따른다. 충돌이 발생하면 해당 권위 문서가 우선한다.
+이 문서는 새로운 비즈니스 기능을 정의하지 않는다. 기능 범위는 `docs/SRS.md`, 화면 및 프론트엔드 구조는 `docs/ARCHITECTURE.md`, API 동작은 `contracts/openapi/devpath-openapi.yaml`을 따른다. 충돌이 발생하면 해당 권위 문서가 우선한다.
 
 ## 2. 제품 경험 목표
 

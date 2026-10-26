@@ -176,7 +176,7 @@ Backend 포트를 바꾸면(예: `SERVER_PORT=18080`) frontend의 `VITE_DEVPATH_
 
 ## 문서
 
-- [요구사항 명세](docs/01_SRS.md)
-- [점수 규칙](docs/02_Rule_Engine.md)
-- [기술 결정 기록(ADR)](docs/18_ADR.md)
-- [기능별 구현 상태](docs/21_Feature_Status.md)
+- [요구사항 명세](docs/SRS.md)
+- [점수 규칙](docs/SCORING_RULES.md)
+- [기술 결정 기록(ADR)](docs/ADR.md)
+- [기능별 구현 상태](docs/STATUS.md)

@@ -1,5 +1,5 @@
 // Guarded single-Enter recovery for an Orca Codex worker whose worker-start prompt was
-// pasted but left unsubmitted in the Codex composer (see AGENT.md §16, "Codex worker
+// pasted but left unsubmitted in the Codex composer (see AGENTS.md §9, "Codex worker
 // prompt delivery and submit recovery"). Never resends the prompt, never gates on
 // tui-idle, and sends at most one bare Enter per Dispatch, only with --execute.
 import { execFileSync } from "node:child_process";
