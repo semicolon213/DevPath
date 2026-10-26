@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const port = process.env.DEVPATH_E2E_PORT ?? "4173";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -7,16 +9,16 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: `http://127.0.0.1:${port}`,
     screenshot: "only-on-failure",
     trace: "retain-on-failure"
   },
   webServer: {
-    command: "npm run dev -- --host 127.0.0.1 --port 4173",
+    command: `npm run dev -- --host 127.0.0.1 --port ${port}`,
     env: {
       VITE_DEVPATH_API_BASE_URL: "http://localhost:8080"
     },
-    url: "http://127.0.0.1:4173",
+    url: `http://127.0.0.1:${port}`,
     reuseExistingServer: false,
     timeout: 120_000
   },

@@ -164,7 +164,7 @@ npm run dev
 Backend 포트를 바꾸면(예: `SERVER_PORT=18080`) frontend의 `VITE_DEVPATH_API_BASE_URL`과 OAuth callback 주소도 같이 바꿔야 합니다.
 환경 변수 예시는 `backend/.env.example`, `frontend/.env.example`에 있습니다.
 
-참고로 Windows에서는 E2E 테스트용 4173 포트가 시스템 예약 범위에 들어가서 실행이 안 될 때가 있습니다. 이 부분은 포트를 설정으로 바꿀 수 있게 고칠 예정입니다.
+E2E 테스트는 4173 포트를 먼저 확인하고, Windows 시스템 예약 범위 등으로 사용할 수 없으면 빈 포트를 자동으로 선택합니다. 특정 포트가 필요하면 `DEVPATH_E2E_PORT`를 설정할 수 있으며, 지정한 포트를 사용할 수 없을 때는 다른 포트로 대체하지 않고 종료합니다.
 
 ## 아쉬운 점과 앞으로 할 것
 

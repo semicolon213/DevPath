@@ -11,7 +11,7 @@
     "build": "tsc --noEmit && vite build",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
+    "test:e2e": "node ../scripts/run-playwright.mjs",
     "quality": "npm run test && npm run test:e2e && npm run build && npm audit"
   },
   "dependencies": {

@@ -121,7 +121,7 @@ Testcontainers PostgreSQL을 쓰는 테스트는 `test/PgVectorPostgreSQLContain
 | `npm run backend:build` | `gradlew build` (테스트 포함) |
 | `npm run frontend:install` | `frontend`에서 `npm ci` |
 | `npm run frontend:test` | `vitest run` |
-| `npm run frontend:e2e` | `playwright test` |
+| `npm run frontend:e2e` | bind 가능한 포트를 선택한 뒤 `playwright test` |
 | `npm run frontend:build` | `tsc --noEmit && vite build` |
 | `npm run frontend:quality` | `npm run test && npm run test:e2e && npm run build && npm audit` (frontend 내부) |
 | `npm run contract:lint` | `npx --yes @redocly/cli@1.34.5 lint contracts/openapi/devpath-openapi.yaml --skip-rule=no-server-example.com` |
@@ -145,8 +145,8 @@ Testcontainers PostgreSQL을 쓰는 테스트는 `test/PgVectorPostgreSQLContain
 | 조건부 SKIP | `DEVPATH_DB_URL`이 없으면 카탈로그 통합 테스트 2개가 SKIP된다. 결과 보고 시 SKIP을 따로 적는다. |
 | 프론트엔드 API 주소 | `frontend/vitest.setup.ts`가 테스트용 API 주소를 `http://localhost:8080`으로 고정한다. 로컬 `.env`의 값은 단위 테스트에 영향을 주지 않는다. |
 | Playwright 브라우저 | 처음 한 번 `cd frontend` 후 `npx playwright install chromium` |
-| e2e 포트 | `frontend/playwright.config.ts`가 개발 서버를 `127.0.0.1:4173`에 고정해 띄운다 (`reuseExistingServer: false`). |
-| Windows 포트 예약 | Hyper-V/WinNAT가 4173을 포함한 TCP 포트 범위(예: 4149–4248)를 예약하면 개발 서버가 `EACCES`로 시작하지 못한다. 코드 결함이 아니다. `netsh interface ipv4 show excludedportrange protocol=tcp`로 확인한다. |
+| e2e 포트 | `npm run test:e2e`가 먼저 `127.0.0.1:4173`을 bind 검사하고, 사용할 수 없으면 OS가 배정한 빈 포트를 한 번 선택해 Playwright 개발 서버와 테스트에 함께 전달한다 (`reuseExistingServer: false`). |
+| e2e 포트 지정 | `DEVPATH_E2E_PORT`를 설정하면 해당 포트만 사용하며, bind할 수 없으면 다른 포트로 대체하지 않고 명확한 오류로 종료한다. |
 
 ## 8. 리뷰 검증 방식
 
@@ -174,7 +174,6 @@ Testcontainers PostgreSQL을 쓰는 테스트는 `test/PgVectorPostgreSQLContain
 | 항목 | 상태 |
 |---|---|
 | CI 파이프라인 | 미구현. 게이트는 로컬 `npm run verify:mvp`로 실행 |
-| e2e 포트 설정 가능화 (4173 고정 해소) | 미구현 |
 | 실제 백엔드·PostgreSQL을 붙인 e2e | 미구현 (현재 route mock) |
 | 두 사용자 격리 e2e 시나리오 | 미구현 (격리는 백엔드 테스트로만 확인) |
 | 실제 GitHub·Notion·Ollama 대상 검증 | 미구현 |
