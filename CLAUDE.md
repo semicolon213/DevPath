@@ -1,167 +1,43 @@
-# DevPath Instructions for Claude Code
+@AGENTS.md
 
-## 1. Mission
+# DevPath Claude Code 전용 규칙
 
-This is Claude Code's standalone repository instruction file. Do not assume that another agent guide has been read.
+공통 규칙(제품 불변 규칙, 문서 우선순위, 아키텍처, ADR 게이트, 작업 방법, 계약·데이터·보안, Orca 수칙, 검증, Codex 프롬프트 전달)은 위에서 가져온 `AGENTS.md`를 따른다. 이 파일은 Claude Code에만 해당하는 모드와 소유자 결정만 담는다. 구현 상태와 테스트 수치는 `docs/STATUS.md`를 보고, 그것도 실제 코드와 새 테스트 결과로 확인한다.
 
-DevPath is an AI-assisted developer career intelligence platform. It analyzes GitHub and Notion evidence, evaluates technical growth through deterministic engines, and uses AI only for grounded explanations, recommendations, and generated career documents.
+## 1. 공통 결정 (소유자)
 
-## 2. Immutable Product Rules
-
-- The Rule Engine alone calculates official scores.
-- AI never calculates, modifies, guesses, or ranks scores, weights, readiness, recommendation priority, or deterministic business results.
-- Career choice changes the applicable evaluation rules; company choice changes company-specific evaluation and recommendation policy.
-- Every official result is measurable, reproducible, versioned where required, and traceable to evidence.
-- AI output remains untrusted until format, grounding, evidence, and safety validation pass.
-- PostgreSQL is the authoritative structured-data store. Caches, vectors, projections, and LLM context are not sources of truth.
-- All user-owned data is isolated by user and authorization is enforced before retrieval, prompt assembly, generation, export, or publication.
-
-Stop and report any requested change that violates these rules.
-
-## 3. Authoritative Sources
-
-When sources disagree, apply this precedence:
-
-1. `docs/01_SRS.md`, `docs/02_Rule_Engine.md`, `docs/03_Career_Path_Engine.md`
-2. `docs/07_Domain_Model.md`, `docs/08_System_Data_Model.md`
-3. `docs/10_API_Specification.md`, then machine-readable contracts
-4. `docs/11_Backend_Architecture.md`, `docs/12_Frontend_Architecture.md`
-5. Security, observability, testing, database, and deployment specifications
-6. `docs/17_Coding_Standards.md`
-7. Existing module conventions
-8. Personal implementation preference
-
-`docs/00_Project_Context.md` defines the vision. Only **Accepted** decisions in `docs/18_ADR.md` are selected technologies. `docs/19_Roadmap.md` controls sequence but does not override requirements. For UI work, `DESIGN.md` is the repository-level visual, interaction, responsive, state, content, and accessibility guide subordinate to the SRS and frontend architecture. English documents in `docs/` are authoritative; `docs_ko/` is a translation aid.
-
-## 4. Technical Architecture
-
-| Area | Baseline |
+| 항목 | 규칙 |
 |---|---|
-| Backend | Java 21, Spring Boot 3.3.5, modular monolith, hexagonal boundaries |
-| Frontend | React 18, TypeScript, Vite, TailwindCSS, React Query |
-| Data | PostgreSQL, Spring Data JPA, separate persistence/domain models, Flyway |
-| Authentication | GitHub OAuth2, opaque HttpOnly server session, CSRF and restrictive CORS |
-| Contracts | Contract-first REST; canonical specification in `docs/10_API_Specification.md` |
-| AI boundary | Structured engine outputs in; validated explanations and drafts out; no scoring logic |
+| 커밋 메시지 | 한국어로 쓴다. 명시적 요청이 있을 때만 커밋한다 |
+| 귀속 표기 | 커밋과 PR에 `Co-Authored-By: Claude` 등 Claude·Claude Code 귀속 trailer나 문구를 넣지 않는다. 기존 커밋은 그대로 둔다 |
+| Codex 모델 | 구현 worker는 `gpt-5.6-sol`을 쓴다 |
+| 모드 구분 | 독립 QA 모드(2장)와 문서 유지 모드(3장)는 작업 명세가 명시적으로 지정할 때만, 코디네이터 모드(4장)는 Orca orchestration skill 지원이 확인되고 사용자가 승인한 경우에만 적용한다. 해당하지 않으면 `AGENTS.md`의 일반 작업 방법을 따른다 |
 
-Repository paths are `backend/`, `frontend/`, `contracts/`, authoritative `docs/`, translated `docs_ko/`, deterministic `fixtures/`, and command wrappers in `scripts/`.
+## 2. 독립 QA 모드
 
-Backend packages under `com.devpath.<module>` use:
+적용: Orca 작업이 Claude를 Codex 구현(또는 Claude 테스트·표현 수정)의 독립 리뷰어로 지정한 경우. 이 모드에서는 `AGENTS.md` 5장의 수정 규칙보다 아래 제약이 우선한다.
 
-- `domain` for pure business concepts and invariants.
-- `application` for use cases, transactions, and ports.
-- `adapter.in` for HTTP, security, event, and job entry points.
-- `adapter.out` for persistence and provider integrations.
-- `config` for framework wiring.
+역할과 경계:
+- 두 번째 구현자가 아니라 독립 리뷰어다. 애플리케이션 코드, 테스트, 마이그레이션, OpenAPI, 문서, 지침 파일을 수정하지 않는다. 지적 사항을 몰래 고치지 않는다.
+- commit, push, merge, 배포, 원격 서비스 변경, worktree 상태 변경을 하지 않는다. 파일을 쓰거나 마이그레이션을 만들거나 서비스를 바꾸는 테스트는 격리 환경에서만 돌리고, 불가능하면 `NOT RUN`으로 둔다.
+- 지침은 행동 규칙이지 파일 권한 장치가 아니다. 읽기 전용 격리가 없으면 그 한계를 코디네이터에게 알린다.
+- 코디네이터가 지정한 정확한 스냅샷만 검토한다. 스냅샷, diff, 요구사항, 테스트 증거가 없거나 맞지 않으면 다른 파일을 검토하지 말고 `BLOCKED`를 반환한다.
 
-Domain code must not depend on Spring, JPA, HTTP, logging implementations, provider SDKs, or AI SDKs. Controllers never access JPA repositories directly. Application services own transactions. External calls remain outside long database transactions. Flyway exclusively owns schema evolution.
+검토 항목:
+1. 작업 ID, 정확한 revision/diff, 요구사항 ID, 완료 기준, 제외 범위, 관련 Accepted ADR을 확인한다.
+2. 변경 동작을 `docs/SRS.md`, `docs/SCORING_RULES.md`, `docs/ARCHITECTURE.md`, `docs/SECURITY.md`, OpenAPI, UI 작업이면 `DESIGN.md`와 비교한다.
+3. Rule Engine/AI 분리, 결정론 재현성, 근거 추적, 소유권 격리, 자격 증명·세션·CSRF 보호, 마이그레이션 불변성, 프론트엔드·백엔드 계약 일치를 확인한다.
+4. 변경 코드와 직접 의존 코드에서 기능 결함, 경계 조건, 오류·재시도 동작, 회귀 위험, 접근성, 테스트 범위를 본다. 오래된 상태 목록이 미구현이라고 적었다는 이유로 정상 동작을 거부하지 않는다.
+5. 구현자가 보고한 테스트를 평가하고, 안전한 targeted 검사는 직접 실행한다. `PASS`, `FAIL`, `NOT RUN`을 정확한 명령과 실제 결과로 구분한다.
+6. 결함은 심각도, 위치, 관찰 동작, 기대 동작, 재현 방법, 위반한 요구사항·규칙과 함께 보고한다. 증거 없는 추측성 차단 지적은 하지 않는다.
 
-Frontend code is feature-oriented. React Query owns server state. `GET /api/v1/users/me` is the browser-session bootstrap. A `401` means anonymous; network failure is a different state. Components do not calculate official results or call providers directly.
+판정:
+- `PASS`: 범위 내 완료 기준이 모두 증거로 확인되고, 확인된 차단 결함이 없고, 필수 검사가 실행되었거나 미실행이 코디네이터에게 승인됨.
+- `FAIL`: 확인된 결함이나 미충족 요구사항이 있음. 수정 지침을 주되 직접 고치지 않는다.
+- `BLOCKED`: 증거, 스냅샷 접근, 환경, 권한, 결정이 없음. 검증 불가를 성공으로 보지 않고, 옳은 코드를 자동으로 실패시키지도 않는다.
+- 기능을 `DONE`으로 표시하지 않는다.
 
-## 5. Current Implementation State
-
-현재 구현 상태와 검증 결과는 `docs/21_Feature_Status.md` 한 곳에서만 관리하며, 작업 전에는 그 내용도 실제 코드·마이그레이션·계약·새 테스트 결과로 확인하고 과거 테스트 결과를 새로 실행한 결과로 보고하지 않는다.
-
-## 6. Decision Gates
-
-Accepted architecture includes ADR-001/002, 003, 005, 006, 012/013, 020/021, 024, 025, 026, 027 (PostgreSQL durable jobs and transactional outbox), 028 (PostgreSQL pgvector with mandatory metadata filters), 029 (S3-compatible object-storage port; filesystem adapter local/test only), 030 (capability-specific embedding/generation provider ports), 032, and 035.
-
-Do not implement a technology choice that depends on these Proposed ADRs without an explicit decision: ADR-031 observability technology, ADR-033 deployment platform, and ADR-034 production secrets. A Proposed ADR blocks only its affected area; unrelated work may continue.
-
-## 7. Claude Working Method
-
-Before editing:
-
-1. Inspect Git status and preserve user or agent changes.
-2. Identify requirement IDs, roadmap slice, relevant Accepted ADRs, affected modules, and acceptance criteria.
-3. Read only the authoritative chapters needed for the task.
-4. Search for existing patterns before creating abstractions.
-5. State assumptions and stop on unresolved decisions that genuinely block implementation.
-
-While editing:
-
-- Make the smallest coherent patch that solves the root cause.
-- Prefer explicit domain language over generic abstractions.
-- Do not invent routes, fields, roles, provider behavior, business rules, or future functionality.
-- Do not perform unrelated refactors, dependency upgrades, mass renames, or formatting sweeps.
-- Do not alter Accepted ADR rationale or mark Proposed ADRs as settled.
-- Never commit secrets, OAuth credentials, private keys, tokens, real user data, or generated secret files.
-- Add tests at the nearest appropriate level and never weaken security or tests to obtain a pass.
-
-## 8. Contract, Data, and Security Rules
-
-- Preserve canonical API IDs and normalized method/path combinations.
-- Change `contracts/openapi/devpath-openapi.yaml` only for implemented endpoints and synchronize backend/frontend consumers.
-- Trace new behavior to an existing requirement ID; otherwise request a specification change.
-- Add a new immutable Flyway migration for schema changes; never edit an applied migration.
-- Keep runtime schema mode at `ddl-auto=validate`.
-- Keep provider payloads and SDK types out of domain, application contracts, and public APIs.
-- Never expose provider tokens, session IDs, credentials, private repository content, embeddings, SQL errors, or stack traces.
-- Treat operational logs separately from durable audit records.
-
-## 9. Multi-Agent and Orca Conduct
-
-When Claude runs as an Orca worker:
-
-- Work only in the assigned Orca worktree and owned paths.
-- Treat OpenAPI, migrations, lockfiles, root build files, ADRs, roadmap status, and agent guides as coordinator-owned unless assigned.
-- Do not overwrite another worker's changes or guess an unsettled contract.
-- Contract work precedes dependent backend/frontend work; migration ownership precedes persistence work.
-- Do not commit, push, merge, delete worktrees, or rewrite history unless explicitly requested.
-- Use `READY`, `IN_PROGRESS`, `BLOCKED`, and `REVIEW_READY`; only the coordinator declares `DONE`.
-
-Stop for an actual blocking Proposed ADR, authoritative contradiction, undefined API/schema/security contract, scope invention, ownership conflict, concurrent migration/contract change, unavailable required verification, or possible secret/private-data exposure.
-
-## 10. Verification and Handoff
-
-From the repository root:
-
-```text
-npm run backend:test
-npm run backend:build
-npm run frontend:install
-npm run frontend:test
-npm run frontend:build
-npm run test
-npm run verify
-```
-
-Use targeted checks first, then the broader relevant suite. Docker is required for PostgreSQL/Testcontainers tests; never replace required PostgreSQL behavior with H2. Spring Boot does not automatically load `backend/.env.example`; required values must be exported into the process environment.
-
-Report every check as `PASS`, `FAIL`, or `NOT RUN` with the exact command and reason. A final handoff includes objective, requirements, files, behavior, API/data/security impact, verification, deviations, blockers, integration order, and next task. Never declare a roadmap milestone complete without coordinator review.
-
-## 11. Next Work Selection
-
-For implementation assignments outside QA mode, derive the next capability from current `docs/19_Roadmap.md`, authoritative requirements, Accepted ADRs, and verified repository state. Do not follow the old initial-V1 next-work list without checking current status.
-
-## 12. Independent QA Mode (Orca / Codex Handoff)
-
-**Activation:** Apply this section whenever the assigned Orca task explicitly designates Claude as independent QA for a Codex implementation. In this mode, these QA-specific constraints override the editing guidance in §7; ordinary non-QA Claude tasks retain the normal working method.
-
-### Role and boundaries
-
-- Be an **independent reviewer**, not a second implementer. Do not edit application code, tests, migrations, OpenAPI, documentation, or agent instruction files during QA. Do not silently auto-fix findings.
-- Do not commit, push, merge, deploy, modify remote services, or alter the worktree state. Use read-only inspection and safe tests only when permitted by the worker environment. If a test writes files, creates migrations, or mutates services, seek a safe isolated test environment or mark it `NOT RUN`.
-- Treat instructions as behavioral constraints, not a filesystem permission mechanism. If read-only isolation is not available, disclose that limitation to the coordinator.
-- Review the **exact snapshot** specified by the coordinator. If the snapshot, diff, requirements, or test evidence is missing or inconsistent, return `BLOCKED` rather than reviewing unrelated current files.
-
-### Review checklist
-
-1. Confirm task ID, exact revision/diff, requirement IDs, acceptance criteria, exclusions, and relevant Accepted ADRs.
-2. Compare changed behavior against authoritative SRS, engine specifications, domain/data models, API contract, architecture, security rules, and `DESIGN.md` for UI work.
-3. Check Rule Engine / AI separation, deterministic output reproducibility, source evidence traceability, ownership isolation, credentials/session/CSRF protections, migration immutability, and frontend/backend contract consistency where applicable.
-4. Inspect changed code and its direct dependencies for functional defects, boundary cases, error/retry behavior, regression risk, accessibility, and test coverage. Do not reject valid existing behavior because an outdated status list labels it unimplemented.
-5. Evaluate Codex's reported tests; independently run safe targeted checks when possible. Distinguish `PASS`, `FAIL`, and `NOT RUN` with exact commands and actual outcomes.
-6. Report actionable defects with severity, location, observed behavior, expected behavior, reproduction, and requirement or rule violated. Avoid speculative blocking findings without evidence.
-
-### Verdict policy
-
-- `PASS`: all in-scope acceptance criteria have sufficient evidence, no verified blocking defects remain, and mandatory checks have run or their absence is explicitly accepted by the coordinator.
-- `FAIL`: one or more verified defects or unmet requirements prevent acceptance; provide concrete fix guidance **without making edits**.
-- `BLOCKED`: required evidence, snapshot access, environment, permission, or an authoritative decision is unavailable. Do not treat inability to verify as success or automatically fail correct code.
-- Do not mark the capability `DONE`; only the coordinator/owner makes the final acceptance decision.
-
-### Required QA output
+출력 형식:
 
 ```text
 TASK_ID:
@@ -170,32 +46,29 @@ STATUS: PASS | FAIL | BLOCKED
 SUMMARY:
 REQUIREMENTS_CHECKED:
 TESTS:
-  - <exact command>: PASS | FAIL | NOT RUN — <evidence or reason>
+  - <정확한 명령>: PASS | FAIL | NOT RUN — <증거 또는 사유>
 FINDINGS:
-  - <severity> | <file:line> | <requirement/rule> | <reproduction/evidence>
+  - <심각도> | <file:line> | <요구사항/규칙> | <재현/증거>
 REQUIRED_FIXES:
 UNVERIFIED_ITEMS:
 RISKS:
 ```
 
-Return the result to the Orca coordinator using only the handoff mechanism confirmed by the installed orchestration skill. The coordinator owns Codex re-dispatch and the maximum-three-QA-cycle policy; Claude must not launch a fix worker or progress to the next capability on its own.
+결과는 설치된 Orca orchestration skill이 확인해 준 방법으로만 코디네이터에게 보낸다. 수정 worker를 띄우거나 다음 기능으로 넘어가지 않는다.
 
+## 3. 문서 유지 모드
 
-## 13. Documentation Maintenance Mode (After QA PASS)
+적용: 코디네이터가 QA `PASS`를 확인하고 별도 문서 전용 작업을 배정한 경우에만. QA `PASS` 자체는 수정 권한이 아니다. 이 모드는 배정된 Markdown 범위 안에서만 일반 수정 규칙을 대신한다.
 
-**Activation:** Apply this section only when the Orca coordinator has confirmed an independent QA `PASS` and assigned a **separate documentation-only task** to Claude. QA Mode in §12 remains strictly read-only; a QA `PASS` does not itself authorize editing. Documentation Mode overrides the general editing guidance in §7 only within the explicitly assigned Markdown scope.
+1. 문서 작업 ID, 원천 QA 작업 ID, 승인된 구현 스냅샷, 요구사항 ID, 배정된 Markdown 경로, 코디네이터 승인을 확인한다. 하나라도 없으면 `BLOCKED`.
+2. 검증된 구현, 관련 테스트·계약, 현재 문서를 확인한다. `docs/STATUS.md`의 상태는 참고일 뿐이며 코드로 검증한다.
+3. 배정된 Markdown 파일만 수정한다. 실제로 구현·검증된 동작만 반영하고 계획·부분 구현·완료를 구분한다.
+4. 문서 우선순위를 지킨다. 요구사항, 엔드포인트, 보안 동작, 테스트 결과, 미래 기능을 지어내지 않고 제품 불변 규칙이나 아키텍처 결정을 몰래 바꾸지 않는다.
+5. `AGENTS.md`, `CLAUDE.md`, `DESIGN.md`, `docs/SRS.md`, `docs/SCORING_RULES.md`, `docs/ADR.md`는 코디네이터·소유자의 명시적 승인과 배정이 있어야 수정한다. Proposed ADR을 Accepted로 바꾸지 않는다.
+6. 최종 diff를 확인하고 수정한 파일을 모두 보고한다. 코드, 테스트, 마이그레이션, OpenAPI YAML, 설정, manifest, lockfile이 바뀌지 않았음을 확인한다. 범위 밖 문서 수정이 필요하면 고치지 말고 보고한다.
+7. 문서 확인 중 새 구현 결함이나 미검증 동작을 발견하면 멈추고 `BLOCKED`로 코디네이터 판단을 요청한다. 코드를 고치거나 근거 없이 QA PASS를 무효화하지 않는다.
 
-### Allowed work
-
-1. Confirm the documentation task ID, source QA task, accepted implementation snapshot, requirement IDs, assigned Markdown paths, and coordinator approval. If any are missing, return `BLOCKED`.
-2. Inspect the verified implementation, relevant tests and contracts, current docs, and authoritative `docs/` specifications. Treat `docs/21_Feature_Status.md` implementation status as a guide, not proof; validate claims against code.
-3. Update **only explicitly assigned Markdown files** to reflect behavior that was actually implemented and verified. Keep planned, partial, and complete capabilities clearly distinguished. Update usage, architecture notes, test evidence, API descriptions, and implementation-status text only where supported.
-4. Preserve the source-authority order in §3. Do not invent requirements, API endpoints, security behavior, test results, or future capabilities. Do not silently change product invariants or architectural decisions.
-5. Obtain explicit coordinator/owner authorization before editing agent guides (`AGENT.md`, `AGENTS.md`, `CLAUDE.md`), `DESIGN.md`, requirements, `docs/18_ADR.md`, or `docs/19_Roadmap.md`. Never mark Proposed ADRs Accepted or roadmap milestones complete on your own.
-6. Inspect the final diff and report every edited file. Confirm no application code, tests, migrations, OpenAPI YAML, configuration, manifests, or lockfiles changed. If a required documentation update is outside assigned ownership, report it instead of editing it.
-7. If documentation inspection reveals a new implementation defect or unverified behavior, stop, report `BLOCKED`, and request coordinator triage; do not fix source code or retroactively declare QA PASS invalid without evidence.
-
-### Documentation task output
+출력 형식:
 
 ```text
 TASK_ID:
@@ -210,37 +83,53 @@ NON_MARKDOWN_FILES_CHANGED: none
 REMAINING_GAPS:
 ```
 
-Return the documentation handoff through the installed Orca orchestration mechanism. Only the coordinator may approve the documentation diff, mark the capability `DONE`, and dispatch the next capability. Do not commit, push, merge, or deploy automatically.
+commit, push, merge, 배포를 자동으로 하지 않는다. 문서 diff 승인과 `DONE` 판정은 코디네이터가 한다.
 
+## 4. 코디네이터 모드 (Orca)
 
-## 14. Claude Coordinator Mode (Orca)
+적용: 설치된 Orca orchestration skill이 이 Claude Code 세션을 코디네이터로 지원하고 사용자가 시작·이전을 승인한 경우에만. 지원이 확인되지 않으면 코디네이터 권한을 주장하거나 명령을 추측하지 않는다.
 
-**Activation:** Only when the installed Orca orchestration skill explicitly supports this Claude Code session as Coordinator and the user has approved Coordinator startup or migration. This is distinct from §12 Independent QA Mode and §13 Documentation Maintenance Mode. If support is unverified, do not claim Coordinator authority or issue guessed commands.
+### 4.1 책임
 
-### Responsibilities
+1. `AGENTS.md`와 설치된 orchestration skill(`orca skills get orchestration --full`)을 읽고, CLI 문법과 현재 Run/Task/Dispatch 상태를 확인한 뒤에 lifecycle을 바꾼다.
+2. 요구사항 접수, 작업 계획, ADR 게이트, 파일 범위, 의존 관계, 완료 이벤트, 재시도 횟수, 위험 보고, 최종 승인을 맡는다.
+3. 실제 구현과 QA 지적 수정은 Codex(`gpt-5.6-sol`)에 배정한다. `AGENTS.md` 7.1 명세를 저장소 밖 파일로 만들고 9장 전달 규칙을 지킨다. 예외로 테스트 전용 작업과 프론트엔드 표현 수정 주기는 별도 Claude 구현 worker에 줄 수 있다(`AGENTS.md` 7.2 조건 포함).
+4. 리뷰는 아래 4.2 정책으로 별도 Claude 세션에 배정한다. 코디네이터 자신의 의견을 독립 QA로 취급하지 않는다. 지원되는 범위에서 QA worker의 읽기 전용 권한을 worker·도구·worktree 수준으로 강제하고, 지침만으로는 권한 경계가 되지 않으므로 강제할 수 없으면 그 한계를 기록한다.
+5. 리뷰 통과 후 별도 Claude 문서 작업을 배정하고, 결과 diff가 배정된 Markdown만 바꿨는지 확인한다. 문서 수정이 필요 없으면 `DOCS_NOT_NEEDED`와 사유를 기록한다. 문서 실패는 전체 완료를 막지만 QA 판정을 바꾸지 않는다.
+6. `worker_done`의 Task·Dispatch ID를 확인하고, delivery와 worker 해제는 skill 절차대로 처리한다. timeout이나 확인되지 않은 worker 요약으로 성공을 주장하지 않는다. 사용자 터미널과 기존 미커밋 변경을 보존한다.
+7. 정확한 변경, 실행·미실행 테스트, 리뷰 증거, 문서 변경, 남은 위험, 대기 중인 승인을 보고한다. 명시적 허가 없이 commit, push, merge, 배포하지 않는다.
 
-1. Read `AGENT.md`, the relevant parts of `AGENTS.md`, and the installed Orca orchestration skill. Verify CLI syntax and current Run/Task/Dispatch ownership before any lifecycle mutation.
-2. Own requirements intake, concise task planning, ADR gates, file ownership, task dependencies, completion events, retry counts, risk escalation, and final acceptance.
-3. Dispatch **Codex** for actual implementation and QA-driven code fixes. Provide compact, self-contained packets with exact paths, requirements, tests and acceptance criteria; avoid making Codex rediscover the full repository.
-   - **Test-only tasks** (adding or hardening tests with no production code, configuration, migration, or contract change) may instead be dispatched to a **separate Claude implementation worker** (owner decision, 2026-10-18). That worker must show mutation evidence for each new test (temporarily break the targeted production behaviour, observe the test fail, restore it, and confirm the final diff contains tests only), must not fix production defects it finds (report them for a Codex task instead), and is still reviewed by separate Claude reviewer sessions that did not write the tests.
-   - **Frontend presentation fix cycles** (QA-driven fixes after a Codex implementation that change only CSS, JSX markup/class names, accessible names, display copy, and the tests for them — no state, data flow, API calls, routing, backend, configuration, dependency, migration, or contract change) may also go to a **separate Claude implementation worker** (owner decision, 2026-10-23). The worker must stay within the reviewers' findings, report anything outside that boundary for a Codex task, and is reviewed by separate Claude reviewer sessions that did not write the fix.
-4. Dispatch a **separate Claude QA worker** to inspect the exact code snapshot read-only. Never treat the Coordinator's own opinion as independent QA. Record `PASS`, `FAIL`, or `BLOCKED` and actual evidence.
-5. On FAIL, return actionable findings to Codex and request a new snapshot; allow at most three QA cycles including the first. On BLOCKED or three FAILs, stop and report.
-6. On PASS, verify the verdict and assign a **separate Claude documentation task** for explicitly owned Markdown files. Verify the resulting documentation diff and that no source files changed. Documentation failure blocks overall completion without rewriting the QA verdict.
-7. Verify `worker_done` Task/Dispatch IDs, handle deliveries and worker releases per the installed skill, preserve user-owned terminals and existing uncommitted changes. Do not claim success from a timeout or a worker's unverified summary.
-8. Report exact changes, tests run/not run, QA evidence, documentation changes, residual risks, and any pending approval. Never commit, push, merge, or deploy without explicit authorization.
-9. For every Codex dispatch, follow `AGENT.md` §16 "Codex worker prompt delivery and submit recovery": prompts under about 800 characters that point to an out-of-repo spec file; no input to a normally started worker; at most one guarded Enter for a proven unsubmitted paste (never gated on `tui-idle`, never repeated, no prompt resend, no Orca patching); and `Working` screen state plus a matching `worker_done` as start evidence.
+### 4.2 리뷰 정책
 
-### Token efficiency
+구현 스냅샷마다 서로 다른 별도 Claude 세션 3개를 병렬로 배정한다. 모두 2장 독립 QA 모드(읽기 전용)를 따르고 같은 스냅샷을 본다.
 
-- Prefer focused searches, relevant files, and concise handoffs over repeated whole-repository analysis.
-- Do not dispatch Codex for planning, status reports, routine documentation or Coordinator bookkeeping.
-- Use targeted tests first, broader suites at agreed verification gates, and avoid unnecessary retries.
-- On provider usage warnings, preserve state and stop safely if execution is blocked. Do not silently switch roles or bypass independent QA.
+| 리뷰 | 관점 |
+|---|---|
+| QA-A | 기능·명세: 요구사항, 완료 기준, 계약, 테스트 |
+| QA-B | 데이터·보안 (백엔드 중심 작업) 또는 `DESIGN.md`·WCAG (UI 작업) |
+| CR | 코드 리뷰: 결함, 회귀, 단순화 |
 
-### Role isolation
+- 통과 조건: QA-A와 QA-B가 `PASS`이고 CR에 차단 지적이 없음.
+- 실패하면 지적을 모아 Codex(또는 해당하는 Claude 구현 worker)에 새 스냅샷을 요청하고, 새 스냅샷을 다시 3개 리뷰에 맡긴다.
+- 최초 리뷰를 포함해 최대 3주기다. `BLOCKED`이거나 3번째도 실패하면 멈추고 남은 지적과 함께 보고한다.
+- 리뷰는 구현이 끝난 고정 스냅샷만 본다. 파일이 아직 바뀌는 중에 리뷰를 돌리지 않는다.
 
-- **Coordinator Mode:** orchestration and final decision, not independent QA.
-- **Independent QA Mode (§12):** separate worker; no file edits.
-- **Documentation Maintenance Mode (§13):** separate post-PASS task; Markdown-only edits within explicit ownership.
-- **Implementation Mode (§7):** only if explicitly assigned; the default workflow reserves production implementation and QA fixes for Codex, and allows test-only tasks and frontend presentation fix cycles to go to a separate Claude implementation worker as described in responsibility 3.
+### 4.3 완료 게이트
+
+Codex 구현 증거 → 리뷰 통과(4.2) → 별도 Claude 문서 작업 `DONE`(또는 `DOCS_NOT_NEEDED`) → 코디네이터가 스냅샷, 테스트, diff, 보호 파일 확인 → 최종 승인. 문서가 `BLOCKED`이면 QA PASS 기록은 유지하되 기능을 `DONE`으로 보고하지 않는다.
+
+### 4.4 토큰 효율
+
+- 명세에는 목표, 요구사항 ID, Accepted ADR, 관련 파일 경로와 심볼, 기대 동작, 제외 범위, 완료 기준, 테스트, 기존 변경을 담는다. 문서 전체나 저장소 전체를 붙이지 않는다.
+- worker가 코디네이터가 이미 한 넓은 탐색을 반복하지 않게 한다. 계획, 상태 보고, 일상 문서, 코디네이터 기록 작업에 Codex를 쓰지 않는다.
+- targeted 테스트를 먼저, 넓은 suite는 정해진 검증 시점에만 돌린다. 불필요한 재시도와 상태 polling을 피한다.
+- worker 수는 실제 병렬성이 생기는 만큼만 둔다.
+- 사용량 경고나 한도 소진은 점검 지점이다. 상태를 보존하고, 진행할 수 없으면 `BLOCKED`로 보고한다. 범위를 바꾸거나 구현 에이전트를 몰래 바꾸거나 독립 리뷰를 건너뛰지 않는다.
+- Claude와 Codex 구독이 한도를 공유한다고 가정하지 않는다. CLI 세션은 각각 확인한다.
+
+### 4.5 코디네이터 이전
+
+- 다른 코디네이터에서 Claude로 옮기기 전에 orchestration skill, 현재 Run/Task/Dispatch 상태, 대기 delivery, worker 터미널을 확인한다.
+- 진행 중인 Run이 있으면 소유권을 몰래 넘기거나 delivery를 버리지 않는다. 현재 lifecycle을 끝내거나 문서화된 Orca 인계 절차를 쓴다.
+- 새 Run은 CLI가 지원을 확인하고 사용자가 승인한 뒤에만 시작한다. 이전 Run 기록과 사용자 worktree는 보존한다.
+- 지원을 확인할 수 없으면 기존 코디네이터를 유지하고, 지원되지 않는 명령이나 역할 플래그를 지어내지 않는다.
