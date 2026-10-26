@@ -42,46 +42,16 @@ DevPath는 AI 보조 개발자 커리어 인텔리전스 플랫폼이다. GitHub
 
 ## 4. 현재 구현 기준선
 
-구현됨:
+이 절은 쉽게 바뀌지 않는 기준만 담는다. 기능별 구현 상태, 최신 Flyway 버전, 테스트 수와 검증 결과는 `docs/21_Feature_Status.md` 한 곳에서만 관리하며, 작업 전에는 그 내용도 실제 코드와 새 테스트 결과로 확인한다.
 
-- Java 21, Spring Boot 3.3.5 백엔드와 Node.js 20.19+/22.12+, React TypeScript, React Router 7.18.2, Vite 8 프론트엔드
-- 모듈러 모놀리스 및 헥사고날 패키지 경계
-- GitHub OAuth2 로그인, 서버 관리 opaque session, CSRF, 로그아웃, 현재 사용자 조회
-- 공급자 독립 내부 `User` identity와 GitHub `ExternalIdentity` 연결
-- 사용자 프로필과 Career/Company preference
-- GitHub 연결, 저장소 검색 및 가져오기
-- 저장소 등록·보관·복원 수명주기, URL 기반 보관 필터, 동기화 작업과 새로고침 복구, immutable snapshot 목록·상세 추적, 대형 저장소 수집 상한의 비재시도 안전 실패, 언어·dependency·file·PR·review·issue·README 기반 기술·비점수 근거 및 현재 스냅샷 활동 타임라인 추출
-- 분석 작업과 새로고침 복구, 완료 결과 직접 이동, 이력, 스냅샷별 공식 분석 추적, 결정론 Rule Engine, 점수 상세, 근거 연결
-- Skill Matrix 생성·조회·비교, 기술별 불변 평가 이력 탐색
-- Backend/Frontend Career catalog 및 Career Readiness/Skill Gap 계산
-- Company catalog 조회. 회사별 readiness와 추천 정책은 아직 포함하지 않음
-- `recommendation-v1` 결정론 추천과 `roadmap-v1` 학습 로드맵
-- owner-scoped REST API와 구현된 범위의 OpenAPI 계약
-- Notion OAuth 연결·공유 페이지 메타데이터, owner-scoped 지식 수집(정규화, chunk, Ollama embedding adapter, PostgreSQL pgvector), 보관·재색인 수명주기, owner 필터를 강제하는 semantic retrieval(M35~M37 구현 근거. live provider 검증과 owner 승인은 미완료)
-- 검증된 AI 생성 workflow: `SKILL_ANALYSIS_EXPLANATION`, `REPOSITORY_REVIEW`, `REPOSITORY_SUMMARY`, `CAREER_COACHING`, `LEARNING_RECOMMENDATION`. 불변 PromptContext, 버전 template, Ollama generation adapter, 취소, 최대 2회 재시도, validator 통과 후 `VALIDATED` GeneratedArtifact 저장(M42~M43 구현 근거. live 평가와 owner 승인은 미완료)
-- ADR-029 object storage port와 local/test 전용 filesystem adapter
-- React Query 기반 세션 bootstrap 및 repository, analysis, skill, readiness, roadmap, knowledge 화면과 AI 생성 패널
-- PostgreSQL, Spring Data JPA adapter, Flyway V1~V30 migration
-- ADR-027 PostgreSQL durable job·transactional outbox 기반 repository sync, analysis, knowledge ingestion, AI generation worker
-- 도메인, 애플리케이션, 영속성, 보안, 아키텍처 및 프론트엔드 테스트
+- 백엔드: Java 21, Spring Boot 3.3.5, 모듈러 모놀리스와 헥사고날 패키지 경계(`com.devpath.<module>.{domain,application,adapter.in,adapter.out,config}`)
+- 백엔드 모듈: `ai`, `analysis`, `audit`, `career`, `company`, `dashboard`, `identity`, `integration`, `knowledge`, `learning`, `onboarding`, `platform`, `prompt`, `recommendation`, `repository`, `rule`, `shared`
+- 프론트엔드: React, TypeScript, Vite, React Router, React Query. 기능 모듈은 `frontend/src/features/<기능>/{api,model,ui}`, 화면은 `frontend/src/pages`
+- 데이터: PostgreSQL, Spring Data JPA adapter, Flyway가 스키마를 소유하며 pgvector로 지식 임베딩을 저장
+- 작업 처리: ADR-027 PostgreSQL durable job과 transactional outbox 기반 worker
+- AI: provider port 뒤의 Ollama adapter. 공식 점수는 Rule Engine만 계산하고 AI 결과는 검증을 통과해야 저장
 
-구현되지 않음:
-
-- 회사별 readiness 및 회사별 추천 modifier
-- 외부 강의, 도서, 자격증 자동 추천
-- Portfolio, Resume, Interview, Administration workflow
-- 생성 산출물 목록(API-AI-006), 수동 재시도(API-AI-004), 산출물 편집·내보내기
-- production S3 호환 object storage adapter와 ADR-031 telemetry
-- production 배포와 production secret 관리
-
-기록된 검증 근거(재실행 결과가 아님):
-
-- 2026-09-28 `docs/20_MVP_Release_Evidence.md` §3 기록: 백엔드 전체 219건 중 217건 PASS, 실패 0건, 환경변수 조건부 SKIP 2건. Testcontainers PostgreSQL 20건 중 18건 PASS, SKIP 2건. AI generation 29건 PASS. 프론트엔드 Vitest 43개 파일 108건 PASS, Playwright Chromium·axe 사용자 여정 7건 PASS, production build와 npm audit PASS
-- 플랫폼 중립 `security:check`가 민감 파일·고신뢰 credential·위험한 JPA schema mode·브라우저 credential 저장·브라우저 provider 직접 호출을 차단
-- OpenAPI lint PASS. 오류 0건, 권고 경고 9건
-- 2026-10-15 미커밋 로컬 변경(KnowledgeDetailPage 회귀 테스트, 테스트 API base URL 고정) 기준 프론트엔드 Vitest 44개 파일 114건 PASS
-
-계획된 모듈을 구현된 기능으로 표현하지 않는다. 이 기준선 이후의 변경은 실제 코드와 검증 결과에 근거해서만 갱신한다.
+계획된 모듈을 구현된 기능으로 표현하지 않는다.
 
 ## 5. 승인된 결정과 미결정 게이트
 

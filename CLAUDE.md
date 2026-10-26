@@ -60,9 +60,7 @@ Frontend code is feature-oriented. React Query owns server state. `GET /api/v1/u
 
 ## 5. Current Implementation State
 
-Use `AGENTS.md` §4 as the current **documented** implementation and test baseline rather than the former initial-V1 list. That document reports implemented repository collection/synchronization, deterministic analysis/Rule Engine, Skill Matrix, Career readiness, recommendation/roadmap flows, Notion knowledge ingestion/retrieval, validated AI generation, and Flyway migrations through V28, while distinguishing still-planned features.
-
-Before QA or implementation, confirm relevant claims against actual code, migrations, contracts, requirements, and fresh test evidence. `AGENTS.md` is a status guide, not proof of correctness; report discrepancies instead of treating old prose as the source of truth. Never report historical test results as newly executed tests.
+현재 구현 상태와 검증 결과는 `docs/21_Feature_Status.md` 한 곳에서만 관리하며, 작업 전에는 그 내용도 실제 코드·마이그레이션·계약·새 테스트 결과로 확인하고 과거 테스트 결과를 새로 실행한 결과로 보고하지 않는다.
 
 ## 6. Decision Gates
 
@@ -190,10 +188,10 @@ Return the result to the Orca coordinator using only the handoff mechanism confi
 ### Allowed work
 
 1. Confirm the documentation task ID, source QA task, accepted implementation snapshot, requirement IDs, assigned Markdown paths, and coordinator approval. If any are missing, return `BLOCKED`.
-2. Inspect the verified implementation, relevant tests and contracts, current docs, and authoritative `docs/` specifications. Treat `AGENTS.md` implementation status as a guide, not proof; validate claims against code.
+2. Inspect the verified implementation, relevant tests and contracts, current docs, and authoritative `docs/` specifications. Treat `docs/21_Feature_Status.md` implementation status as a guide, not proof; validate claims against code.
 3. Update **only explicitly assigned Markdown files** to reflect behavior that was actually implemented and verified. Keep planned, partial, and complete capabilities clearly distinguished. Update usage, architecture notes, test evidence, API descriptions, and implementation-status text only where supported.
 4. Preserve the source-authority order in §3. Do not invent requirements, API endpoints, security behavior, test results, or future capabilities. Do not silently change product invariants or architectural decisions.
-5. Obtain explicit coordinator/owner authorization before editing agent guides (`AGENT.md`, `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`), `DESIGN.md`, requirements, `docs/18_ADR.md`, or `docs/19_Roadmap.md`. Never mark Proposed ADRs Accepted or roadmap milestones complete on your own.
+5. Obtain explicit coordinator/owner authorization before editing agent guides (`AGENT.md`, `AGENTS.md`, `CLAUDE.md`), `DESIGN.md`, requirements, `docs/18_ADR.md`, or `docs/19_Roadmap.md`. Never mark Proposed ADRs Accepted or roadmap milestones complete on your own.
 6. Inspect the final diff and report every edited file. Confirm no application code, tests, migrations, OpenAPI YAML, configuration, manifests, or lockfiles changed. If a required documentation update is outside assigned ownership, report it instead of editing it.
 7. If documentation inspection reveals a new implementation defect or unverified behavior, stop, report `BLOCKED`, and request coordinator triage; do not fix source code or retroactively declare QA PASS invalid without evidence.
 

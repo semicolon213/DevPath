@@ -60,9 +60,7 @@ Frontend code is feature-oriented. React Query owns server state. Components nev
 
 ## 5. Current Implementation Baseline
 
-`AGENTS.md` §4 is the repository's current *documented* implementation and verification baseline. It reports GitHub repository collection/synchronization, deterministic analysis and Rule Engine, Skill Matrix, Career readiness, recommendation/roadmap flows, Notion knowledge ingestion/retrieval, validated AI generation, and Flyway migrations through V28, among other capabilities. It also distinguishes still-unimplemented company-specific readiness, Portfolio/Resume/Interview, administration, and other planned workflows.
-
-Do **not** use the former initial-V1 baseline as current status. Before making or reviewing a change, verify the relevant claims against the actual source tree, migrations, contracts, Git status, and fresh test output. If `AGENTS.md` disagrees with the repository, report the discrepancy and use verified code and authoritative specifications rather than guessing. Prior test results are historical evidence, not proof that a new change passes.
+현재 구현 상태와 검증 결과는 `docs/21_Feature_Status.md` 한 곳에서만 관리하며, 변경이나 검토 전에는 그 내용도 실제 소스·마이그레이션·계약·새 테스트 결과로 확인하고 불일치는 추측하지 말고 보고한다.
 
 ## 6. ADR Gates
 

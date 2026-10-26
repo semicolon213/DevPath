@@ -134,7 +134,7 @@ ADRs use qualitative criteria, not unsupported numerical scoring.
 | ADR-001 | Adopt a Modular Monolith for the Initial Backend | Backend | Accepted | Blocking | Reversible with Migration | Architecture | 11,16,17 | Accepted | None | ADR-002 |
 | ADR-002 | Apply Hexagonal and Clean Architecture Boundaries | Backend | Accepted | Blocking | Difficult to Reverse | Architecture | 07,11,17 | Accepted | ADR-001 | ADR-007 |
 | ADR-003 | Use PostgreSQL as the Primary Structured Data Store | Data | Accepted | Blocking | Difficult to Reverse | Data | 08,09,16 | Accepted | ADR-001 | ADR-004, ADR-024 |
-| ADR-004 | Use Redis Only for Non-Authoritative Cache and Coordination | Data | Accepted | Required Before MVP | Easily Reversible | Backend/Ops | 09,13,16,17 | Accepted | ADR-003 | ADR-028 |
+| ADR-004 | Use Redis Only for Non-Authoritative Cache and Coordination | Data | Deferred | Required Before MVP | Easily Reversible | Backend/Ops | 09,13,16,17 | Deferred | ADR-003 | ADR-028 |
 | ADR-005 | Use Contract-First REST APIs | Backend | Accepted | Blocking | Reversible with Migration | API | 10,12,15,17 | Accepted | ADR-020 | ADR-021 |
 | ADR-006 | Separate Deterministic Engines from AI Generation | AI | Accepted | Blocking | Effectively Irreversible | Architecture/AI | 00,02,03,04,17 | Accepted | None | ADR-015 |
 | ADR-007 | Use Provider Ports and Adapters for External Services | Integration | Accepted | Blocking | Reversible with Migration | Backend | 04,06,11,17 | Accepted | ADR-002 | ADR-030 |
@@ -273,9 +273,11 @@ ADRs use qualitative criteria, not unsupported numerical scoring.
 
 ### 10.4 ADR-004: Use Redis Only for Non-Authoritative Cache and Coordination
 
+> 상태 메모(2026-10-26): 2026-10-26 기준 미도입: 런타임 의존성 없음(build.gradle), 캐시 미사용. 소유자 승인에 따라 상태를 Accepted에서 Deferred로 변경했으며, 아래 결정 내용은 향후 도입 시 기준으로 유지한다.
+
 | Field | Entry |
 |---|---|
-| Status | Accepted |
+| Status | Deferred (2026-10-26, 이전: Accepted) |
 | Decision Date / Last Review Date | 2026-07-26 / 2026-07-26 |
 | Owners / Reviewers | Backend/Ops / Security Reviewer |
 | Related Requirements / Documents | `09_Database_Design.md`, `13_Security_Architecture.md`, `16_Deployment_Guide.md` |
