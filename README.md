@@ -1,5 +1,7 @@
 # DevPath
 
+[![CI](https://github.com/semicolon213/DevPath/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/semicolon213/DevPath/actions/workflows/ci.yml)
+
 내 GitHub 저장소를 분석해서 지금 어떤 역량이 있고 다음에 뭘 공부하면 좋을지 알려 주는 서비스입니다. Notion에 정리한 공부 기록도 모아서 검색할 수 있습니다.
 
 ## 만들게 된 이유
