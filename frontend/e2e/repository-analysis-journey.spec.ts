@@ -134,8 +134,12 @@ test("profile target selects with a long career name do not overflow at 375px wi
     for (const path of ["/settings/profile", "/onboarding"]) {
       await page.goto(path);
       await expect(page.locator("#career-target option", { hasText: longName })).toHaveCount(1);
-      const size = await page.evaluate(() => ({ clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth }));
-      expect(size.scrollWidth, `${path} at 375px`).toBeLessThanOrEqual(size.clientWidth);
+      const size = await page.evaluate(() => {
+        const { clientWidth, scrollWidth } = document.documentElement;
+        const overflowing = Array.from(document.querySelectorAll("*")).filter(element => element.getBoundingClientRect().right > clientWidth).map(element => `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ""}${Array.from(element.classList).map(value => `.${value}`).join("")}`).slice(0, 10);
+        return { clientWidth, scrollWidth, overflowing };
+      });
+      expect(size.scrollWidth, `${path} at 375px; overflowing: ${size.overflowing.join(", ") || "none"}`).toBeLessThanOrEqual(size.clientWidth);
     }
     await context.close();
   } finally {

@@ -2,6 +2,8 @@
 
 .profile-panel form, .target-grid { display: grid; gap: 16px; }
 
+.profile-panel form { grid-template-columns: minmax(0, 1fr); }
+
 .profile-panel label { display: grid; gap: 6px; font-weight: 700; }
 
 .profile-panel input, .profile-panel select, .profile-panel textarea { border: 1px solid var(--border-strong); border-radius: var(--radius-xs); font: inherit; padding: 10px; }
