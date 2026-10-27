@@ -39,6 +39,34 @@ flowchart LR
     R --> G["AI 설명 생성 (검증 후 저장)"]
 ```
 
+GitHub 로그인과 브라우저 보호 흐름은 다음과 같다.
+
+```mermaid
+sequenceDiagram
+    actor 사용자
+    participant Browser as 브라우저
+    participant Security as Spring Security
+    participant GitHub
+    participant Identity as Identity Application
+    participant DB as PostgreSQL / Spring Session
+
+    사용자->>Browser: GitHub 로그인 선택
+    Browser->>Security: GET /oauth2/authorization/github
+    Security-->>Browser: GitHub authorize로 리다이렉트<br/>OAuth state 저장
+    Browser->>GitHub: 인증·동의
+    GitHub-->>Security: GET /login/oauth2/code/github?code&state
+    Security->>Security: state 검증과 코드 교환
+    Security->>GitHub: 사용자 정보 요청
+    GitHub-->>Security: id, login, name, avatar_url
+    Security->>Identity: 사용자와 외부 식별자 조회·생성
+    Identity->>DB: users / external_identities 저장
+    Security->>DB: session fixation 방어 후 서버 세션 저장
+    Security-->>Browser: DEVPATH_SESSION 쿠키와 성공 경로 리다이렉트
+    Browser->>Security: GET /api/v1/csrf
+    Security-->>Browser: X-CSRF-TOKEN 값과 헤더 이름
+    Browser->>Security: 상태 변경 요청 + 세션 쿠키 + X-CSRF-TOKEN
+```
+
 핵심 흐름:
 
 1. 사용자가 GitHub로 로그인하고 GitHub App·Notion을 연결한다.
@@ -206,7 +234,144 @@ flowchart LR
 - 큰 본문(Notion 원문, 생성 산출물 JSON)은 `ObjectContentPort`로 저장하고 DB에는 참조와 해시를 둔다.
 - 마이그레이션은 불변이다. 스키마 변경은 새 버전 파일로만 한다.
 
-### 4.4 마이그레이션 (V1~V30)
+### 4.4 ERD
+
+아래는 사용자 소유권, 분석 결과, 지식, AI 생성의 핵심 관계만 표시한 축약 ERD다.
+
+```mermaid
+erDiagram
+    users {
+        uuid user_id PK
+        varchar account_status
+    }
+    repositories {
+        uuid repository_id PK
+        uuid user_id FK
+        uuid current_snapshot_id FK
+        varchar lifecycle_status
+    }
+    repository_snapshots {
+        uuid snapshot_id PK
+        uuid repository_id FK
+        uuid user_id FK
+        varchar snapshot_status
+    }
+    analysis_jobs {
+        uuid job_id PK
+        uuid user_id FK
+        uuid repository_id FK
+        uuid snapshot_id FK
+        uuid result_analysis_id FK
+        varchar status
+    }
+    analysis_results {
+        uuid analysis_id PK
+        uuid job_id FK
+        uuid evaluation_id FK
+        uuid skill_matrix_id FK
+    }
+    rule_set_versions {
+        uuid rule_set_version_id PK
+        varchar version_label
+        varchar status
+    }
+    evaluations {
+        uuid evaluation_id PK
+        uuid user_id FK
+        uuid snapshot_id FK
+        uuid rule_set_version_id FK
+        numeric overall_score
+    }
+    evidence_records {
+        uuid evidence_id PK
+        uuid user_id FK
+        uuid snapshot_id FK
+        varchar evidence_type
+    }
+    career_profile_versions {
+        uuid career_profile_version_id PK
+        varchar career_id FK
+        varchar version_label
+    }
+    career_readiness_assessments {
+        uuid career_readiness_id PK
+        uuid user_id FK
+        uuid skill_matrix_id FK
+        uuid career_profile_version_id FK
+        varchar status
+    }
+    recommendation_sets {
+        uuid recommendation_set_id PK
+        uuid user_id FK
+        uuid career_readiness_id FK
+        varchar status
+    }
+    learning_roadmaps {
+        uuid roadmap_id PK
+        uuid user_id FK
+        uuid recommendation_set_id FK
+        varchar status
+    }
+    knowledge_documents {
+        uuid knowledge_document_id PK
+        uuid user_id FK
+        uuid current_version_id FK
+        varchar lifecycle_status
+    }
+    knowledge_document_versions {
+        uuid knowledge_document_version_id PK
+        uuid knowledge_document_id FK
+        uuid user_id FK
+        varchar version_status
+    }
+    knowledge_chunks {
+        uuid knowledge_chunk_id PK
+        uuid knowledge_document_version_id FK
+        uuid user_id FK
+        varchar index_status
+    }
+    prompt_contexts {
+        uuid prompt_context_id PK
+        uuid user_id FK
+        uuid prompt_template_version_id FK
+        uuid skill_matrix_id FK
+        varchar status
+    }
+    ai_tasks {
+        uuid ai_task_id PK
+        uuid user_id FK
+        uuid prompt_context_id FK
+        varchar status
+    }
+    generated_artifacts {
+        uuid generated_artifact_id PK
+        uuid user_id FK
+        uuid prompt_context_id FK
+        uuid ai_response_id FK
+        varchar status
+    }
+
+    users ||--o{ repositories : owns
+    repositories ||--o{ repository_snapshots : captures
+    repository_snapshots ||--o{ analysis_jobs : basis
+    analysis_jobs ||--o| analysis_results : produces
+    repository_snapshots ||--o{ evaluations : evaluates
+    rule_set_versions ||--o{ evaluations : governs
+    repository_snapshots ||--o{ evidence_records : supports
+    career_profile_versions ||--o{ career_readiness_assessments : defines
+    career_readiness_assessments ||--o{ recommendation_sets : produces
+    recommendation_sets ||--o{ learning_roadmaps : orders
+    users ||--o{ knowledge_documents : owns
+    knowledge_documents ||--o{ knowledge_document_versions : versions
+    knowledge_document_versions ||--o{ knowledge_chunks : splits
+    users ||--o{ prompt_contexts : owns
+    prompt_contexts ||--o{ ai_tasks : queues
+    prompt_contexts ||--o{ generated_artifacts : grounds
+```
+
+전체 스키마와 제약 조건의 원본은 `backend/src/main/resources/db/migration`의 Flyway 마이그레이션이다.
+
+### 4.5 마이그레이션 (V1~V30)
 
 | 버전 | 내용 |
 |---|---|
@@ -256,6 +421,40 @@ ADR-027에 따라 PostgreSQL 작업 테이블과 트랜잭션 outbox를 쓴다. 
 
 ### 5.2 동작
 
+분석 요청의 비동기 경로는 다음과 같다.
+
+```mermaid
+sequenceDiagram
+    actor 사용자
+    participant UI as React UI
+    participant API as Analysis API
+    participant DB as PostgreSQL
+    participant Worker as AnalysisWorker
+    participant Engine as 결정론 엔진
+
+    사용자->>UI: 분석 요청
+    UI->>API: POST /api/v1/analyses
+    API->>DB: analysis_jobs(QUEUED) + AnalysisRequested outbox 저장
+    API-->>UI: 202 + pollingUrl
+    par 워커 처리
+        Worker->>DB: next_attempt_at 도래 작업 클레임<br/>비관적 잠금 + SKIP LOCKED, 15분 lease
+        DB-->>Worker: RUNNING 작업과 스냅샷
+        Worker->>Engine: 규칙 평가와 Skill Matrix 생성
+        Engine->>DB: 평가·근거·Skill Matrix 저장
+        Engine-->>Worker: 평가 ID와 Skill Matrix ID
+        Worker->>Engine: 선택 직무가 있으면 readiness 생성<br/>완료 상태면 추천·로드맵 생성
+        Engine->>DB: readiness 및 생성된 추천·로드맵 저장
+        Worker->>DB: analysis_results + SUCCEEDED<br/>+ AnalysisCompleted outbox 저장
+    and 프론트엔드 폴링
+        loop queued 또는 running
+            UI->>API: GET /api/v1/analysis-jobs/{jobId}
+            API-->>UI: 작업 상태
+        end
+    end
+    UI->>API: 작업 상태 폴링
+    API-->>UI: succeeded + resultResourceUrl
+```
+
 | 항목 | 구현 |
 |---|---|
 | 요청 처리 | API는 작업 행만 만들고 `202`를 반환한다. 요청 스레드에서 provider를 호출하지 않는다. |
@@ -267,7 +466,26 @@ ADR-027에 따라 PostgreSQL 작업 테이블과 트랜잭션 outbox를 쓴다. 
 | 비재시도 실패 | `COLLECTION_LIMIT_EXCEEDED`는 즉시 종료되고 부분 스냅샷을 남기지 않는다. |
 | Outbox | 동기화·분석 상태 변경과 같은 트랜잭션에서 `outbox_events`에 이벤트를 기록한다 (예: `AnalysisRequested`, `AnalysisCompleted`, `AnalysisFailed`). 이 이벤트를 읽어 발행하는 relay는 아직 없다. |
 
-### 5.3 멱등성
+### 5.3 분석 작업 상태
+
+`analysis_jobs`와 `AnalysisJobStatus`가 허용하는 상태 및 구현된 전이는 다음과 같다. `CANCELLED`와 `EXPIRED`는 계약·스키마에는 있지만 분석 도메인에서 진입 전이는 아직 없다.
+
+```mermaid
+stateDiagram-v2
+    [*] --> QUEUED: 요청 저장
+    QUEUED --> RUNNING: 클레임 / 시도 수 +1 / 15분 lease
+    RUNNING --> SUCCEEDED: 결과와 근거 저장
+    RUNNING --> QUEUED: 재시도 가능 실패 / RETRY_WAIT<br/>30초부터 증가, 최대 5분
+    RUNNING --> RUNNING: lease 만료 후 재클레임<br/>WORKER_LEASE_RECOVERED
+    RUNNING --> FAILED: 실패 후 시도 한도 도달
+    RUNNING --> FAILED: lease 만료 후 시도 한도 도달<br/>WORKER_LEASE_EXPIRED
+    SUCCEEDED --> [*]
+    FAILED --> [*]
+    CANCELLED --> [*]
+    EXPIRED --> [*]
+```
+
+### 5.4 멱등성
 
 | 상황 | 결과 |
 |---|---|
@@ -385,6 +603,30 @@ OpenAPI에는 `x-api-id`가 있는 업무 operation 70개와 인프라·세션 o
 
 증거 ID는 모델이 아니라 서버가 검증된 참조로 붙인다. 통과하면 산출물 JSON을 `ObjectContentPort`에 저장하고 `generated_artifacts`에 출처(Skill Matrix, 분석, 준비도, 로드맵, PromptContext, 템플릿 버전, provider `OLLAMA`, 모델, 컨텍스트 해시)를 기록한다. 거부되면 `REJECTED` 검증 결과를 남기고 시도가 남았으면 재시도한다.
 
+```mermaid
+sequenceDiagram
+    actor 사용자
+    participant API as AI Generation API
+    participant DB as PostgreSQL
+    participant Worker as AiGenerationWorker
+    participant Ollama
+    participant Validator as 작업별 출력 검증기
+
+    사용자->>API: 생성 요청 + 원본 리소스 ID
+    API->>DB: 소유권 확인과 엔진 결과 조회
+    API->>DB: prompt_contexts(LOCKED) + ai_tasks(QUEUED) 저장
+    API-->>사용자: 202 + 작업 URL
+    Worker->>DB: 작업 클레임과 모델 실행 SUBMITTED 저장
+    Worker->>Ollama: 검증된 프롬프트 + 엔진 컨텍스트
+    Ollama-->>Worker: JSON 응답
+    Worker->>Validator: 형식·근거·숫자·안전 검증
+    alt 검증 통과
+        Worker->>DB: PASSED 검증 결과 + VALIDATED 산출물 저장
+    else 검증 거부
+        Worker->>DB: REJECTED 결과 저장 + 재시도 또는 FAILED
+    end
+```
+
 ## 8. 지식(Notion) 수집·검색
 
 ### 8.1 수집
@@ -446,7 +688,21 @@ OpenAPI에는 `x-api-id`가 있는 업무 operation 70개와 인프라·세션 o
 
 ## 10. 로컬 실행
 
-### 10.1 준비물
+### 10.1 로컬 배치
+
+```mermaid
+flowchart LR
+    Browser[브라우저] --> Vite[Vite 개발 서버 :5100]
+    Browser --> Boot[Spring Boot :8080]
+    Boot --> PG[(PostgreSQL + pgvector :15432)]
+    Boot --> Ollama[Ollama :11434]
+    Boot --> GitHub[GitHub API]
+    Boot --> Notion[Notion API]
+```
+
+이 그림은 로컬 개발 배치만 나타낸다. 운영 배포 플랫폼은 ADR-033이 Proposed 상태라 아직 결정하지 않았다.
+
+### 10.2 준비물
 
 - JDK 21, Node.js와 npm
 - pgvector를 쓸 수 있는 PostgreSQL 16 (local 프로필 기본 `jdbc:postgresql://localhost:15432/devpath`)
@@ -456,11 +712,11 @@ OpenAPI에는 `x-api-id`가 있는 업무 operation 70개와 인프라·세션 o
 - Ollama (`http://localhost:11434`, `qwen2.5:7b`, `nomic-embed-text`), AI·지식 기능을 쓸 때
 - Docker: 백엔드 통합 테스트(Testcontainers `pgvector/pgvector:0.8.0-pg16`)에 필요. 저장소에 compose 파일은 없다.
 
-### 10.2 환경 변수
+### 10.3 환경 변수
 
 목록은 `backend/.env.example`에 있다. Spring Boot는 이 파일을 읽지 않는다. 값을 프로세스 환경 변수로 넘기거나 `backend/.env`로 복사하면 `bootRun` 태스크가 아직 설정되지 않은 변수만 채운다. 필수 값: `DEVPATH_DB_*`, `GITHUB_CLIENT_*`, `GITHUB_INTEGRATION_CLIENT_*`, `NOTION_INTEGRATION_*`, `DEVPATH_PROVIDER_CREDENTIAL_KEY`(Base64 32바이트 AES 키)와 `_VERSION`, `DEVPATH_FRONTEND_ORIGIN`. local 프로필은 세션 쿠키 `Secure`를 끄고 frontend origin 기본값을 `http://localhost:5100`으로 둔다.
 
-### 10.3 실행
+### 10.4 실행
 
 ```powershell
 # 백엔드
@@ -482,7 +738,7 @@ npm run dev
 | Ollama | `http://localhost:11434` |
 | 헬스 체크 | `GET http://localhost:8080/internal/health` |
 
-### 10.4 루트 명령
+### 10.5 루트 명령
 
 | 명령 | 내용 |
 |---|---|

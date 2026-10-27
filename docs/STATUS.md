@@ -2,7 +2,8 @@
 
 DevPath의 구현 상태와 검증 결과를 기록하는 **유일한 상태 문서**다. 다른 문서와 에이전트 가이드는 상태·버전·테스트 수를
 따로 적지 않고 이 문서를 가리킨다. 요구사항은 [docs/SRS.md](SRS.md), 기술 결정은 [docs/ADR.md](ADR.md), 테스트 방식은
-[docs/TEST_PLAN.md](TEST_PLAN.md)를 본다. 이 문서는 마일스톤 완료를 선언하거나 소유자 승인을 대신하지 않는다.
+[docs/TEST_PLAN.md](TEST_PLAN.md)를 본다. 로컬 실행 문제는 [docs/RUNBOOK.md](RUNBOOK.md)를 본다. 이 문서는 마일스톤 완료를
+선언하거나 소유자 승인을 대신하지 않는다.
 
 ## 1. 기준 시점
 

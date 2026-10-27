@@ -180,3 +180,4 @@ E2E 테스트는 4173 포트를 먼저 확인하고, Windows 시스템 예약 �
 - [점수 규칙](docs/SCORING_RULES.md)
 - [기술 결정 기록(ADR)](docs/ADR.md)
 - [기능별 구현 상태](docs/STATUS.md)
+- [로컬 문제 해결](docs/RUNBOOK.md)

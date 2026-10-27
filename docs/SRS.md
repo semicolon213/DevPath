@@ -27,7 +27,17 @@
 DevPath는 GitHub 저장소와 Notion 문서를 수집해 결정적 Rule Engine으로 기술 역량을 평가하고, 목표 직무 기준의 준비도와
 부족한 영역, 학습 로드맵을 제공한다. AI는 이 결과를 설명하는 데만 쓴다.
 
-### 1.2 대상 사용자
+### 1.2 성공 지표(KPI)
+
+| 지표 | 측정 방법 | 검증 근거 |
+|---|---|---|
+| 같은 스냅샷·추출기·규칙 버전 입력은 같은 공식 점수와 신뢰도를 낸다. | 동일 입력을 두 번 평가해 결과 객체와 승인된 fixture 값을 비교한다. | `DeterministicRuleEngineTest.baselineV1MatchesGoldenScoresAndIsDeterministic`, `baselineV2MatchesApprovedGoldenScoresAndIsDeterministic` |
+| AI 설명의 서술 텍스트에 숫자가 들어가면 공통 출력 정책이 산출물을 거부한다. 작업별 연결은 숫자 위반을 직접 검증하는 두 산출물에서 확인한다. | 공통 정책과 Skill 설명·저장소 요약 validator가 숫자 포함 텍스트에 `UNTRACEABLE_NUMERIC_CLAIM`을 만드는지 검사한다. | `GeneratedOutputPolicyTest.validatesTextWithTheExistingSchemaNumericAndRenderSafetyOrder`, `SkillExplanationValidatorTest`, `RepositorySummaryValidatorTest` |
+| 분석 작업은 일시 실패를 제한된 백오프로 재시도하고, 만료 lease가 시도 한도에 닿으면 실패로 끝난다. | 재시도 지연 범위와 `WORKER_LEASE_RECOVERED`/`WORKER_LEASE_EXPIRED` 전이를 검사한다. | `AnalysisJobTest` |
+| 보안 경계를 벗어난 의존과 민감정보 패턴을 저장소 검사에서 허용하지 않는다. | 보안 경계 테스트와 스캔을 실행한다. | `npm run security:check` |
+| 공개 API 계약은 lint 오류 없이 유지한다. | OpenAPI 원본에 계약 lint를 실행한다. | `npm run contract:lint` |
+
+### 1.3 대상 사용자
 
 | 사용자 | 특성 | 주요 목적 |
 |---|---|---|
@@ -39,7 +49,14 @@ DevPath는 GitHub 저장소와 Notion 문서를 수집해 결정적 Rule Engine�
 
 관리자(Administrator) 사용자 유형은 현재 범위 외다.
 
-### 1.3 핵심 원칙
+### 1.4 제약 사항
+
+- 로컬 실행에는 PostgreSQL/pgvector, Java 21, Node.js가 필요하고 전체 통합 검증에는 Docker도 필요하다.
+- 생성과 임베딩 provider 구현은 로컬 Ollama 하나뿐이다. 실제 Notion·Ollama 대상 충분한 검증은 남아 있다.
+- 외부 유료 AI 서비스는 사용하지 않는다.
+- 운영 배포 플랫폼, 관측성 기술, 운영 비밀 관리 방식은 각각 Proposed ADR-033, 031, 034로 미결이다.
+
+### 1.5 핵심 원칙
 
 1. Rule Engine이 계산한다.
 2. AI는 설명한다.
@@ -47,7 +64,7 @@ DevPath는 GitHub 저장소와 Notion 문서를 수집해 결정적 Rule Engine�
 4. 회사(Company) 선택은 회사별 평가·추천 정책을 바꾼다. (회사별 정책은 현재 범위 외)
 5. 모든 결과는 측정 가능해야 한다.
 
-### 1.4 제품 불변 규칙
+### 1.6 제품 불변 규칙
 
 다음 규칙은 어떤 기능 변경에서도 바꾸지 않는다. 위반하는 변경 요청은 중단하고 보고한다.
 
@@ -61,7 +78,7 @@ DevPath는 GitHub 저장소와 Notion 문서를 수집해 결정적 Rule Engine�
 | INV-6 | PostgreSQL이 구조화 데이터의 기준 저장소다. 캐시, 벡터, 프로젝션, LLM 컨텍스트는 기준이 아니다. |
 | INV-7 | 사용자 소유 데이터는 사용자별로 격리하고, 조회·프롬프트 조립·생성·내보내기·공개 전에 권한을 확인한다. |
 
-### 1.5 처리 흐름
+### 1.7 처리 흐름
 
 ```text
 GitHub / Notion 수집 → 정규화·불변 스냅샷 → Rule Engine 평가 → Skill Matrix
@@ -71,11 +88,41 @@ GitHub / Notion 수집 → 정규화·불변 스냅샷 → Rule Engine 평가 �
 분석 작업이 완료되면 같은 작업 안에서 Skill Matrix, 선택한 직무의 준비도, 추천과 로드맵이 순서대로 생성된다. AI 설명은
 사용자가 요청할 때 별도 작업으로 생성된다.
 
-### 1.6 기술 구성
+### 1.8 기술 구성
 
 기술 스택과 모듈 구조는 [docs/ARCHITECTURE.md](ARCHITECTURE.md)를 따른다. 이전 SRS에 적혀 있던 Redis, FastAPI,
 LangChain, OpenAI, Nginx, Oracle Cloud는 사용하지 않거나 채택된 결정이 아니다. 현재 백엔드는 Spring Boot 모듈러
 모놀리스이며 AI 생성과 임베딩은 Ollama 어댑터 하나로 동작한다. 배포 플랫폼은 미결(Proposed ADR-033)이다.
+
+### 1.9 구현된 사용 사례
+
+```mermaid
+flowchart LR
+    User[사용자]
+    GitHub[GitHub]
+    Notion[Notion]
+    Ollama[Ollama]
+
+    Login([GitHub 로그인])
+    Sync([저장소 가져오기·동기화])
+    Analyze([결정적 저장소 분석])
+    Results([점수·근거·준비도·추천·로드맵 조회])
+    Knowledge([Notion 문서 수집·검색])
+    Explain([AI 설명·요약·리뷰·코칭·학습 안내 생성])
+
+    User --> Login
+    User --> Sync
+    User --> Analyze
+    User --> Results
+    User --> Knowledge
+    User --> Explain
+    Login <--> GitHub
+    Sync <--> GitHub
+    Knowledge <--> Notion
+    Explain <--> Ollama
+    Analyze --> Results
+    Results --> Explain
+```
 
 ## 2. 범위
 
@@ -521,6 +568,29 @@ DOCUMENTATION, ACTIVITY 8개다. 협업(COLLABORATION) 신호는 근거로 추�
 | FR-358 | 시스템 상태 화면 | 범위 외 |
 | FR-359 | 관리자 권한 강제 | 범위 외 |
 | FR-360 | 관리자 작업 감사 기록 | 범위 외 |
+
+### 3.11 기능 그룹 우선순위
+
+우선순위는 현재 제품 불변 규칙과 구현 범위를 기준으로 한 개발 단계 분류다. 개별 요구사항의 상태를 바꾸지는 않는다.
+
+| 그룹 | 우선순위 | 근거 |
+|---|---|---|
+| 3.1 사용자 관리 | Must | 인증·세션·소유자 격리의 시작점이다. |
+| 3.2 GitHub 연동 | Must | 저장소 근거 수집의 필수 출처다. |
+| 3.3 Notion 연동 | Should | 지식 수집에 필요하지만 공식 점수 입력에는 아직 쓰지 않는다. |
+| 3.4 데이터 수집 | Must | 불변 스냅샷과 추적 가능한 근거를 만든다. |
+| 3.5 Rule Engine | Must | 공식 점수의 유일한 계산 경로다. |
+| 3.6 Career Path Engine | Must | 직무 준비도, 추천, 로드맵의 결정적 경로다. |
+| 3.7 AI Engine | Should | 공식 결과를 설명하지만 결과 계산에는 필요하지 않다. |
+| 3.8 대시보드·화면 | Must | 구현된 결과와 비동기 상태를 사용자가 확인하는 경로다. |
+| 3.9 검색 | Could | Notion 지식 검색은 부분 구현됐으며 핵심 분석 흐름과 독립적이다. |
+| 3.10 관리 | Won't | 관리자 기능은 현재 범위 외다. |
+| 4.1 Rule Engine | Must | 재현 가능한 공식 평가를 정의한다. |
+| 4.2 Career Path Engine | Must | 직무 기준 결과와 결정적 후속 행동을 정의한다. |
+| 4.3 AI | Should | 검증된 설명 기능이며 공식 결과를 바꾸지 않는다. |
+| 4.4 프롬프트 | Should | AI 경계와 출력 계약을 강제한다. |
+| 4.5 지식 | Should | Notion 수집·검색을 제공하며 분석 반영은 미구현이다. |
+| 4.6 회사 규칙 | Won't | 회사별 평가·추천 정책은 현재 범위 외다. |
 
 ## 4. 엔진 요구사항
 
