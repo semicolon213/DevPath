@@ -173,7 +173,7 @@ Testcontainers PostgreSQL을 쓰는 테스트는 `test/PgVectorPostgreSQLContain
 
 | 항목 | 상태 |
 |---|---|
-| CI 파이프라인 | 미구현. 게이트는 로컬 `npm run verify:mvp`로 실행 |
+| CI 파이프라인 | `main` push·PR에서 백엔드(Testcontainers Docker 포함), 프론트엔드, e2e, 보안·계약 검사를 실행한다. 백엔드 skip guard는 Testcontainers 테스트가 건너뛰면 실패하며, `DEVPATH_DB_URL`로 게이트된 카탈로그 통합 테스트 2개는 의도적으로 SKIP을 허용한다. 첫 실제 실행은 push 후 확인한다. |
 | 실제 백엔드·PostgreSQL을 붙인 e2e | 미구현 (현재 route mock) |
 | 두 사용자 격리 e2e 시나리오 | 미구현 (격리는 백엔드 테스트로만 확인) |
 | 실제 GitHub·Notion·Ollama 대상 검증 | 미구현 |
