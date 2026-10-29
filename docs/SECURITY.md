@@ -82,9 +82,9 @@
 | 항목 | 규칙 | 구현 위치 |
 |---|---|---|
 | 연동 OAuth state | GitHub·Notion 연동 시작 시 32바이트 난수 state를 세션에 저장한다. 콜백에서 일치를 확인하고 한 번만 소비한다. 없거나, 다르거나, 만료된 state는 거부한다. | `integration/adapter/in/web/GitHubIntegrationController.java`, `NotionIntegrationController.java` |
-| 토큰 저장 | GitHub·Notion access/refresh token은 애플리케이션 레벨에서 AES-GCM으로 암호화해 저장한다. 레코드마다 키 버전을 함께 저장하고, 다른 키 버전은 복호화하지 않는다. | `integration/adapter/out/security/AesGcmCredentialCipher.java`, `EncryptedProviderCredentialStore.java`, `EncryptedNotionCredentialStore.java` |
+| 토큰 저장 | GitHub·Notion access/refresh token은 애플리케이션 레벨에서 AES-GCM으로 암호화해 저장한다. 레코드마다 키 버전을 함께 저장하고 다른 키 버전은 복호화하지 않는다. | `integration/adapter/out/security/AesGcmCredentialCipher.java`, `EncryptedProviderCredentialStore.java`, `EncryptedNotionCredentialStore.java` |
 | 암호화 키 | `DEVPATH_PROVIDER_CREDENTIAL_KEY`, `DEVPATH_PROVIDER_CREDENTIAL_KEY_VERSION` 환경변수로 받는다. AES 128/192/256비트만 허용한다. | `application.yml`, `AesGcmCredentialCipher` 생성자 |
-| 토큰 비노출 | 공급자 토큰은 API 응답으로 반환하지 않고, DevPath 자격 증명으로 받지도 않는다. | 연동 컨트롤러와 view 모델 |
+| 토큰 비노출 | 공급자 토큰은 API 응답으로 반환하지 않고 DevPath 자격 증명으로 받지도 않는다. | 연동 컨트롤러와 view 모델 |
 | 연결 해제·권한 철회 | 해제나 공급자 권한 철회는 `REVOKED`, 갱신 불가는 `EXPIRED`로 남긴다. 저장된 토큰은 무작위 값의 암호문으로 덮어쓰고 refresh token·scope는 지운다. 재인가 전까지 공급자 읽기를 막는다. | `EncryptedProviderCredentialStore`, `NotionWorkspaceConnectionJpaEntity`, `GitHubApiAdapter`, `NotionApiAdapter` |
 | 공급자 응답 정규화 | 공급자 응답은 어댑터 안에서 정규화한다. README 본문은 해시와 섹션 신호 계산에만 쓰고 저장하지 않는다. | `integration/adapter/out/github`, `repository` 모듈 |
 | 공급자 한도 | 공급자 한도 소진은 권한 상실이 아니라 가용성 문제로 처리한다. API는 `429 RATE_LIMIT_EXCEEDED`와 알려진 경우 `Retry-After`를 반환한다. 작업은 reset 시각까지 기다린다. | `GitHubApiAdapter`, 각 모듈 예외 처리기 |
@@ -174,7 +174,7 @@ AI 작업 유형은 다섯 가지다: 저장소 요약, 저장소 리뷰, 스킬
 
 ## 8. 감사 기록과 운영 로그
 
-두 기록은 목적이 다르다. 감사 기록은 "누가 무엇을 했는가"를 남기는 영구 데이터이고, 운영 로그는 장애 분석용이다.
+두 기록은 목적이 다르다. 감사 기록은 "누가 무엇을 했는가"를 남기는 영구 데이터이고 운영 로그는 장애 분석용이다.
 
 | 구분 | 감사 기록 | 운영 로그 |
 |---|---|---|
@@ -195,7 +195,7 @@ AI 생성 실패 감사 기록은 정규화된 메타데이터만 남기고 상�
 
 | 항목 | 규칙 | 구현 위치 |
 |---|---|---|
-| 비밀 주입 | DB 계정, OAuth client secret, 암호화 키는 환경변수로만 받는다. Spring Boot는 `backend/.env.example`을 읽지 않는다. 로컬 `bootRun`만 `backend/.env`를 읽고, 이 파일은 Git에서 제외한다. | `application.yml`, `backend/build.gradle` |
+| 비밀 주입 | DB 계정, OAuth client secret, 암호화 키는 환경변수로만 받는다. Spring Boot는 `backend/.env.example`을 읽지 않는다. 로컬 `bootRun`만 `backend/.env`를 읽고 이 파일은 Git에서 제외한다. | `application.yml`, `backend/build.gradle` |
 | 스키마 | 런타임은 `ddl-auto=validate`. 스키마 변경은 Flyway 마이그레이션으로만 한다. | `application.yml`, `db/migration` |
 | 브라우저 저장소 | 세션·토큰·자격 증명을 `localStorage`/`sessionStorage`에 두지 않는다. | `security:check` 검사 |
 
@@ -203,7 +203,7 @@ AI 생성 실패 감사 기록은 정규화된 메타데이터만 남기고 상�
 
 | 명령 | 내용 | 실행 시점 |
 |---|---|---|
-| `npm run security:check` | 먼저 검사기 자체의 양성·음성 fixture 테스트(`scripts/check-security-boundaries.test.mjs`)를 돌리고, 저장소의 추적·미추적 텍스트 파일을 검사한다. | `verify:mvp`의 두 번째 단계 |
+| `npm run security:check` | 먼저 검사기 자체의 양성·음성 fixture 테스트(`scripts/check-security-boundaries.test.mjs`)를 돌리고 저장소의 추적·미추적 텍스트 파일을 검사한다. | `verify:mvp`의 두 번째 단계 |
 | `npm audit` | 프론트엔드 의존성 알려진 취약점 검사 | `frontend:quality`(=`verify:mvp`)의 마지막 단계 |
 
 `security:check`가 거부하는 것:

@@ -2,7 +2,7 @@
 
 이 파일은 저장소에서 작업하는 모든 에이전트(Codex, Claude Code 등)의 공통 규칙이다. 다른 지침 파일을 읽었다고 가정하지 않는다. 하위 디렉터리에 더 구체적인 `AGENTS.md`가 있으면 그 파일이 우선한다. 현재 하위 규칙 파일은 없다.
 
-DevPath는 AI 보조 개발자 커리어 분석 플랫폼이다. GitHub와 Notion 근거를 분석하고, 결정론 엔진이 측정 가능한 결과를 계산한다. AI는 근거에 기반한 설명, 추천 설명, 커리어 문서 초안 생성에만 쓴다.
+DevPath는 AI 보조 개발자 커리어 분석 플랫폼이다. GitHub와 Notion 근거를 분석하고 결정론 엔진이 측정 가능한 결과를 계산한다. AI는 근거에 기반한 설명, 추천 설명, 커리어 문서 초안 생성에만 쓴다.
 
 ## 1. 제품 불변 규칙
 
@@ -10,7 +10,7 @@ DevPath는 AI 보조 개발자 커리어 분석 플랫폼이다. GitHub와 Notio
 2. AI는 점수, 가중치, 준비도(readiness), 추천 우선순위, 결정론적 비즈니스 결과를 계산·변경·추측·순위화하지 않는다.
 3. 직무(Career) 선택은 적용되는 평가 규칙을 바꾼다.
 4. 회사(Company) 선택은 회사별 평가·추천 정책을 바꾼다.
-5. 모든 공식 결과는 측정 가능하고 재현 가능하며, 필요한 곳에서는 버전이 관리되고, 근거까지 추적된다.
+5. 모든 공식 결과는 측정 가능하고 재현 가능하며 필요한 곳에서는 버전이 관리되고 근거까지 추적된다.
 6. AI 출력은 형식·근거(grounding)·증거·안전 검증을 통과하기 전까지 신뢰하지 않는다.
 7. PostgreSQL이 구조화 데이터의 유일한 기준 저장소다. 캐시, 벡터, projection, LLM context는 원본이 아니다.
 8. 사용자 소유 데이터는 사용자별로 격리한다. 수집, 저장, 조회, 변경·삭제, 프롬프트 조립, 생성, 내보내기, 게시 전에 권한을 확인한다.
@@ -31,7 +31,7 @@ DevPath는 AI 보조 개발자 커리어 분석 플랫폼이다. GitHub와 Notio
 | 6 | 기존 코드 관례 | 모듈 내부 패턴 |
 
 - 기술 선택은 `docs/ADR.md`에서 상태가 **Accepted**인 결정만 따른다.
-- `docs/STATUS.md`는 구현 상태 안내일 뿐 증거가 아니다. 작업 전에 실제 코드, 마이그레이션, 계약, 새로 실행한 테스트로 확인하고, 과거 테스트 결과를 새 결과처럼 보고하지 않는다.
+- `docs/STATUS.md`는 구현 상태 안내일 뿐 증거가 아니다. 작업 전에 실제 코드, 마이그레이션, 계약, 새로 실행한 테스트로 확인하고 과거 테스트 결과를 새 결과처럼 보고하지 않는다.
 - 문서는 한국어가 원본이다.
 - 문서와 코드가 다르면 추측해서 맞추지 말고 보고한다.
 
@@ -85,7 +85,7 @@ DevPath는 AI 보조 개발자 커리어 분석 플랫폼이다. GitHub와 Notio
 
 - 기능 코드는 `frontend/src/features/<기능>/{api,model,ui}`, 화면은 `frontend/src/pages`에 둔다.
 - 서버 상태는 React Query가 소유한다. 인증 사용자, 저장소, job, 점수 같은 서버 자원을 별도 전역 store에 중복 저장하지 않는다.
-- `GET /api/v1/users/me`가 브라우저 세션 bootstrap이다. `401`은 익명 상태이고, 네트워크 실패는 별도 오류 상태다.
+- `GET /api/v1/users/me`가 브라우저 세션 bootstrap이다. `401`은 익명 상태이고 네트워크 실패는 별도 오류 상태다.
 - 자격 증명이 필요한 요청은 공용 API 경계를 거친다.
 - 세션 ID, provider 토큰, refresh 토큰, 자격 증명을 `localStorage`·`sessionStorage`에 저장하지 않는다.
 - 컴포넌트는 공식 결과를 계산하거나 재계산하거나 의미를 바꾸지 않는다. GitHub, Notion, AI provider를 브라우저에서 직접 호출하지 않는다.
@@ -147,11 +147,11 @@ Proposed ADR은 그 결정이 실제로 필요한 작업만 막는다. 무관한
 
 인계 전:
 
-- 영향이 있으면 계약·마이그레이션·secret·아키텍처 검사(`contract:lint`, `security:check` 등)를 실행하고, diff에서 관련 없는 변경과 생성 산출물(generated artifact)을 확인한다.
+- 영향이 있으면 계약·마이그레이션·secret·아키텍처 검사(`contract:lint`, `security:check` 등)를 실행하고 diff에서 관련 없는 변경과 생성 산출물(generated artifact)을 확인한다.
 
 구현·정리 반복:
 
-- 한 번의 반복은 `하나의 capability 구현 → targeted/broader 테스트와 build → @ponytail-review` 순서다. `@ponytail-review`는 해당 capability diff만 검토하며, 적용할 지적은 같은 범위에서 고치고 영향받은 테스트를 다시 실행한다. 쓸 수 없으면 실행했다고 쓰지 말고 미실행으로 보고한다.
+- 한 번의 반복은 `하나의 capability 구현 → targeted/broader 테스트와 build → @ponytail-review` 순서다. `@ponytail-review`는 해당 capability diff만 검토하며 적용할 지적은 같은 범위에서 고치고 영향받은 테스트를 다시 실행한다. 쓸 수 없으면 실행했다고 쓰지 말고 미실행으로 보고한다.
 - 저장소 전체를 검사하는 `@ponytail-audit`는 큰 정리 시점이나 소유자·코디네이터 요청 때만 실행한다. audit 결과 수정은 범위를 정한 뒤 별도 capability로 처리한다.
 
 다음 작업 선택: 소유자가 지정하지 않았다면 `docs/STATUS.md`의 계획(미구현) 항목, 요구사항, Accepted ADR, 실제 저장소 상태를 보고 고른다. 과거의 다음 작업 목록을 확인 없이 재사용하지 않는다.
@@ -159,7 +159,7 @@ Proposed ADR은 그 결정이 실제로 필요한 작업만 막는다. 무관한
 ## 6. 계약·데이터·보안 규칙
 
 - OpenAPI의 operationId와 method/path 조합을 보존한다.
-- `contracts/openapi/devpath-openapi.yaml`에는 실제 구현된 엔드포인트만 넣고, 백엔드 handler와 프론트엔드 client를 함께 맞춘다.
+- `contracts/openapi/devpath-openapi.yaml`에는 실제 구현된 엔드포인트만 넣고 백엔드 handler와 프론트엔드 client를 함께 맞춘다.
 - 새 동작은 기존 요구사항 ID(`docs/SRS.md`)로 추적되어야 한다. 없으면 중단하고 요구사항 변경을 요청한다.
 - 새 필드·테이블은 `docs/ARCHITECTURE.md`의 데이터 모델에 근거하고 새 immutable Flyway 마이그레이션으로 추가한다. 적용된 마이그레이션은 수정하지 않는다.
 - 브라우저 인증은 opaque HttpOnly 서버 세션, CSRF 보호, 제한적 credentialed CORS, session fixation 보호를 쓴다. 보안 판단은 백엔드가 한다.
@@ -169,10 +169,10 @@ Proposed ADR은 그 결정이 실제로 필요한 작업만 막는다. 무관한
 
 ## 7. 멀티에이전트 / Orca 수칙
 
-1인 프로젝트다. 역할별 담당자 개념은 없고, 작업 범위와 수정 가능 파일은 작업 명세가 정한다.
+1인 프로젝트다. 역할별 담당자 개념은 없고 작업 범위와 수정 가능 파일은 작업 명세가 정한다.
 
 - Orca가 관리하는 worktree와 작업 인계를 쓴다. 임의의 raw Git worktree를 만들지 않는다.
-- 배정된 worktree와 명세에 적힌 경로만 수정한다. 한 파일은 한 번에 한 worker만 수정하고, 다른 worker의 변경을 덮어쓰거나 되돌리지 않는다.
+- 배정된 worktree와 명세에 적힌 경로만 수정한다. 한 파일은 한 번에 한 worker만 수정하고 다른 worker의 변경을 덮어쓰거나 되돌리지 않는다.
 - OpenAPI, 마이그레이션 순번, lockfile, 루트 빌드 파일, `docs/ADR.md`, 에이전트 지침(`AGENTS.md`, `CLAUDE.md`)은 명세에 포함된 경우에만 수정한다.
 - 공유 계약·마이그레이션·lockfile·공유 커널(shared kernel) 파일이 겹치는 작업은 병렬로 돌리지 않는다.
 - 명시적 요청 없이 commit, push, merge, worktree 삭제, history rewrite, 배포를 하지 않는다. capability가 검증되어 보존할 가치가 생기면 commit 시점임을 알리기만 한다.
@@ -209,7 +209,7 @@ Proposed ADR은 그 결정이 실제로 필요한 작업만 막는다. 무관한
 - 발견한 운영 결함은 고치지 않고 Codex 작업으로 보고한다.
 
 프론트엔드 표현 수정 Claude worker 조건:
-- 리뷰 지적 범위 안에서만 수정하고, 경계를 벗어나는 항목은 Codex 작업으로 보고한다.
+- 리뷰 지적 범위 안에서만 수정하고 경계를 벗어나는 항목은 Codex 작업으로 보고한다.
 
 두 경우 모두 그 수정을 작성하지 않은 별도 Claude 리뷰 세션이 검토한다.
 
@@ -233,7 +233,7 @@ Proposed ADR은 그 결정이 실제로 필요한 작업만 막는다. 무관한
 - targeted 검사를 먼저 하고 관련 범위의 broader suite를 실행한다. 바뀌지 않은 스냅샷에 통과한 전체 suite를 이유 없이 반복하지 않는다.
 - PostgreSQL/Testcontainers 테스트에는 실행 중인 Docker가 필요하다. PostgreSQL 동작을 H2로 대체하지 않는다. Docker Desktop과 Testcontainers 1.20.3 조합에서 API 호환 문제가 있으면 PowerShell에서 `$env:DOCKER_API_VERSION='1.44'`를 설정한 뒤 실행한다.
 - `DEVPATH_DB_URL`이 필요한 조건부 통합 테스트는 설정이 없으면 SKIP될 수 있다. SKIP은 PASS와 구분해 보고한다.
-- 로컬 실행: `backend/`에서 `.\gradlew.bat bootRun`(PowerShell) 또는 `./gradlew bootRun`, `frontend/`에서 `npm run dev`. Java 21과 `backend/.env.example`의 필수 환경변수가 필요하다. Spring Boot 자체는 `.env`를 읽지 않지만, Gradle `bootRun` 작업은 `backend/.env`가 있으면 읽어 넣고 프로세스 환경변수를 우선한다. 테스트·다른 실행 경로는 프로세스 환경변수가 필요하다.
+- 로컬 실행: `backend/`에서 `.\gradlew.bat bootRun`(PowerShell) 또는 `./gradlew bootRun`, `frontend/`에서 `npm run dev`. Java 21과 `backend/.env.example`의 필수 환경변수가 필요하다. Spring Boot 자체는 `.env`를 읽지 않지만 Gradle `bootRun` 작업은 `backend/.env`가 있으면 읽어 넣고 프로세스 환경변수를 우선한다. 테스트·다른 실행 경로는 프로세스 환경변수가 필요하다.
 
 검사 결과는 정확한 명령과 함께 `PASS`, `FAIL`, `NOT RUN`(사유 포함)으로 보고한다.
 
@@ -264,12 +264,12 @@ Windows의 Orca 1.4.226 + Codex CLI 0.162.1에서 큰 `worker-start` 프롬프�
 2. `worker-start`가 `ready` 또는 turn 시작 관찰을 반환하면 터미널에 아무 입력도 보내지 않는다.
 3. 다음을 모두 만족할 때만 Enter 한 번(`orca terminal send --terminal <handle> --enter --json`)을 보낸다.
    1. `worker-start` 영수증이 `outcome_unknown`이고 stage가 `turn_start_unobserved`다.
-   2. `worker-show`에서 Dispatch가 `pending`이고, turn 시작이 관찰되지 않았고, `assigneeHandle`이 영수증의 agent 터미널과 같다(handle은 Dispatch에서 다시 읽는다).
+   2. `worker-show`에서 Dispatch가 `pending`이고 turn 시작이 관찰되지 않았고 `assigneeHandle`이 영수증의 agent 터미널과 같다(handle은 Dispatch에서 다시 읽는다).
    3. `terminal read --screen`에서 Codex 입력창(`draft` 또는 `› ` 줄)에 `[Pasted Content N chars]` 표시만 있다.
    4. 화면에 `Working`, `esc to interrupt`, 확인·선택·권한 프롬프트가 없다(고정 헤더 `permissions: <mode>`는 프롬프트가 아니다).
    5. 5초 간격 두 번의 화면 읽기 결과가 같다.
    6. 보내기 직전에 Dispatch 상태와 화면을 다시 확인한다.
 4. `terminal wait --for tui-idle`을 복구 전제 조건으로 쓰지 않는다. Codex는 첫 turn 전에 agent 상태를 보고하지 않아 이 상태에서 반드시 timeout된다.
-5. Enter 후 표시가 사라지고 `Working`이 나타났는지 확인하고, Task·Dispatch ID가 일치하는 `worker_done`을 요구한다. 수동 Enter 뒤에는 Orca가 `turn_started`를 기록하지 않을 수 있으므로 화면 상태와 `worker_done`이 증거다.
+5. Enter 후 표시가 사라지고 `Working`이 나타났는지 확인하고 Task·Dispatch ID가 일치하는 `worker_done`을 요구한다. 수동 Enter 뒤에는 Orca가 `turn_started`를 기록하지 않을 수 있으므로 화면 상태와 `worker_done`이 증거다.
 6. 확인 항목 하나라도 실패하거나, 화면이 예상과 다르거나, turn이 시작되지 않으면 `BLOCKED`로 멈춘다. Enter 반복, 프롬프트 재전송, Orca 패치를 하지 않는다.
-7. `node scripts/orca/codex-submit-guard.mjs <worker-start-receipt.json>`이 3~6을 구현한다. 기본은 dry run이고 `--execute`일 때만 보내며, Dispatch별 배타 marker로 Dispatch당 Enter 한 번만 허용한다(종료 코드 0: `RECOVERED`, `NO_ACTION`, `WOULD_SEND` / 2: `BLOCKED` / 1: 사용법 오류). Orca나 Codex를 업그레이드할 때마다 다시 검증한다.
+7. `node scripts/orca/codex-submit-guard.mjs <worker-start-receipt.json>`이 3~6을 구현한다. 기본은 dry run이고 `--execute`일 때만 보내며 Dispatch별 배타 marker로 Dispatch당 Enter 한 번만 허용한다(종료 코드 0: `RECOVERED`, `NO_ACTION`, `WOULD_SEND` / 2: `BLOCKED` / 1: 사용법 오류). Orca나 Codex를 업그레이드할 때마다 다시 검증한다.

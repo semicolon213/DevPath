@@ -48,7 +48,7 @@ npm run backend:test
 
 **증상**
 
-- 지식 임베딩이나 AI 생성 작업이 provider 오류로 재시도되며, 실행 중이던 작업은 lease 동안 `RUNNING`으로 보일 수 있다.
+- 지식 임베딩이나 AI 생성 작업이 provider 오류로 재시도되며 실행 중이던 작업은 lease 동안 `RUNNING`으로 보일 수 있다.
 
 **확인**
 
@@ -62,7 +62,7 @@ ollama list
 
 - Ollama를 시작한다.
 - 기본 생성 모델 `qwen2.5:7b`와 임베딩 모델 `nomic-embed-text`를 설치하거나 환경 변수에 설치된 모델을 지정한다.
-- 작업 행을 직접 수정하지 않는다. lease가 만료되면 워커가 재클레임하고, 시도 한도에 닿으면 `WORKER_LEASE_EXPIRED`로 실패한다.
+- 작업 행을 직접 수정하지 않는다. lease가 만료되면 워커가 재클레임하고 시도 한도에 닿으면 `WORKER_LEASE_EXPIRED`로 실패한다.
 
 **완료 확인**
 
@@ -128,7 +128,7 @@ npm run backend:build
 **확인**
 
 - `backend/.env.example`과 현재 프로세스 환경 변수 또는 `backend/.env`를 비교한다.
-- Spring Boot 자체는 `.env`를 읽지 않고, Gradle `bootRun`만 `backend/.env`를 읽는다.
+- Spring Boot 자체는 `.env`를 읽지 않고 Gradle `bootRun`만 `backend/.env`를 읽는다.
 
 **조치**
 

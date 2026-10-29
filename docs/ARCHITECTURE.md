@@ -4,7 +4,7 @@
 
 ## 1. 시스템 개요
 
-DevPath는 GitHub 저장소와 Notion 문서를 근거로 개발자의 기술 성장을 평가하는 서비스다. 공식 점수는 결정적 Rule Engine만 계산한다. AI는 저장된 엔진 결과를 설명하는 글만 만들고, 검증을 통과한 결과만 저장한다.
+DevPath는 GitHub 저장소와 Notion 문서를 근거로 개발자의 기술 성장을 평가하는 서비스다. 공식 점수는 결정적 Rule Engine만 계산한다. AI는 저장된 엔진 결과를 설명하는 글만 만들고 검증을 통과한 결과만 저장한다.
 
 구성은 다음과 같다.
 
@@ -72,14 +72,14 @@ sequenceDiagram
 1. 사용자가 GitHub로 로그인하고 GitHub App·Notion을 연결한다.
 2. 저장소를 가져와 동기화하면 워커가 GitHub에서 수집해 불변 스냅샷을 만든다.
 3. 분석 요청 시 워커가 Rule Engine으로 규칙 평가와 Skill Matrix를 만든다. 같은 작업 안에서 선택된 직무가 있으면 직무 준비도, 추천 세트, 학습 로드맵이 이어서 생성된다 (`AnalysisWorker`).
-4. 사용자가 AI 설명을 요청하면 저장된 결과로 프롬프트 컨텍스트를 만들고, 워커가 Ollama를 호출한 뒤 검증을 통과한 결과만 산출물로 저장한다.
+4. 사용자가 AI 설명을 요청하면 저장된 결과로 프롬프트 컨텍스트를 만들고 워커가 Ollama를 호출한 뒤 검증을 통과한 결과만 산출물로 저장한다.
 5. Notion 페이지는 별도로 수집·청크·임베딩되어 사용자 범위 의미 검색에 쓰인다. 현재 AI 생성 컨텍스트에는 지식 검색 결과가 들어가지 않는다.
 
 ## 2. 백엔드 구조
 
 ### 2.1 패키지 구조
 
-모든 코드는 `com.devpath.<module>` 아래에 있고, 모듈 안은 다음 계층으로 나뉜다.
+모든 코드는 `com.devpath.<module>` 아래에 있고 모듈 안은 다음 계층으로 나뉜다.
 
 | 패키지 | 역할 |
 |---|---|
@@ -91,7 +91,7 @@ sequenceDiagram
 | `adapter.out.<provider>` | `github`, `notion`, `embedding`, `generation`, `security`(토큰 암호화) |
 | `config` | 프레임워크 설정, 프로퍼티 바인딩, 워커 스케줄러 |
 
-모든 모듈이 모든 계층을 가지지는 않는다. 예: `prompt`는 `application`만, `audit`은 `adapter.out.persistence`만, `platform`은 `health`만 있다.
+모든 모듈에 모든 계층이 있지는 않다. 예: `prompt`는 `application`만, `audit`은 `adapter.out.persistence`만, `platform`은 `health`만 있다.
 
 ### 2.2 모듈 목록
 
@@ -177,7 +177,7 @@ sequenceDiagram
 | Technology | 언어·프레임워크·데이터베이스 같은 도구. 스냅샷에서 추출한다. |
 | Evidence | 점수·평가·추천을 뒷받침하는 추적 가능한 관측 사실. |
 | Rule / RuleSetVersion | Rule Engine의 결정적 평가 정의와 그 버전 묶음. |
-| RuleEvaluation | 스냅샷 하나에 대한 규칙 평가 결과. 완료 후 불변. |
+| RuleEvaluation | 스냅샷 하나를 규칙으로 평가한 결과. 완료 후 불변. |
 | Skill Matrix | 규칙 평가에서 만든 스킬별 점수·수준·근거 상태. |
 | Career / CareerProfileVersion | 지원 직무와 그 버전별 기대 역량. |
 | Career Readiness | Skill Matrix를 직무 프로필과 비교한 결정적 결과와 스킬 갭. |
@@ -209,19 +209,19 @@ sequenceDiagram
 |---|---|
 | INV-001, INV-002 | 모든 개인 데이터는 사용자 소유이며 다른 사용자는 접근할 수 없다. 다른 사용자의 ID는 `404`로 응답한다. |
 | INV-003 | 연결이 해제·만료된 provider 데이터는 새 동기화, 검색, 프롬프트에 쓰지 않는다. |
-| INV-004, INV-005 | `READY` 스냅샷은 불변이고, 공식 분석은 스냅샷을 참조한다. |
+| INV-004, INV-005 | `READY` 스냅샷은 불변이고 공식 분석은 스냅샷을 참조한다. |
 | INV-006, INV-007 | 공식 점수는 Rule Engine만 계산한다. LLM은 점수, 가중치, 준비도, 추천 우선순위를 계산·변경하지 않는다. |
-| INV-008, INV-009 | 완료된 평가 결과는 불변이고, 모든 점수는 `RuleSetVersion`과 증거를 참조한다. |
+| INV-008, INV-009 | 완료된 평가 결과는 불변이고 모든 점수는 `RuleSetVersion`과 증거를 참조한다. |
 | INV-010 | `RuleCategoryScore`와 `SkillAssessment`의 점수는 0~100 범위를 벗어날 수 없다. |
 | INV-011 | `RuleSetVersion`은 평가 전에 카테고리·규칙 가중치 합계, 양수 가중치, 규칙 ID 중복 등을 검증한다. `RuleDefinition`은 필수 값과 공식 파라미터를 검증한다. |
-| INV-012 ~ INV-014 | Skill Matrix는 완료된 평가 하나에 속하고, 이력은 덮어쓰지 않는다 (`CURRENT` → `SUPERSEDED`). |
-| INV-015, INV-016 | 준비도는 Skill Matrix와 `CareerProfileVersion` 없이 존재하지 않고, 전체 점수와 다르다. |
+| INV-012 ~ INV-014 | Skill Matrix는 완료된 평가 하나에 속하고 이력은 덮어쓰지 않는다 (`CURRENT` → `SUPERSEDED`). |
+| INV-015, INV-016 | 준비도는 Skill Matrix와 `CareerProfileVersion` 없이 존재하지 않고 전체 점수와 다르다. |
 | INV-018 | 목표 회사가 없어도 선택한 지원 직무의 커리어 준비도를 평가할 수 있다. |
-| INV-020, INV-021 | 추천은 스킬 갭·증거를 참조하고, 우선순위는 정책으로 결정된다. |
-| INV-023, INV-024 | 학습 로드맵은 원본 추천 세트를 참조하고, 각 단계에 완료 기준이 있다. |
-| INV-025 ~ INV-028 | 청크는 문서 버전 하나에 속하고, 임베딩은 모델·버전을 기록하며, 지식은 사용자별로 격리되고, 보관·재색인 시 청크·임베딩이 `STALE`이 된다. |
-| INV-029, INV-030 | PromptContext는 생성 후 불변이고, 실행은 `PromptTemplateVersion`을 참조한다. |
-| INV-031, INV-032 | 프롬프트 빌더는 업무 규칙을 실행하지 않고, AI 응답은 공식 증거가 되지 않는다. |
+| INV-020, INV-021 | 추천은 스킬 갭·증거를 참조하고 우선순위는 정책으로 결정된다. |
+| INV-023, INV-024 | 학습 로드맵은 원본 추천 세트를 참조하고 각 단계에 완료 기준이 있다. |
+| INV-025 ~ INV-028 | 청크는 문서 버전 하나에 속하고 임베딩은 모델·버전을 기록하며 지식은 사용자별로 격리되고 보관·재색인 시 청크·임베딩이 `STALE`이 된다. |
+| INV-029, INV-030 | PromptContext는 생성 후 불변이고 실행은 `PromptTemplateVersion`을 참조한다. |
+| INV-031, INV-032 | 프롬프트 빌더는 업무 규칙을 실행하지 않고 AI 응답은 공식 증거가 되지 않는다. |
 | INV-033 | 생성 산출물은 원본 PromptContext와 출처 정보를 보존한다. |
 | INV-038 | 설정 변경은 미래 작업에만 적용되고 과거 결과를 다시 쓰지 않는다. |
 
@@ -230,7 +230,7 @@ sequenceDiagram
 - PostgreSQL이 구조화 데이터의 유일한 원본이다. 벡터, 파일시스템 객체, LLM 컨텍스트는 원본이 아니다.
 - 스냅샷, 규칙 평가, Skill Matrix, 준비도, 추천 세트, 프롬프트 컨텍스트, 생성 산출물은 불변 이력으로 저장하고 새 결과가 나오면 상태만 바꾼다 (`CURRENT`/`SUPERSEDED`, `PUBLISHED`/`SUPERSEDED`).
 - 모든 공식 결과는 정책·규칙 버전을 기록한다 (`ruleSetVersion`, `policyVersion`, `readinessPolicyVersion`, `extractorVersion`, `templateVersion` 등). 버전 값은 [docs/SCORING_RULES.md](SCORING_RULES.md)에 있다.
-- 사용자 소유 테이블은 `user_id`를 가지고, 조회는 항상 소유자 조건을 포함한다. 지식 테이블은 `(id, user_id)` 복합 외래키로 소유자 일치를 DB에서 강제한다.
+- 사용자 소유 테이블에는 `user_id`가 있고 조회는 항상 소유자 조건을 포함한다. 지식 테이블은 `(id, user_id)` 복합 외래키로 소유자 일치를 DB에서 강제한다.
 - 큰 본문(Notion 원문, 생성 산출물 JSON)은 `ObjectContentPort`로 저장하고 DB에는 참조와 해시를 둔다.
 - 마이그레이션은 불변이다. 스키마 변경은 새 버전 파일로만 한다.
 
@@ -491,7 +491,7 @@ stateDiagram-v2
 |---|---|
 | 같은 소유자 + 같은 키 + 같은 명령 | 원래 작업 반환 (`202`) |
 | 같은 소유자 + 같은 키 + 다른 명령 | `409 DUPLICATE_REQUEST` (`DuplicateRequestException`) |
-| 다른 키로 같은 활성 작업 요청 | 기존 활성 작업 재사용. 동기화·분석은 `pg_advisory_xact_lock`으로 직렬화하고, 지식 수집은 `findActiveJob` 조회와 `knowledge_ingestion_jobs_active_source_uk` 부분 유니크 인덱스로 중복 활성 작업을 막는다. |
+| 다른 키로 같은 활성 작업 요청 | 기존 활성 작업 재사용. 동기화·분석은 `pg_advisory_xact_lock`으로 직렬화하고 지식 수집은 `findActiveJob` 조회와 `knowledge_ingestion_jobs_active_source_uk` 부분 유니크 인덱스로 중복 활성 작업을 막는다. |
 | 유니크 제약 경합 | `409 RESOURCE_CONFLICT` |
 | 로드맵 보관 | 키 형식만 검증하고 저장하지 않는다. 보관 상태 자체가 멱등성을 보장한다. |
 
@@ -503,7 +503,7 @@ stateDiagram-v2
 
 | 항목 | 구현 |
 |---|---|
-| 경로와 버전 | 업무 API는 `/api/v1`. `metadata.apiVersion`은 항상 `"v1"`. 필드·엔드포인트 추가는 호환 변경이며, 클라이언트는 모르는 필드와 enum 값을 무시해야 한다. |
+| 경로와 버전 | 업무 API는 `/api/v1`. `metadata.apiVersion`은 항상 `"v1"`. 필드·엔드포인트 추가는 호환 변경이며 클라이언트는 모르는 필드와 enum 값을 무시해야 한다. |
 | 인프라 경로 | `/internal/health`, `/oauth2/authorization/github`, `/login/oauth2/code/github` (`/api/v1` 밖) |
 | 성공 응답 | `{ "data": <payload>, "metadata": { requestId, apiVersion, timestamp } }`. 예외: 헬스 체크는 단순 객체, OAuth 콜백은 `302`, 로그아웃은 `204`. |
 | 오류 응답 | `{ "error": { code, message }, "metadata": {...} }`. 메시지는 고정된 안전 문구이고 provider 페이로드, SQL 오류, 스택 트레이스를 담지 않는다. |
@@ -537,7 +537,7 @@ OpenAPI에는 `x-api-id`가 있는 업무 operation 70개와 인프라·세션 o
 
 | 그룹 | API ID | 개수 | 주요 경로 |
 |---|---|---:|---|
-| 세션·인프라 | — | 5 | `/internal/health`, OAuth 로그인 2개, `GET /api/v1/csrf`, `POST /api/v1/session/logout` |
+| 세션·인프라 | - | 5 | `/internal/health`, OAuth 로그인 2개, `GET /api/v1/csrf`, `POST /api/v1/session/logout` |
 | 사용자·온보딩 | API-ID-001~007, 010 | 8 | `/users/me`, `/users/me/profile`, `/users/me/connections`, `/users/me/preferences/*`, `/users/me/onboarding-progress` |
 | 연동 | API-INT-001~004, 008~011 | 8 | `/integrations/github/*`, `/integrations/notion/*` |
 | 저장소·동기화·스냅샷 | API-INT-005, 007, API-REP-001, 002, 004~009, 011 | 11 | `/repositories`, `/repositories/{id}/sync`, `/repository-sync-jobs/{id}`, `/snapshots`, `/technologies`, `/evidence` |
@@ -632,7 +632,7 @@ sequenceDiagram
 ### 8.1 수집
 
 1. 사용자가 연결된 Notion 페이지를 가져오기 요청한다 (`Idempotency-Key` 필수, `202`).
-2. 워커가 Notion에서 페이지 본문을 읽어 정규화하고, 원문은 객체 저장소에, 메타데이터는 `knowledge_documents`/`knowledge_document_versions`에 저장한다.
+2. 워커가 Notion에서 페이지 본문을 읽어 정규화하고 원문은 객체 저장소에, 메타데이터는 `knowledge_documents`/`knowledge_document_versions`에 저장한다.
 3. `KnowledgeChunker`가 청크를 만들고 `EmbeddingPort`로 청크마다 임베딩을 만들어 `embedding_records`에 저장한다.
 4. 권한이 사라지면 `SOURCE_PERMISSION_CHANGED`, 일시 장애면 `SOURCE_UNAVAILABLE`로 실패한다.
 
@@ -644,7 +644,7 @@ sequenceDiagram
 | 분할 단위 | 빈 줄(`\n\n` 이상)로 나눈 문단 |
 | 청크 최대 길이 | 1,800자. 문단을 이어 붙이다 넘으면 새 청크 |
 | 긴 문단 | 1,800자 단위로 자른다 |
-| 제목 | `#`로 시작하는 모든 문단이 제목이다. 선두 `#`는 1~3개만 제거해 제목(최대 512자)을 만들며, 원래 제목 문단은 청크 본문에도 남는다. 제목이 나오면 기존 청크를 끊는다. |
+| 제목 | `#`로 시작하는 모든 문단이 제목이다. 선두 `#`는 1~3개만 제거해 제목(최대 512자)을 만들며 원래 제목 문단은 청크 본문에도 남는다. 제목이 나오면 기존 청크를 끊는다. |
 | 겹침(overlap) | 없음 |
 | 청크 수 | 1~200개. 범위를 벗어나면 실패 |
 | 해시 | 청크 본문 SHA-256 |
@@ -662,7 +662,7 @@ sequenceDiagram
 | 연결·원본 | Notion 연결 `ACTIVE`, 페이지 휴지통 아님, 객체 유형 `PAGE`, 원본 수정 시각 ≤ 색인된 버전 시각 |
 | 모델 | 임베딩 provider·모델·모델 버전·차원이 현재 설정과 일치 |
 
-관련도(`1 - distance`)가 최소값(기본 0.25) 이상인 결과만 거리순으로 최대 20개(기본 5) 돌려준다. 결과는 발췌문(최대 500자)과 출처를 포함하고, 정책 버전은 `knowledge-semantic-v1`이다. 검색 요청과 결과는 `retrieval_requests`/`retrieval_results`/`retrieval_result_items`에 쿼리 원문 대신 해시로 기록한다.
+관련도(`1 - distance`)가 최소값(기본 0.25) 이상인 결과만 거리순으로 최대 20개(기본 5) 돌려준다. 결과는 발췌문(최대 500자)과 출처를 포함하고 정책 버전은 `knowledge-semantic-v1`이다. 검색 요청과 결과는 `retrieval_requests`/`retrieval_results`/`retrieval_result_items`에 쿼리 원문 대신 해시로 기록한다.
 
 ### 8.4 삭제·변경 전파
 
@@ -678,10 +678,10 @@ sequenceDiagram
 
 | 항목 | 구현 |
 |---|---|
-| 요청 ID | `RequestCorrelationFilter`가 `X-Request-Id`/`X-Correlation-Id`를 검증(`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`)하고, 없거나 틀리면 새로 만든다 (요청 ID는 UUID, 상관 ID는 요청 ID). 응답 헤더와 `metadata.requestId`로 돌려준다. |
+| 요청 ID | `RequestCorrelationFilter`가 `X-Request-Id`/`X-Correlation-Id`를 검증(`[A-Za-z0-9][A-Za-z0-9._-]{0,63}`)하고 없거나 틀리면 새로 만든다 (요청 ID는 UUID, 상관 ID는 요청 ID). 응답 헤더와 `metadata.requestId`로 돌려준다. |
 | 로그 형식 | 콘솔 로그에 MDC `request_id`, `correlation_id`를 넣는다. 요청마다 `http_request_completed method path status duration_ms` 한 줄을 남긴다. |
 | 오류 노출 차단 | `server.error.include-message/stacktrace/exception` 모두 끔. API 오류는 고정 문구만 반환한다. |
-| 민감 정보 | 전용 로그 마스킹 필터는 없다. 대신 provider 토큰은 암호화 저장하고 로그·응답에 쓰지 않으며, 프롬프트 컨텍스트는 `PromptSecretDetector`로 비밀 패턴을 막고, 검색 쿼리는 해시로만 저장한다. |
+| 민감 정보 | 전용 로그 마스킹 필터는 없다. 대신 provider 토큰은 암호화 저장하고 로그·응답에 쓰지 않으며 프롬프트 컨텍스트는 `PromptSecretDetector`로 비밀 패턴을 막고 검색 쿼리는 해시로만 저장한다. |
 | 감사 기록 | 운영 로그와 별개로 `audit_records`에 남긴다 (`actor_user_id`, `action_type`, `resource_type`, `resource_id`, `privacy_class = AUDIT_RESTRICTED`, `outcome = SUCCEEDED/FAILED/DENIED`, `occurred_at`). 인증, 연동, 저장소, 분석, Skill Matrix, 학습, 대시보드, 온보딩, 지식, AI 모듈이 각자의 `*AuditPort`로 기록한다. |
 | 헬스 체크 | `GET /internal/health` → `{status, application, timestamp}`, 민감 정보 없음. |
 | 저장소 경계 검사 | `npm run security:check`가 추적 파일의 비밀 패턴, 민감 파일, 위험한 `ddl-auto` 설정을 검사한다. |

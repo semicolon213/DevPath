@@ -10,11 +10,11 @@
 
 | 원칙 | 내용 |
 |---|---|
-| 결정론 검증 | 공식 점수는 같은 입력과 같은 규칙 버전에서 항상 같은 값이어야 한다. 기대 점수는 검토된 골든 데이터에서 오며, LLM이 만든 값을 기대값으로 쓰지 않는다. |
+| 결정론 검증 | 공식 점수는 같은 입력과 같은 규칙 버전에서 항상 같은 값이어야 한다. 기대 점수는 검토된 골든 데이터에서 오며 LLM이 만든 값을 기대값으로 쓰지 않는다. |
 | 실제 PostgreSQL | PostgreSQL 동작이 필요한 테스트는 Testcontainers의 실제 PostgreSQL(pgvector 포함)로 돌린다. H2로 바꾸지 않는다. |
 | AI 비결정성 | AI 생성 결과는 정확한 문자열로 비교하지 않는다. 스키마, 근거, 안전 검증 결과를 확인한다. 테스트는 실제 모델을 호출하지 않는다. |
 | 보안 약화 금지 | 테스트를 통과시키려고 보안 설정이나 테스트를 약하게 만들지 않는다. |
-| 테스트 데이터 | 테스트 데이터는 합성·익명 데이터만 사용한다. 실사용자·비공개 데이터와 운영 비밀값을 쓰지 않고, CI에서 실제 provider를 호출하지 않는다. |
+| 테스트 데이터 | 테스트 데이터는 합성·익명 데이터만 사용한다. 실사용자·비공개 데이터와 운영 비밀값을 쓰지 않고 CI에서 실제 provider를 호출하지 않는다. |
 | 결과 보고 | 각 검사는 `PASS`, `FAIL`, `NOT RUN`과 정확한 명령, 이유로 보고한다. 이전 실행 결과를 새 실행 결과처럼 보고하지 않는다. |
 
 ## 2. 테스트 수준
@@ -79,15 +79,15 @@
 | 직무·회사·준비도 | `career/`: 6개 (`CareerCatalogSecurityTest`, `CareerReadinessSecurityTest`, `DeterministicCareerReadinessEngineTest`, 카탈로그·정책 영속성 테스트 등); `company/`: `CompanyCatalogApplicationServiceTest`, `CompanyCatalogPersistenceIntegrationTest` | `features/careers/**`, `features/companies/**`, `features/readiness/**`, `pages/Career*.test.tsx`, `pages/Compan*.test.tsx` |
 | 추천·학습 로드맵 | `recommendation/`: `RecommendationSecurityTest`, `DeterministicRecommendationEngineTest`, `RecommendationApplicationServiceTest`, `RecommendationPolicyPersistenceIntegrationTest`; `learning/`: `DeterministicRoadmapEngineTest` | `features/recommendations/api/recommendationApi.test.ts`, `pages/RecommendationsPage.test.tsx`, `pages/LearningRoadmapPage.test.tsx` |
 | 지식(Notion) 수집·검색 | `knowledge/`: `KnowledgeSecurityTest`, `KnowledgeChunkerTest`, `KnowledgeIngestionWorkerTest`, `KnowledgeApplicationServiceTest`, `KnowledgeSearchApplicationServiceTest`, `FilesystemObjectContentAdapterTest`, `KnowledgePersistenceIntegrationTest` | `features/knowledge/api/knowledgeApi.test.ts`, `pages/KnowledgePage.test.tsx`, `pages/KnowledgeDetailPage.test.tsx` |
-| 프롬프트 | `prompt/`: `PromptSecretDetectorTest`, `PromptPackageTest`, `RepositoryReviewPromptBuilderTest`, `RepositorySummaryPromptBuilderTest`, `SkillExplanationPromptBuilderTest` | — |
+| 프롬프트 | `prompt/`: `PromptSecretDetectorTest`, `PromptPackageTest`, `RepositoryReviewPromptBuilderTest`, `RepositorySummaryPromptBuilderTest`, `SkillExplanationPromptBuilderTest` | - |
 | AI 생성·검증 | `ai/`: `AiGenerationSecurityTest`, `AiGenerationApplicationServiceTest`, `AiGenerationWorkerTest`, `GeneratedOutputPolicyTest`, 작업별 `*ValidatorTest` 5개, `OllamaGenerationAdapterTest`, `JpaGenerationPersistenceAdapterTest`, `AiGenerationPersistenceIntegrationTest` | `features/ai/api/generationApi.test.ts`, `features/ai/model/useGeneration.test.tsx`, `features/ai/ui/*Panel.test.tsx` 6개 |
 | 대시보드·온보딩 | `dashboard/`: `DashboardSecurityTest`, `DashboardApplicationServiceTest`; `onboarding/`: `OnboardingSecurityTest`, `OnboardingApplicationServiceTest` | `pages/DashboardPage.test.tsx`, `pages/OnboardingPage.test.tsx` |
-| 감사·공통 API·운영 | `audit/DurableAuditRecordAdapterTest`, `shared/api/RequestCorrelationFilterTest`, `platform/health/InternalHealthControllerTest`, `reliability/JobRequestConcurrencyIntegrationTest` | — |
-| 앱 셸·라우팅·공통 UI | — | `app/App.test.tsx`, `app/AppLayout.test.tsx`, `app/styles.test.ts`, `routes/AppRoutes.test.tsx`, `shared/ui/ConfirmDialog.test.tsx`, `shared/ui/labels.test.ts`, `shared/ui/PageState.test.tsx`, `shared/ui/RouteAccessibility.test.tsx` |
-| 아키텍처 | `architecture/ArchitectureBoundaryTest`, `architecture/RepositoryBoundaryTest` | — |
+| 감사·공통 API·운영 | `audit/DurableAuditRecordAdapterTest`, `shared/api/RequestCorrelationFilterTest`, `platform/health/InternalHealthControllerTest`, `reliability/JobRequestConcurrencyIntegrationTest` | - |
+| 앱 셸·라우팅·공통 UI | - | `app/App.test.tsx`, `app/AppLayout.test.tsx`, `app/styles.test.ts`, `routes/AppRoutes.test.tsx`, `shared/ui/ConfirmDialog.test.tsx`, `shared/ui/labels.test.ts`, `shared/ui/PageState.test.tsx`, `shared/ui/RouteAccessibility.test.tsx` |
+| 아키텍처 | `architecture/ArchitectureBoundaryTest`, `architecture/RepositoryBoundaryTest` | - |
 
 Testcontainers PostgreSQL을 쓰는 테스트는 `test/PgVectorPostgreSQLContainer.java`를 공유한다.
-`CareerCatalogPersistenceIntegrationTest`, `CompanyCatalogPersistenceIntegrationTest`는 `DEVPATH_DB_URL`이 설정된 경우에만 실행되고, 없으면 SKIP된다.
+`CareerCatalogPersistenceIntegrationTest`, `CompanyCatalogPersistenceIntegrationTest`는 `DEVPATH_DB_URL`이 설정된 경우에만 실행되고 없으면 SKIP된다.
 
 ## 5. 통합 테스트 시나리오 (e2e)
 
@@ -107,7 +107,7 @@ Testcontainers PostgreSQL을 쓰는 테스트는 `test/PgVectorPostgreSQLContain
 | 가로 넘침 없음 | 대시보드·결과 화면, 375px 프로필 선택, 스크롤바 표시 상태 |
 | 레이아웃 회귀 | 지식 상세 breadcrumb 클릭 가능, 보관·삭제된 저장소 행의 동작 열, 저장소 hero 보조 동작 가독성, 오류 패널 스타일 |
 
-시나리오는 모두 15개이며, 주요 화면에서 axe 검사(WCAG 2.0 A/AA, WCAG 2.1 AA)를 함께 실행한다.
+시나리오는 모두 15개이며 주요 화면에서 axe 검사(WCAG 2.0 A/AA, WCAG 2.1 AA)를 함께 실행한다.
 
 ## 6. 실행 명령
 
@@ -129,7 +129,7 @@ Testcontainers PostgreSQL을 쓰는 테스트는 `test/PgVectorPostgreSQLContain
 | `npm run verify` | 백엔드 `clean build` → 프론트엔드 `ci` → `test` → `build` (e2e, 보안 검사, 계약 lint 제외) |
 | `npm run verify:mvp` | `docker:check` → `security:check` → 백엔드 `clean build` → 프론트엔드 `ci` → `quality` → `contract:lint` |
 
-권장 순서: 변경한 영역의 대상 테스트를 먼저 돌리고, 그다음 `npm run test`, 마지막으로 `npm run verify:mvp`로 전체 게이트를 확인한다.
+권장 순서: 변경한 영역의 대상 테스트를 먼저 돌리고 그다음 `npm run test`, 마지막으로 `npm run verify:mvp`로 전체 게이트를 확인한다.
 
 `scripts/run-gradle.mjs`는 Gradle wrapper가 실패하면 로컬 캐시의 Gradle 8.11.1 배포본으로 한 번 다시 시도한다.
 
@@ -145,8 +145,8 @@ Testcontainers PostgreSQL을 쓰는 테스트는 `test/PgVectorPostgreSQLContain
 | 조건부 SKIP | `DEVPATH_DB_URL`이 없으면 카탈로그 통합 테스트 2개가 SKIP된다. 결과 보고 시 SKIP을 따로 적는다. |
 | 프론트엔드 API 주소 | `frontend/vitest.setup.ts`가 테스트용 API 주소를 `http://localhost:8080`으로 고정한다. 로컬 `.env`의 값은 단위 테스트에 영향을 주지 않는다. |
 | Playwright 브라우저 | 처음 한 번 `cd frontend` 후 `npx playwright install chromium` |
-| e2e 포트 | `npm run test:e2e`가 먼저 `127.0.0.1:4173`을 bind 검사하고, 사용할 수 없으면 OS가 배정한 빈 포트를 한 번 선택해 Playwright 개발 서버와 테스트에 함께 전달한다 (`reuseExistingServer: false`). |
-| e2e 포트 지정 | `DEVPATH_E2E_PORT`를 설정하면 해당 포트만 사용하며, bind할 수 없으면 다른 포트로 대체하지 않고 명확한 오류로 종료한다. |
+| e2e 포트 | `npm run test:e2e`가 먼저 `127.0.0.1:4173`을 bind 검사하고 사용할 수 없으면 OS가 배정한 빈 포트를 한 번 선택해 Playwright 개발 서버와 테스트에 함께 전달한다 (`reuseExistingServer: false`). |
+| e2e 포트 지정 | `DEVPATH_E2E_PORT`를 설정하면 해당 포트만 사용하며 bind할 수 없으면 다른 포트로 대체하지 않고 명확한 오류로 종료한다. |
 
 ## 8. 리뷰 검증 방식
 
@@ -165,7 +165,7 @@ Testcontainers PostgreSQL을 쓰는 테스트는 `test/PgVectorPostgreSQLContain
 | 스냅샷 고정 | 리뷰 대상은 diff 해시로 고정한다. 스냅샷이 다르면 리뷰는 `BLOCKED`. main에 적용한 diff의 해시가 같을 때만 커밋한다. |
 | 통과 조건 | QA-A와 QA-B가 `PASS`이고 CR에 막는 지적이 없어야 한다. |
 | 최대 3회 | 첫 리뷰를 포함해 최대 3회. 지적은 모아서 한 번에 구현자에게 돌려준다. 3회 안에 통과하지 못하면 멈추고 보고한다. |
-| 뮤테이션 증거 | 테스트 전용 작업은 새 테스트마다 대상 동작을 일부러 망가뜨려 테스트가 실패하는 것을 보이고, 원상 복구 후 최종 diff에 테스트만 남았음을 확인한다. |
+| 뮤테이션 증거 | 테스트 전용 작업은 새 테스트마다 대상 동작을 일부러 망가뜨려 테스트가 실패하는 것을 보이고 원상 복구 후 최종 diff에 테스트만 남았음을 확인한다. |
 | 담당 범위 밖 변경 검사 | 작업자는 배정된 경로만 수정한다. 리뷰와 코디네이터는 최종 diff에 범위 밖 파일(OpenAPI, 마이그레이션, lockfile, 루트 빌드 파일, 에이전트 가이드 등)이 섞이지 않았는지 확인한다. 문서 작업은 Markdown 외 파일이 바뀌지 않았음을 확인한다. |
 | 결과 형식 | 각 검사를 `PASS`/`FAIL`/`NOT RUN`과 정확한 명령, 근거로 보고한다. 검증하지 못한 것은 성공으로 보고하지 않는다. |
 
@@ -173,7 +173,7 @@ Testcontainers PostgreSQL을 쓰는 테스트는 `test/PgVectorPostgreSQLContain
 
 | 항목 | 상태 |
 |---|---|
-| CI 파이프라인 | `main` push·PR에서 백엔드(Testcontainers Docker 포함), 프론트엔드, e2e, 보안·계약 검사를 실행한다. 백엔드 skip guard는 Testcontainers 테스트가 건너뛰면 실패하며, `DEVPATH_DB_URL`로 게이트된 카탈로그 통합 테스트 2개는 의도적으로 SKIP을 허용한다. 첫 실제 실행은 push 후 확인한다. |
+| CI 파이프라인 | `main` push·PR에서 백엔드(Testcontainers Docker 포함), 프론트엔드, e2e, 보안·계약 검사를 실행한다. 백엔드 skip guard는 Testcontainers 테스트가 건너뛰면 실패하며 `DEVPATH_DB_URL`로 게이트된 카탈로그 통합 테스트 2개는 의도적으로 SKIP을 허용한다. 첫 실제 실행은 push 후 확인한다. |
 | 실제 백엔드·PostgreSQL을 붙인 e2e | 미구현 (현재 route mock) |
 | 두 사용자 격리 e2e 시나리오 | 미구현 (격리는 백엔드 테스트로만 확인) |
 | 실제 GitHub·Notion·Ollama 대상 검증 | 미구현 |

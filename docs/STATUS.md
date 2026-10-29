@@ -34,7 +34,7 @@ DevPath의 구현 상태와 검증 결과를 기록하는 **유일한 상태 문
 | 백엔드 clean build와 테스트(JUnit, ArchUnit, Testcontainers PostgreSQL) | PASS. 261건, 실패 0, 오류 0, `DEVPATH_DB_URL` 조건부 catalog 테스트 SKIP 2 |
 | 프론트엔드 clean install | PASS |
 | 프론트엔드 Vitest | PASS, 55개 파일 261건 |
-| Playwright e2e(Chromium + axe) | PASS 15건. 당시 고정 포트 4173이 Windows 예약 범위(4149–4248)와 겹쳐 임시 포트로 따로 실행했다. 2026-10-26 포트 자동 선택(E2E-PORT) 반영 후 기본 실행에서도 15건 통과 |
+| Playwright e2e(Chromium + axe) | PASS 15건. 당시 고정 포트 4173이 Windows 예약 범위(4149~4248)와 겹쳐 임시 포트로 따로 실행했다. 2026-10-26 포트 자동 선택(E2E-PORT) 반영 후 기본 실행에서도 15건 통과 |
 | 프론트엔드 production build | PASS |
 | `npm audit` | 취약점 0건 |
 | `npm run contract:lint` (게이트 마지막 단계, e2e 중단으로 따로 실행) | OpenAPI 유효, 오류 0, 경고 10 |
@@ -148,7 +148,7 @@ M34 근거는 2026-09-28에 정리했다. 소유자 승인은 아직 없다.
 실제 provider 점검 기록:
 
 - 2026-08-25 로컬: GitHub OAuth 로그인 → 저장소 탐색 → 동기화(약 4초) → snapshot → 결정론 분석 → 대시보드·로드맵까지 통과.
-  JDBC 세션이 백엔드 재시작 2회 후에도 유지됐고, 로그아웃(204)과 절대 만료(401)가 감사 기록을 남겼다.
+  JDBC 세션이 백엔드 재시작 2회 후에도 유지됐고 로그아웃(204)과 절대 만료(401)가 감사 기록을 남겼다.
 - 2026-09-07·09 로컬 Ollama: `qwen2.5:3b`로 기술 설명·학습 안내 응답이 검증을 통과했다. `qwen2.5:7b`로 저장소 리뷰
   산출물을 생성·검증·저장하고 분석 화면에 표시했다.
 - 승인 기록: 엔지니어링 자체 검토 PENDING, 보안 검토 PENDING, 접근성 수동 점검 PARTIAL, 배포 검토 BLOCKED, 실제 provider 시연 PASS, MVP 승인 PENDING.
@@ -158,17 +158,17 @@ M34 근거는 2026-09-28에 정리했다. 소유자 승인은 아직 없다.
 
 ## 6. 남은 과제
 
-- M34 MVP 게이트와 M35–M43 지식·AI 기능의 소유자 승인, 실제 provider 점검.
+- M34 MVP 게이트와 M35~M43 지식·AI 기능의 소유자 승인, 실제 provider 점검.
 - 운영 오브젝트 스토리지, 배포·secret, 시연 환경 결정(ADR-029·031·033·034).
 - snapshot 목록과 이력 endpoint에 페이지 크기 제한이 없다(계약 결정 필요).
 - 대시보드 목표 기준선·단계 타일, 저장소 목록의 주 기술 표시는 API 변경이 필요하다.
-- 비로그인 deep link가 인증 레이아웃을 그리고, router가 모듈 import 시점에 생성된다.
+- 비로그인 deep link가 인증 레이아웃을 그리고 router가 모듈 import 시점에 생성된다.
 - 확인창(`ConfirmDialog`) 뒤 배경이 inert 처리되지 않는다.
-- 보관된 저장소의 분석 불가 안내 문구가 백엔드 동작과 다르고, 분석 버튼이 설명 없이 비활성화된다.
+- 보관된 저장소의 분석 불가 안내 문구가 백엔드 동작과 다르고 분석 버튼이 설명 없이 비활성화된다.
 - 저장된 생성 작업 조회가 404여도 저장된 작업 정보가 지워지지 않는다.
 - 근거 상태: 이력 항목 `NONE`/`INSUFFICIENT` 단위 테스트 없음, 과거 Matrix에도 재분석 안내 표시, 중복 `aria-label`.
-- 일부 텍스트 링크 높이(24–26px)가 [DESIGN.md](../DESIGN.md) 44px 지침에 못 미친다. 다시 시도·돌아가기 라벨이 일반적이다.
-- 규칙 결과 링크가 모두 한 섹션 anchor를 가리키고, AI 패널 5개가 같은 prop 연결을 반복한다.
+- 일부 텍스트 링크 높이(24~26px)가 [DESIGN.md](../DESIGN.md) 44px 지침에 못 미친다. 다시 시도·돌아가기 라벨이 일반적이다.
+- 규칙 결과 링크가 모두 한 섹션 anchor를 가리키고 AI 패널 5개가 같은 prop 연결을 반복한다.
 - 포커스 링·색상 style guard가 같은 specificity 규칙과 일부 색상 표기를 검사하지 못한다.
 - Hibernate `order_inserts`가 향후 부모·자식 혼합 flush 순서를 바꿀 수 있다(외래 키가 일반 UUID 컬럼).
 - 수동 스크린 리더 점검을 하지 않았다.
